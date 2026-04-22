@@ -1,0 +1,13 @@
+#V2
+DEFINE TABLE user SCHEMALESS;
+DEFINE TABLE session SCHEMALESS;
+DEFINE TABLE account SCHEMALESS;
+DEFINE TABLE verification SCHEMALESS;
+USE NS main DB main;
+SELECT * FROM user;
+SELECT * FROM account;
+SELECT * FROM session;
+USE NS main DB main;
+SELECT * FROM user;
+SELECT * FROM account;
+SELECT * FROM session;
