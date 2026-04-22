@@ -1,14 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-export type JsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | JsonValue[]
-  | { [key: string]: JsonValue };
-
-export function sendJson(response: ServerResponse, status: number, body: JsonValue) {
+export function sendJson(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
   });

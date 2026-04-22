@@ -58,6 +58,10 @@ export class Kubectl {
     return this.run(["get", resource, ...args]);
   }
 
+  async exec(namespace: string, pod: string, command: string[]) {
+    return this.run(["exec", "-n", namespace, pod, "--", ...command]);
+  }
+
   async applyManifest(manifest: string) {
     return this.run(["apply", "-f", "-"], manifest);
   }

@@ -8,6 +8,7 @@ export type RuntimeControlConfig = {
   kubectl: string;
   namespacePrefix: string;
   runtimeImage: string;
+  runtimeAgentToken: string;
 };
 
 function loadDotEnvFile(path: string) {
@@ -45,6 +46,7 @@ export function loadConfig(): RuntimeControlConfig {
     token: process.env.NOVA_RUNTIME_CONTROL_TOKEN || null,
     kubectl: process.env.NOVA_RUNTIME_KUBECTL || "kubectl",
     namespacePrefix: process.env.NOVA_RUNTIME_NAMESPACE_PREFIX || "nova-runtime",
-    runtimeImage: process.env.NOVA_RUNTIME_IMAGE || "busybox:1.36",
+    runtimeImage: process.env.NOVA_RUNTIME_IMAGE || "node:24-alpine",
+    runtimeAgentToken: process.env.NOVA_RUNTIME_AGENT_TOKEN || "dev-runtime-agent-token",
   };
 }

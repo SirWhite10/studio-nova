@@ -8,8 +8,10 @@ This app is intentionally separate from `apps/nova-cloud` so we can test runtime
 
 - Runs as a small TypeScript HTTP service.
 - Uses local `kubectl` through a narrow adapter.
-- Creates a smoke runtime namespace, PVC, and Pod for a Studio id.
-- Does not yet run real Nova runtime images or agent workloads.
+- Creates a runtime namespace, PVC, Secret, ConfigMap, and Pod for a Studio id.
+- Runs a token-protected runtime-agent HTTP server inside the Pod.
+- Supports command execution plus workspace file read/write/list/delete through the runtime agent.
+- Uses `node:24-alpine` as the first runtime image; this proves the control path before building the full Nova tools image.
 
 ## Expected Deployment Shape
 
@@ -65,6 +67,7 @@ local-path storage class present
 Copy `.env.example` to `.env.local` when running the service manually. The service can also be configured with normal environment variables.
 
 `NOVA_RUNTIME_CONTROL_TOKEN` is required for mutating endpoints.
+`NOVA_RUNTIME_AGENT_TOKEN` is passed to the per-Studio runtime-agent Pod and used by the control plane when calling the in-Pod agent.
 
 ## HTTP API
 
@@ -76,17 +79,70 @@ Returns service status.
 
 Returns `kubectl get nodes`, `kubectl get pods -A`, and `kubectl get storageclass`.
 
+`POST /runtimes/:studioId`
+
+Creates or reapplies the runtime namespace, runtime-agent ConfigMap, token Secret, workspace PVC, and runtime Pod.
+
+`GET /runtimes/:studioId`
+
+Returns Pod and PVC status for the Studio runtime namespace.
+
+`DELETE /runtimes/:studioId`
+
+Deletes the Studio runtime namespace. This deletes the local-path PVC too, so this is currently a destructive test cleanup endpoint.
+
+`POST /runtimes/:studioId/exec`
+
+Runs a shell command through the runtime agent.
+
+Example body:
+
+```json
+{
+  "command": "node --version && pwd",
+  "cwd": ".",
+  "timeoutMs": 10000
+}
+```
+
+`POST /runtimes/:studioId/files/write`
+
+Writes a UTF-8 file under `/workspace`.
+
+`POST /runtimes/:studioId/files/read`
+
+Reads a UTF-8 file under `/workspace`.
+
+`POST /runtimes/:studioId/files/list`
+
+Lists files under `/workspace`.
+
+`POST /runtimes/:studioId/files/delete`
+
+Deletes a file or directory under `/workspace`.
+
 `POST /runtimes/:studioId/smoke`
 
-Creates a throwaway namespace, PVC, and Pod that writes a marker file into the workspace volume.
+Compatibility alias for `POST /runtimes/:studioId`.
 
 `DELETE /runtimes/:studioId/smoke`
 
-Deletes the throwaway smoke namespace.
+Compatibility alias for `DELETE /runtimes/:studioId`.
+
+## Verified Behavior
+
+Tested against the initial K3s host:
+
+- control plane created a namespace, ConfigMap, Secret, PVC, and runtime Pod
+- runtime Pod reached `Running`
+- `/exec` returned `node --version`, `pwd`, and workspace listing
+- `/files/write`, `/files/read`, and `/files/list` worked through the runtime-agent API
+- deleting only the Pod and reapplying the runtime preserved `notes/hello.md` on the PVC
+- deleting the namespace cleaned up the test runtime
 
 ## Notes
 
 - The first implementation uses `kubectl` for speed and debuggability.
 - The production version can switch the adapter to the Kubernetes API directly.
-- Runtime images, preview routing, sleep-to-zero, and real agent execution are later phases.
+- Full Nova runtime image, preview routing, sleep-to-zero, background process management, and real agent execution are later phases.
 - The control plane should get SSH-key-based deployment later; do not build password auth into the app.
