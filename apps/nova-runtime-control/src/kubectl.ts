@@ -69,4 +69,8 @@ export class Kubectl {
   async deleteNamespace(namespace: string) {
     return this.run(["delete", "namespace", namespace, "--ignore-not-found=true"]);
   }
+
+  async deletePod(namespace: string, pod: string) {
+    return this.run(["delete", "pod", pod, "-n", namespace, "--ignore-not-found=true"]);
+  }
 }

@@ -1,6 +1,10 @@
 import type { RuntimeControlConfig } from "../config.ts";
 import { Kubectl } from "../kubectl.ts";
-import { createRuntimeManifest, createSmokeRuntimeManifest } from "./manifests.ts";
+import {
+  createRuntimeManifest,
+  createSmokeRuntimeManifest,
+  normalizeSystemPackages,
+} from "./manifests.ts";
 import { runtimeNamespace } from "./names.ts";
 
 type AgentResponse = unknown;
@@ -57,6 +61,12 @@ export class RuntimeControlService {
 
   async startRuntime(studioId: string, input: StartRuntimeInput = {}) {
     const namespace = runtimeNamespace(this.config.namespacePrefix, studioId);
+    const requestedPackages = normalizeSystemPackages(input.systemPackages);
+    const currentPackages = await this.currentSystemPackages(namespace);
+    if (currentPackages && currentPackages.join("\n") !== requestedPackages.join("\n")) {
+      await this.kubectl.deletePod(namespace, "runtime");
+    }
+
     const manifest = this.renderRuntime(studioId, input);
     const apply = await this.kubectl.applyManifest(manifest);
     const status = await this.kubectl.getText("pods", ["-n", namespace, "-o", "wide"]);
@@ -103,6 +113,20 @@ export class RuntimeControlService {
       pvc: pvc.stdout,
       systemPackages: packages.stdout,
     };
+  }
+
+  private async currentSystemPackages(namespace: string) {
+    try {
+      const packages = await this.kubectl.getText("configmap/runtime-agent", [
+        "-n",
+        namespace,
+        "-o",
+        "jsonpath={.data.system-packages\\.txt}",
+      ]);
+      return normalizeSystemPackages(packages.stdout.split(/\r?\n/));
+    } catch {
+      return null;
+    }
   }
 
   private async callAgent(

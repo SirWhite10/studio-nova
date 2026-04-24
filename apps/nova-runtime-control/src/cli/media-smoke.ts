@@ -88,9 +88,9 @@ async function waitForRuntime() {
   throw new Error(`Runtime did not become ready in time: ${lastError}`);
 }
 
-async function startRuntime() {
+async function startRuntime(systemPackages: string[] = []) {
   await service.startRuntime(studioId, {
-    systemPackages: ["ffmpeg", "imagemagick"],
+    systemPackages,
   });
   await waitForRuntime();
 }
@@ -99,19 +99,28 @@ try {
   console.log(`Creating media smoke runtime: ${namespace}`);
   await startRuntime();
 
+  const marker = await service.execRuntime(studioId, {
+    command: "printf package-upgrade-smoke > package-upgrade-marker.txt",
+    timeoutMs: 10_000,
+  });
+  assertExecSuccess("Initial package-free runtime passed", marker);
+
+  console.log("\nAdding system packages to existing runtime");
+  await startRuntime(["ffmpeg", "imagemagick"]);
+
   const initial = await service.execRuntime(studioId, {
-    command: mediaCommand,
+    command: `test "$(cat package-upgrade-marker.txt)" = package-upgrade-smoke && ${mediaCommand}`,
     timeoutMs: 60_000,
   });
-  assertExecSuccess("Initial media smoke passed", initial);
+  assertExecSuccess("Package upgrade media smoke passed", initial);
 
   console.log("\nDeleting runtime pod to verify PVC-backed package and file persistence");
   await kubectl.run(["delete", "pod", "runtime", "-n", namespace, "--ignore-not-found=true"]);
-  await startRuntime();
+  await startRuntime(["ffmpeg", "imagemagick"]);
 
   const persistence = await service.execRuntime(studioId, {
     command:
-      "ffmpeg -version | head -1 && magick -version | head -1 && identify red.png frame.png && ls -lh red.png frame.png",
+      'test "$(cat package-upgrade-marker.txt)" = package-upgrade-smoke && ffmpeg -version | head -1 && magick -version | head -1 && identify red.png frame.png && ls -lh package-upgrade-marker.txt red.png frame.png',
     timeoutMs: 30_000,
   });
   assertExecSuccess("Persistence media smoke passed", persistence);
