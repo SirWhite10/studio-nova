@@ -1,0 +1,413 @@
+{
+  "test-id-2": [
+    {
+      "id": "16bca7d2-c2da-45d7-bc4e-8d064373d0b8",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "Hello again"
+        }
+      ]
+    }
+  ],
+  "6eee33f6-d852-4098-b392-ffe730a16b2f": [
+    {
+      "id": "b2e1ec9f-2adc-4d28-ba8e-fef45846599b",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "using agent browser, perform a google search"
+        }
+      ]
+    },
+    {
+      "id": "c4486113-cf39-437e-8e04-e8ec0dc6c060",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "reasoning",
+          "id": "gen-1773792827-1nus632Lgpvqh4OmXeCz",
+          "text": "The user says: \"using agent browser, perform a google search\"\n\n\n## Assessing User Request  \n- The user asked to perform a Google search using an \"agent browser,\" likely seeking web-based information.[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_10044363",
+          "toolName": "search_skills",
+          "state": "output-available",
+          "input": {
+            "query": "agent browser",
+            "limit": 10
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "skills": [
+                {
+                  "id": "skill_1773783060946_jr22g1m6c",
+                  "name": "agent-browser",
+                  "description": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_wcany08he",
+                  "name": "Bun",
+                  "description": "Use when building, running, testing, or bundling JavaScript/TypeScript applications. Reach for Bun when you need to execute scripts, manage dependencies, run tests, or bundle code faster than Node.js/npm alternatives.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_lkzxmoqf3",
+                  "name": "find-skills",
+                  "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_gqz16wvhq",
+                  "name": "react-to-svelte",
+                  "description": "Convert React components to Svelte 5 using runes syntax. Handles hooks, pure components, JSX, effects, context, refs, events, and accessibility.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_44369993",
+          "toolName": "search_skills",
+          "state": "output-available",
+          "input": {
+            "query": "google search",
+            "limit": 10
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "skills": [
+                {
+                  "id": "skill_1773783060946_jr22g1m6c",
+                  "name": "agent-browser",
+                  "description": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_wcany08he",
+                  "name": "Bun",
+                  "description": "Use when building, running, testing, or bundling JavaScript/TypeScript applications. Reach for Bun when you need to execute scripts, manage dependencies, run tests, or bundle code faster than Node.js/npm alternatives.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_lkzxmoqf3",
+                  "name": "find-skills",
+                  "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_gqz16wvhq",
+                  "name": "react-to-svelte",
+                  "description": "Convert React components to Svelte 5 using runes syntax. Handles hooks, pure components, JSX, effects, context, refs, events, and accessibility.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_66406850",
+          "toolName": "search_skills",
+          "state": "output-available",
+          "input": {
+            "query": "browser",
+            "limit": 10
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "skills": [
+                {
+                  "id": "skill_1773783060946_jr22g1m6c",
+                  "name": "agent-browser",
+                  "description": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_wcany08he",
+                  "name": "Bun",
+                  "description": "Use when building, running, testing, or bundling JavaScript/TypeScript applications. Reach for Bun when you need to execute scripts, manage dependencies, run tests, or bundle code faster than Node.js/npm alternatives.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_lkzxmoqf3",
+                  "name": "find-skills",
+                  "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                },
+                {
+                  "id": "skill_1773783060946_gqz16wvhq",
+                  "name": "react-to-svelte",
+                  "description": "Convert React components to Svelte 5 using runes syntax. Handles hooks, pure components, JSX, effects, context, refs, events, and accessibility.",
+                  "version": 1,
+                  "usage_count": 0,
+                  "success_rate": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "reasoning",
+          "id": "gen-1773792832-XWhhI6nYYfctjro7wLEP",
+          "text": "The search results show a skill called \"agent-browser\" with id \"skill_1773783060946_jr22g1m6c\". Its description matches perfectly: Browser automation CLI for AI agents, for interacting with websites, etc.\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_55278671",
+          "toolName": "use_skill",
+          "state": "output-available",
+          "input": {
+            "skill_id": "skill_1773783060946_jr22g1m6c"
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "id": "skill_1773783060946_jr22g1m6c",
+              "name": "agent-browser",
+              "description": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction.",
+              "content": "---\nname: agent-browser\ndescription: Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", \"automate browser actions\", or any task requiring programmatic web interaction.\nallowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)\n---\n\n# Browser Automation with agent-browser\n\n## Core Workflow\n\nEvery browser automation follows this pattern:\n\n1. **Navigate**: `agent-browser open <url>`\n2. **Snapshot**: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)\n3. **Interact**: Use refs to click, fill, select\n4. **Re-snapshot**: After navigation or DOM changes, get fresh refs\n\n```bash\nagent-browser open https://example.com/form\nagent-browser snapshot -i\n# Output: @e1 [input type=\"email\"], @e2 [input type=\"password\"], @e3 [button] \"Submit\"\n\nagent-browser fill @e1 \"user@example.com\"\nagent-browser fill @e2 \"password123\"\nagent-browser click @e3\nagent-browser wait --load networkidle\nagent-browser snapshot -i  # Check result\n```\n\n## Command Chaining\n\nCommands can be chained with `&&` in a single shell invocation. The browser persists between commands via a background daemon, so chaining is safe and more efficient than separate calls.\n\n```bash\n# Chain open + wait + snapshot in one call\nagent-browser open https://example.com && agent-browser wait --load networkidle && agent-browser snapshot -i\n\n# Chain multiple interactions\nagent-browser fill @e1 \"user@example.com\" && agent-browser fill @e2 \"password123\" && agent-browser click @e3\n\n# Navigate and capture\nagent-browser open https://example.com && agent-browser wait --load networkidle && agent-browser screenshot page.png\n```\n\n**When to chain:** Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).\n\n## Essential Commands\n\n```bash\n# Navigation\nagent-browser open <url>              # Navigate (aliases: goto, navigate)\nagent-browser close                   # Close browser\n\n# Snapshot\nagent-browser snapshot -i             # Interactive elements with refs (recommended)\nagent-browser snapshot -i -C          # Include cursor-interactive elements (divs with onclick, cursor:pointer)\nagent-browser snapshot -s \"#selector\" # Scope to CSS selector\n\n# Interaction (use @refs from snapshot)\nagent-browser click @e1               # Click element\nagent-browser click @e1 --new-tab     # Click and open in new tab\nagent-browser fill @e2 \"text\"         # Clear and type text\nagent-browser type @e2 \"text\"         # Type without clearing\nagent-browser select @e1 \"option\"     # Select dropdown option\nagent-browser check @e1               # Check checkbox\nagent-browser press Enter             # Press key\nagent-browser keyboard type \"text\"    # Type at current focus (no selector)\nagent-browser keyboard inserttext \"text\"  # Insert without key events\nagent-browser scroll down 500         # Scroll page\nagent-browser scroll down 500 --selector \"div.content\"  # Scroll within a specific container\n\n# Get information\nagent-browser get text @e1            # Get element text\nagent-browser get url                 # Get current URL\nagent-browser get title               # Get page title\n\n# Wait\nagent-browser wait @e1                # Wait for element\nagent-browser wait --load networkidle # Wait for network idle\nagent-browser wait --url \"**/page\"    # Wait for URL pattern\nagent-browser wait 2000               # Wait milliseconds\n\n# Downloads\nagent-browser download @e1 ./file.pdf          # Click element to trigger download\nagent-browser wait --download ./output.zip     # Wait for any download to complete\nagent-browser --download-path ./downloads open <url>  # Set default download directory\n\n# Viewport & Device Emulation\nagent-browser set viewport 1920 1080          # Set viewport size (default: 1280x720)\nagent-browser set viewport 1920 1080 2        # 2x retina (same CSS size, higher res screenshots)\nagent-browser set device \"iPhone 14\"          # Emulate device (viewport + user agent)\n\n# Capture\nagent-browser screenshot              # Screenshot to temp dir\nagent-browser screenshot --full       # Full page screenshot\nagent-browser screenshot --annotate   # Annotated screenshot with numbered element labels\nagent-browser pdf output.pdf          # Save as PDF\n\n# Diff (compare page states)\nagent-browser diff snapshot                          # Compare current vs last snapshot\nagent-browser diff snapshot --baseline before.txt    # Compare current vs saved file\nagent-browser diff screenshot --baseline before.png  # Visual pixel diff\nagent-browser diff url <url1> <url2>                 # Compare two pages\nagent-browser diff url <url1> <url2> --wait-until networkidle  # Custom wait strategy\nagent-browser diff url <url1> <url2> --selector \"#main\"  # Scope to element\n```\n\n## Common Patterns\n\n### Form Submission\n\n```bash\nagent-browser open https://example.com/signup\nagent-browser snapshot -i\nagent-browser fill @e1 \"Jane Doe\"\nagent-browser fill @e2 \"jane@example.com\"\nagent-browser select @e3 \"California\"\nagent-browser check @e4\nagent-browser click @e5\nagent-browser wait --load networkidle\n```\n\n### Authentication with Auth Vault (Recommended)\n\n```bash\n# Save credentials once (encrypted with AGENT_BROWSER_ENCRYPTION_KEY)\n# Recommended: pipe password via stdin to avoid shell history exposure\necho \"pass\" | agent-browser auth save github --url https://github.com/login --username user --password-stdin\n\n# Login using saved profile (LLM never sees password)\nagent-browser auth login github\n\n# List/show/delete profiles\nagent-browser auth list\nagent-browser auth show github\nagent-browser auth delete github\n```\n\n### Authentication with State Persistence\n\n```bash\n# Login once and save state\nagent-browser open https://app.example.com/login\nagent-browser snapshot -i\nagent-browser fill @e1 \"$USERNAME\"\nagent-browser fill @e2 \"$PASSWORD\"\nagent-browser click @e3\nagent-browser wait --url \"**/dashboard\"\nagent-browser state save auth.json\n\n# Reuse in future sessions\nagent-browser state load auth.json\nagent-browser open https://app.example.com/dashboard\n```\n\n### Session Persistence\n\n```bash\n# Auto-save/restore cookies and localStorage across browser restarts\nagent-browser --session-name myapp open https://app.example.com/login\n# ... login flow ...\nagent-browser close  # State auto-saved to ~/.agent-browser/sessions/\n\n# Next time, state is auto-loaded\nagent-browser --session-name myapp open https://app.example.com/dashboard\n\n# Encrypt state at rest\nexport AGENT_BROWSER_ENCRYPTION_KEY=$(openssl rand -hex 32)\nagent-browser --session-name secure open https://app.example.com\n\n# Manage saved states\nagent-browser state list\nagent-browser state show myapp-default.json\nagent-browser state clear myapp\nagent-browser state clean --older-than 7\n```\n\n### Data Extraction\n\n```bash\nagent-browser open https://example.com/products\nagent-browser snapshot -i\nagent-browser get text @e5           # Get specific element text\nagent-browser get text body > page.txt  # Get all page text\n\n# JSON output for parsing\nagent-browser snapshot -i --json\nagent-browser get text @e1 --json\n```\n\n### Parallel Sessions\n\n```bash\nagent-browser --session site1 open https://site-a.com\nagent-browser --session site2 open https://site-b.com\n\nagent-browser --session site1 snapshot -i\nagent-browser --session site2 snapshot -i\n\nagent-browser session list\n```\n\n### Connect to Existing Chrome\n\n```bash\n# Auto-discover running Chrome with remote debugging enabled\nagent-browser --auto-connect open https://example.com\nagent-browser --auto-connect snapshot\n\n# Or with explicit CDP port\nagent-browser --cdp 9222 snapshot\n```\n\n### Color Scheme (Dark Mode)\n\n```bash\n# Persistent dark mode via flag (applies to all pages and new tabs)\nagent-browser --color-scheme dark open https://example.com\n\n# Or via environment variable\nAGENT_BROWSER_COLOR_SCHEME=dark agent-browser open https://example.com\n\n# Or set during session (persists for subsequent commands)\nagent-browser set media dark\n```\n\n### Viewport & Responsive Testing\n\n```bash\n# Set a custom viewport size (default is 1280x720)\nagent-browser set viewport 1920 1080\nagent-browser screenshot desktop.png\n\n# Test mobile-width layout\nagent-browser set viewport 375 812\nagent-browser screenshot mobile.png\n\n# Retina/HiDPI: same CSS layout at 2x pixel density\n# Screenshots stay at logical viewport size, but content renders at higher DPI\nagent-browser set viewport 1920 1080 2\nagent-browser screenshot retina.png\n\n# Device emulation (sets viewport + user agent in one step)\nagent-browser set device \"iPhone 14\"\nagent-browser screenshot device.png\n```\n\nThe `scale` parameter (3rd argument) sets `window.devicePixelRatio` without changing CSS layout. Use it when testing retina rendering or capturing higher-resolution screenshots.\n\n### Visual Browser (Debugging)\n\n```bash\nagent-browser --headed open https://example.com\nagent-browser highlight @e1          # Highlight element\nagent-browser record start demo.webm # Record session\nagent-browser profiler start         # Start Chrome DevTools profiling\nagent-browser profiler stop trace.json # Stop and save profile (path optional)\n```\n\nUse `AGENT_BROWSER_HEADED=1` to enable headed mode via environment variable. Browser extensions work in both headed and headless mode.\n\n### Local Files (PDFs, HTML)\n\n```bash\n# Open local files with file:// URLs\nagent-browser --allow-file-access open file:///path/to/document.pdf\nagent-browser --allow-file-access open file:///path/to/page.html\nagent-browser screenshot output.png\n```\n\n### iOS Simulator (Mobile Safari)\n\n```bash\n# List available iOS simulators\nagent-browser device list\n\n# Launch Safari on a specific device\nagent-browser -p ios --device \"iPhone 16 Pro\" open https://example.com\n\n# Same workflow as desktop - snapshot, interact, re-snapshot\nagent-browser -p ios snapshot -i\nagent-browser -p ios tap @e1          # Tap (alias for click)\nagent-browser -p ios fill @e2 \"text\"\nagent-browser -p ios swipe up         # Mobile-specific gesture\n\n# Take screenshot\nagent-browser -p ios screenshot mobile.png\n\n# Close session (shuts down simulator)\nagent-browser -p ios close\n```\n\n**Requirements:** macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)\n\n**Real devices:** Works with physical iOS devices if pre-configured. Use `--device \"<UDID>\"` where UDID is from `xcrun xctrace list devices`.\n\n## Security\n\nAll security features are opt-in. By default, agent-browser imposes no restrictions on navigation, actions, or output.\n\n### Content Boundaries (Recommended for AI Agents)\n\nEnable `--content-boundaries` to wrap page-sourced output in markers that help LLMs distinguish tool output from untrusted page content:\n\n```bash\nexport AGENT_BROWSER_CONTENT_BOUNDARIES=1\nagent-browser snapshot\n# Output:\n# --- AGENT_BROWSER_PAGE_CONTENT nonce=<hex> origin=https://example.com ---\n# [accessibility tree]\n# --- END_AGENT_BROWSER_PAGE_CONTENT nonce=<hex> ---\n```\n\n### Domain Allowlist\n\nRestrict navigation to trusted domains. Wildcards like `*.example.com` also match the bare domain `example.com`. Sub-resource requests, WebSocket, and EventSource connections to non-allowed domains are also blocked. Include CDN domains your target pages depend on:\n\n```bash\nexport AGENT_BROWSER_ALLOWED_DOMAINS=\"example.com,*.example.com\"\nagent-browser open https://example.com        # OK\nagent-browser open https://malicious.com       # Blocked\n```\n\n### Action Policy\n\nUse a policy file to gate destructive actions:\n\n```bash\nexport AGENT_BROWSER_ACTION_POLICY=./policy.json\n```\n\nExample `policy.json`:\n```json\n{\"default\": \"deny\", \"allow\": [\"navigate\", \"snapshot\", \"click\", \"scroll\", \"wait\", \"get\"]}\n```\n\nAuth vault operations (`auth login`, etc.) bypass action policy but domain allowlist still applies.\n\n### Output Limits\n\nPrevent context flooding from large pages:\n\n```bash\nexport AGENT_BROWSER_MAX_OUTPUT=50000\n```\n\n## Diffing (Verifying Changes)\n\nUse `diff snapshot` after performing an action to verify it had the intended effect. This compares the current accessibility tree against the last snapshot taken in the session.\n\n```bash\n# Typical workflow: snapshot -> action -> diff\nagent-browser snapshot -i          # Take baseline snapshot\nagent-browser click @e2            # Perform action\nagent-browser diff snapshot        # See what changed (auto-compares to last snapshot)\n```\n\nFor visual regression testing or monitoring:\n\n```bash\n# Save a baseline screenshot, then compare later\nagent-browser screenshot baseline.png\n# ... time passes or changes are made ...\nagent-browser diff screenshot --baseline baseline.png\n\n# Compare staging vs production\nagent-browser diff url https://staging.example.com https://prod.example.com --screenshot\n```\n\n`diff snapshot` output uses `+` for additions and `-` for removals, similar to git diff. `diff screenshot` produces a diff image with changed pixels highlighted in red, plus a mismatch percentage.\n\n## Timeouts and Slow Pages\n\nThe default Playwright timeout is 25 seconds for local browsers. This can be overridden with the `AGENT_BROWSER_DEFAULT_TIMEOUT` environment variable (value in milliseconds). For slow websites or large pages, use explicit waits instead of relying on the default timeout:\n\n```bash\n# Wait for network activity to settle (best for slow pages)\nagent-browser wait --load networkidle\n\n# Wait for a specific element to appear\nagent-browser wait \"#content\"\nagent-browser wait @e1\n\n# Wait for a specific URL pattern (useful after redirects)\nagent-browser wait --url \"**/dashboard\"\n\n# Wait for a JavaScript condition\nagent-browser wait --fn \"document.readyState === 'complete'\"\n\n# Wait a fixed duration (milliseconds) as a last resort\nagent-browser wait 5000\n```\n\nWhen dealing with consistently slow websites, use `wait --load networkidle` after `open` to ensure the page is fully loaded before taking a snapshot. If a specific element is slow to render, wait for it directly with `wait <selector>` or `wait @ref`.\n\n## Session Management and Cleanup\n\nWhen running multiple agents or automations concurrently, always use named sessions to avoid conflicts:\n\n```bash\n# Each agent gets its own isolated session\nagent-browser --session agent1 open site-a.com\nagent-browser --session agent2 open site-b.com\n\n# Check active sessions\nagent-browser session list\n```\n\nAlways close your browser session when done to avoid leaked processes:\n\n```bash\nagent-browser close                    # Close default session\nagent-browser --session agent1 close   # Close specific session\n```\n\nIf a previous session was not closed properly, the daemon may still be running. Use `agent-browser close` to clean it up before starting new work.\n\n## Ref Lifecycle (Important)\n\nRefs (`@e1`, `@e2`, etc.) are invalidated when the page changes. Always re-snapshot after:\n\n- Clicking links or buttons that navigate\n- Form submissions\n- Dynamic content loading (dropdowns, modals)\n\n```bash\nagent-browser click @e5              # Navigates to new page\nagent-browser snapshot -i            # MUST re-snapshot\nagent-browser click @e1              # Use new refs\n```\n\n## Annotated Screenshots (Vision Mode)\n\nUse `--annotate` to take a screenshot with numbered labels overlaid on interactive elements. Each label `[N]` maps to ref `@eN`. This also caches refs, so you can interact with elements immediately without a separate snapshot.\n\n```bash\nagent-browser screenshot --annotate\n# Output includes the image path and a legend:\n#   [1] @e1 button \"Submit\"\n#   [2] @e2 link \"Home\"\n#   [3] @e3 textbox \"Email\"\nagent-browser click @e2              # Click using ref from annotated screenshot\n```\n\nUse annotated screenshots when:\n- The page has unlabeled icon buttons or visual-only elements\n- You need to verify visual layout or styling\n- Canvas or chart elements are present (invisible to text snapshots)\n- You need spatial reasoning about element positions\n\n## Semantic Locators (Alternative to Refs)\n\nWhen refs are unavailable or unreliable, use semantic locators:\n\n```bash\nagent-browser find text \"Sign In\" click\nagent-browser find label \"Email\" fill \"user@test.com\"\nagent-browser find role button click --name \"Submit\"\nagent-browser find placeholder \"Search\" type \"query\"\nagent-browser find testid \"submit-btn\" click\n```\n\n## JavaScript Evaluation (eval)\n\nUse `eval` to run JavaScript in the browser context. **Shell quoting can corrupt complex expressions** -- use `--stdin` or `-b` to avoid issues.\n\n```bash\n# Simple expressions work with regular quoting\nagent-browser eval 'document.title'\nagent-browser eval 'document.querySelectorAll(\"img\").length'\n\n# Complex JS: use --stdin with heredoc (RECOMMENDED)\nagent-browser eval --stdin <<'EVALEOF'\nJSON.stringify(\n  Array.from(document.querySelectorAll(\"img\"))\n    .filter(i => !i.alt)\n    .map(i => ({ src: i.src.split(\"/\").pop(), width: i.width }))\n)\nEVALEOF\n\n# Alternative: base64 encoding (avoids all shell escaping issues)\nagent-browser eval -b \"$(echo -n 'Array.from(document.querySelectorAll(\"a\")).map(a => a.href)' | base64)\"\n```\n\n**Why this matters:** When the shell processes your command, inner double quotes, `!` characters (history expansion), backticks, and `$()` can all corrupt the JavaScript before it reaches agent-browser. The `--stdin` and `-b` flags bypass shell interpretation entirely.\n\n**Rules of thumb:**\n- Single-line, no nested quotes -> regular `eval 'expression'` with single quotes is fine\n- Nested quotes, arrow functions, template literals, or multiline -> use `eval --stdin <<'EVALEOF'`\n- Programmatic/generated scripts -> use `eval -b` with base64\n\n## Configuration File\n\nCreate `agent-browser.json` in the project root for persistent settings:\n\n```json\n{\n  \"headed\": true,\n  \"proxy\": \"http://localhost:8080\",\n  \"profile\": \"./browser-data\"\n}\n```\n\nPriority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.json` < env vars < CLI flags. Use `--config <path>` or `AGENT_BROWSER_CONFIG` env var for a custom config file (exits with error if missing/invalid). All CLI options map to camelCase keys (e.g., `--executable-path` -> `\"executablePath\"`). Boolean flags accept `true`/`false` values (e.g., `--headed false` overrides config). Extensions from user and project configs are merged, not replaced.\n\n## Deep-Dive Documentation\n\n| Reference | When to Use |\n|-----------|-------------|\n| [references/commands.md](references/commands.md) | Full command reference with all options |\n| [references/snapshot-refs.md](references/snapshot-refs.md) | Ref lifecycle, invalidation rules, troubleshooting |\n| [references/session-management.md](references/session-management.md) | Parallel sessions, state persistence, concurrent scraping |\n| [references/authentication.md](references/authentication.md) | Login flows, OAuth, 2FA handling, state reuse |\n| [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |\n| [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |\n| [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |\n\n## Experimental: Native Mode\n\nagent-browser has an experimental native Rust daemon that communicates with Chrome directly via CDP, bypassing Node.js and Playwright entirely. It is opt-in and not recommended for production use yet.\n\n```bash\n# Enable via flag\nagent-browser --native open example.com\n\n# Enable via environment variable (avoids passing --native every time)\nexport AGENT_BROWSER_NATIVE=1\nagent-browser open example.com\n```\n\nThe native daemon supports Chromium and Safari (via WebDriver). Firefox and WebKit are not yet supported. All core commands (navigate, snapshot, click, fill, screenshot, cookies, storage, tabs, eval, etc.) work identically in native mode. Use `agent-browser close` before switching between native and default mode within the same session.\n\n## Browser Engine Selection\n\nUse `--engine` to choose a local browser engine. The default is `chrome`.\n\n```bash\n# Use Lightpanda (fast headless browser, requires separate install)\nagent-browser --engine lightpanda open example.com\n\n# Via environment variable\nexport AGENT_BROWSER_ENGINE=lightpanda\nagent-browser open example.com\n\n# With custom binary path\nagent-browser --engine lightpanda --executable-path /path/to/lightpanda open example.com\n```\n\nSupported engines:\n- `chrome` (default) -- Chrome/Chromium via CDP\n- `lightpanda` -- Lightpanda headless browser via CDP (10x faster, 10x less memory than Chrome)\n\nLightpanda does not support `--extension`, `--profile`, `--state`, or `--allow-file-access`. Install Lightpanda from https://lightpanda.io/docs/open-source/installation.\n\n## Ready-to-Use Templates\n\n| Template | Description |\n|----------|-------------|\n| [templates/form-automation.sh](templates/form-automation.sh) | Form filling with validation |\n| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state |\n| [templates/capture-workflow.sh](templates/capture-workflow.sh) | Content extraction with screenshots |\n\n```bash\n./templates/form-automation.sh https://example.com/form\n./templates/authenticated-session.sh https://app.example.com/login\n./templates/capture-workflow.sh https://example.com ./output\n```\n",
+              "version": 1
+            }
+          }
+        },
+        {
+          "type": "reasoning",
+          "id": "gen-1773792834-XcoiQyaAFbVBUu7Sx7DB",
+          "text": "The skill \"agent-browser\" is loaded. It's a browser automation CLI using commands like `agent-browser open <url>`, `snapshot`, etc.\n\n\n## Loading Automation Skills  \n- The \"agent-browser\" skill is now active for browser automation tasks.  \n- It supports commands like `agent-browser open <url>` and `snapshot` for interacting with web pages.[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_75613837",
+          "toolName": "shell",
+          "state": "output-available",
+          "input": {
+            "command": "npx agent-browser open https://www.google.com && npx agent-browser wait --load networkidle && npx agent-browser snapshot -i",
+            "timeout": 30000
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "output": "\u001b[32m✓\u001b[0m \u001b[1mGoogle\u001b[0m\n  \u001b[2mhttps://www.google.com/\u001b[0m\n\u001b[32m✓\u001b[0m Done\n- link \"About\" [ref=e1]\n- link \"Store\" [ref=e2]\n- link \"Gmail\" [ref=e3]\n- link \"Search for Images\" [ref=e4]\n- button \"Google apps\" [ref=e5]\n- link \"Sign in\" [ref=e6]\n- link \"St. Patrick's Day 2026\" [ref=e7]\n- button \"Share\" [ref=e8]\n- combobox \"Search\" [ref=e9]\n- button \"Search by voice\" [ref=e10]\n- button \"Search by image\" [ref=e11]\n- button \"Google Search\" [ref=e12]\n- button \"I'm Feeling Lucky\" [ref=e13]\n- link \"Get responses uniquely relevant to you in Search and Gemini\" [ref=e14]\n- link \"Advertising\" [ref=e15]\n- link \"Business\" [ref=e16]\n- link \"How Search works\" [ref=e17]\n- link \"Applying AI towards science and the environment\" [ref=e18]\n- link \"Privacy\" [ref=e19]\n- link \"Terms\" [ref=e20]\n- button \"Settings\" [ref=e21]",
+              "error": ""
+            }
+          }
+        },
+        {
+          "type": "reasoning",
+          "id": "gen-1773792843-osM6yTrcx1uEWUl1Gzzc",
+          "text": "Great, it worked. Opened Google.com, snapshot shows:\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_18782386",
+          "toolName": "shell",
+          "state": "output-available",
+          "input": {
+            "command": "npx agent-browser fill @e9 \"Nova AI\" && npx agent-browser click @e12 && npx agent-browser wait --load networkidle && npx agent-browser snapshot -i",
+            "timeout": 60000
+          },
+          "output": {
+            "success": false,
+            "error": "Command failed: npx agent-browser fill @e9 \"Nova AI\" && npx agent-browser click @e12 && npx agent-browser wait --load networkidle && npx agent-browser snapshot -i\n\u001b[31m✗\u001b[0m Selector \"@e12\" matched 2 elements. Run 'snapshot' to get updated refs, or use a more specific CSS selector.\n"
+          }
+        },
+        {
+          "type": "reasoning",
+          "id": "gen-1773792846-CR2cSz66NaOdBPo95HVp",
+          "text": "Error: Selector \"@e12\" matched 2 elements. Run 'snapshot' to get updated refs, or use a more specific CSS selector.\n\n\n## Handling Selector Errors  \n- The selector \"@e12\" matched 2 elements, causing an error.  \n- Suggest running 'snapshot' to update refs or using a more specific CSS selector to resolve the issue.[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_51474049",
+          "toolName": "shell",
+          "state": "output-available",
+          "input": {
+            "command": "npx agent-browser fill @e9 \"Nova AI\" && npx agent-browser press Enter && npx agent-browser wait --load networkidle && npx agent-browser snapshot -i",
+            "timeout": 60000
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "output": "\u001b[32m✓\u001b[0m Done\n\u001b[32m✓\u001b[0m Done\n\u001b[32m✓\u001b[0m Done\n- link \"Why did this happen?\" [ref=e1]",
+              "error": ""
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "f6c7e177-b232-46f3-8af1-7e973f7ea10a": [
+    {
+      "id": "a0ef833b-0bfe-4239-b592-8775181fc134",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ]
+    },
+    {
+      "id": "74964358-8de6-4dfc-8516-ee36b7ab6a4c",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "reasoning",
+          "id": "gen-1773903549-zkNJ7yQyXW3b4QgnDFrt",
+          "text": "The user said \"hello\". This is a simple greeting. No need for tools here; it's just conversational.\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "text",
+          "id": "gen-1773903549-zkNJ7yQyXW3b4QgnDFrt",
+          "text": "Hello! How can I help you today? 😊",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "id": "605a3300-4a53-4d2f-8c08-fa32db0b201b",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "what tools do oyu have access too"
+        }
+      ]
+    },
+    {
+      "id": "d92c4b8d-c50d-4623-a47a-9c2759b0f7ed",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "reasoning",
+          "id": "gen-1773903566-Hm7kjk5VxnUnuxIZdp8A",
+          "text": "First, the user asked: \"what tools do oyu have access too\" – that's a typo for \"what tools do you have access to\".\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "text",
+          "id": "gen-1773903566-Hm7kjk5VxnUnuxIZdp8A",
+          "text": "Here are the tools I have access to, along with brief descriptions of what they do:\n\n1. **filesystem**  \n   Read, write, list, stat, create directories, or delete files/directories on the local filesystem.\n\n2. **shell**  \n   Execute shell commands in the operating system (with full system access—use with caution). Supports working directory and timeouts.\n\n3. **memory**  \n   Store, search, or retrieve information from long-term memory (e.g., facts, conversation context, tool usage history).\n\n4. **skills**  \n   Search for or list available custom skills (AI capabilities for specific tasks).\n\n5. **search_skills**  \n   Search for custom skills and return metadata (ID, name, description, version) without full content.\n\n6. **use_skill**  \n   Retrieve and execute a specific skill by its ID (after searching/discovering it).\n\nI use these via function calls when needed to solve tasks. Let me know if you'd like me to demonstrate one or help with something specific! 😊",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "id": "0a88804d-b088-47b1-8314-2e5822748607",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "write a simple bun script"
+        }
+      ]
+    },
+    {
+      "id": "5e3511de-57fe-445c-9c53-4a911bc39db1",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "reasoning",
+          "id": "gen-1773903602-lgFPSVk0AdtTgwjMLux8",
+          "text": "First, the user said: \"write a simple bun script\". Bun is a JavaScript runtime, like Node.js but faster, and it has its own package manager.\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "text",
+          "id": "gen-1773903602-lgFPSVk0AdtTgwjMLux8",
+          "text": "Here's a simple Bun script that starts an HTTP server on `localhost:3000` and responds with \"Hello from Bun!\" to any request. Bun makes this super easy without needing extra dependencies like Express.\n\nSave this as `server.js`:\n\n```javascript\nBun.serve({\n  port: 3000,\n  fetch(req) {\n    return new Response(\"Hello from Bun!\");\n  },\n});\n\nconsole.log(\"Server running on http://localhost:3000\");\n```\n\n### How to run it:\n1. Make sure you have [Bun installed](https://bun.sh/docs/installation) (e.g., `curl -fsSL https://bun.sh/install | bash`).\n2. In your terminal: `bun run server.js`\n3. Open http://localhost:3000 in your browser.\n\nHit `Ctrl+C` to stop the server. Let me know if you want something more complex, like handling routes or reading files! 🚀",
+          "state": "done"
+        }
+      ]
+    },
+    {
+      "id": "0418e7b9-91a1-4a29-b692-e48036dc54d4",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "run it"
+        }
+      ]
+    },
+    {
+      "id": "ffac43cd-a098-483e-b0be-4cd4ffce95db",
+      "role": "assistant",
+      "parts": [
+        {
+          "type": "reasoning",
+          "id": "gen-1773903623-KAEjnXUKS8T6UQWQQ3mT",
+          "text": "First, the user wants me to \"run it\", meaning run the Bun script I just provided.\n\n\n## Preparing to run the script  \n- The user requested to \"run it,\" referring to the Bun script provided.  \n- This involves writing the script to the filesystem to execute it.  \n- Found that tools like filesystem and shell are available for this task.  \n- Planning to ensure the script is saved correctly before running.\n\n## Preparing to run the script  \n- Planning to use the \"shell\" tool to execute the Bun script, assuming Bun is installed.  \n- Decided to write the server.[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_61484306",
+          "toolName": "shell",
+          "state": "output-available",
+          "input": {
+            "command": "if ! command -v bun &> /dev/null; then\n  echo \"Bun is not installed. Please install it first: curl -fsSL https://bun.sh/install | bash\"\n  exit 1\nfi\n\ncat << 'EOF' > /tmp/nova-bun-server.js\nBun.serve({\n  port: 3000,\n  fetch(req) {\n    return new Response(\"Hello from Bun!\");\n  },\n});\n\nconsole.log(\"Server running on http://localhost:3000\");\nEOF\n\necho \"File written to /tmp/nova-bun-server.js\"\n\ncd /tmp\nbun run nova-bun-server.js &\nSERVER_PID=$!\n\nsleep 3  # Give time for server to start\n\nRESPONSE=$(curl -s -m 5 http://localhost:3000 || echo \"Failed to connect\")\necho \"Server response: $RESPONSE\"\n\nkill $SERVER_PID 2>/dev/null || true\nrm -f nova-bun-server.js\n\necho \"Server stopped and cleaned up.\"\n",
+            "timeout": 45000
+          },
+          "output": {
+            "success": true,
+            "result": {
+              "output": "File written to /tmp/nova-bun-server.js\nServer running on http://localhost:3000\nServer response: Hello from Bun!\nServer stopped and cleaned up.",
+              "error": ""
+            }
+          }
+        },
+        {
+          "type": "reasoning",
+          "id": "gen-1773903641-nfVltqQZEe5jf0isqfGc",
+          "text": "Tool result: Bun is installed (since it ran), file written, server started, curl got \"Hello from Bun!\", stopped and cleaned.\n[REDACTED]",
+          "state": "done"
+        },
+        {
+          "type": "text",
+          "id": "gen-1773903641-nfVltqQZEe5jf0isqfGc",
+          "text": "I ran the Bun server script for you using my shell access! Here's what happened:\n\n- ✅ Bun is installed and available.\n- 📝 Script written to `/tmp/nova-bun-server.js`.\n- 🚀 Server started on `http://localhost:3000`.\n- 📡 Tested with `curl`: **Response: \"Hello from Bun!\"**\n- 🛑 Server stopped and files cleaned up.\n\nFull console output:\n```\nFile written to /tmp/nova-bun-server.js\nServer running on http://localhost:3000\nServer response: Hello from Bun!\nServer stopped and cleaned up.\n```\n\nIt works perfectly! If you want me to run it again, modify it, or do something else (like make it persistent), just let me know. 🚀",
+          "state": "done"
+        }
+      ]
+    }
+  ]
+}

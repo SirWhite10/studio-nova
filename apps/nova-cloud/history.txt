@@ -1,0 +1,4 @@
+#V2
+SELECT key, enabled FROM integrations WHERE studioId = 'studio:vivuapc9k8tynbwnfvrv';
+SELECT id, key, enabled, createdAt FROM integrations WHERE studioId = 'studio:vivuapc9k8tynbwnfvrv' ORDER BY key, createdAt;
+SELECT id, key, enabled, createdAt FROM integrations WHERE studioId = 'studio:ucfhc31twz8if5j4rbl3' ORDER BY key, createdAt;

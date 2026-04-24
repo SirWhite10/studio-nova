@@ -1,0 +1,2 @@
+openrouter - nova-bot
+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

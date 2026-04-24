@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Nova Studio placeholder</title>
+  <desc id="desc">Abstract Nova Studio authentication artwork.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#101826" />
+      <stop offset="0.52" stop-color="#183649" />
+      <stop offset="1" stop-color="#e0a84d" />
+    </linearGradient>
+    <radialGradient id="glow" cx="56%" cy="32%" r="48%">
+      <stop offset="0" stop-color="#fff4c7" stop-opacity="0.82" />
+      <stop offset="0.34" stop-color="#f3c66e" stop-opacity="0.28" />
+      <stop offset="1" stop-color="#f3c66e" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="960" height="1200" fill="url(#sky)" />
+  <rect width="960" height="1200" fill="url(#glow)" />
+  <path fill="#08111f" fill-opacity="0.64" d="M0 846 190 712l164 82 150-168 188 130 268-230v674H0z" />
+  <path fill="#f6d77b" fill-opacity="0.2" d="M550 170c88 52 128 118 120 198-8 79-67 153-178 221-80-70-120-144-120-223 0-80 59-145 178-196z" />
+  <path fill="none" stroke="#fff1bc" stroke-linecap="round" stroke-linejoin="round" stroke-width="22" d="m363 690 117-308 118 308M410 565h140" />
+  <circle cx="744" cy="214" r="8" fill="#fff4c7" />
+  <circle cx="205" cy="278" r="6" fill="#fff4c7" />
+  <circle cx="812" cy="454" r="5" fill="#fff4c7" />
+</svg>
