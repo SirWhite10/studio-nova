@@ -4,6 +4,9 @@ import { createRuntimeManifest, createSmokeRuntimeManifest } from "./manifests.t
 import { runtimeNamespace } from "./names.ts";
 
 type AgentResponse = unknown;
+type StartRuntimeInput = {
+  systemPackages?: string[];
+};
 
 export class RuntimeControlService {
   private readonly kubectl: Kubectl;
@@ -28,31 +31,33 @@ export class RuntimeControlService {
     };
   }
 
-  renderSmokeRuntime(studioId: string) {
+  renderSmokeRuntime(studioId: string, input: StartRuntimeInput = {}) {
     return createSmokeRuntimeManifest({
       namespacePrefix: this.config.namespacePrefix,
       studioId,
       image: this.config.runtimeImage,
       runtimeAgentToken: this.config.runtimeAgentToken,
+      systemPackages: input.systemPackages,
     });
   }
 
-  renderRuntime(studioId: string) {
+  renderRuntime(studioId: string, input: StartRuntimeInput = {}) {
     return createRuntimeManifest({
       namespacePrefix: this.config.namespacePrefix,
       studioId,
       image: this.config.runtimeImage,
       runtimeAgentToken: this.config.runtimeAgentToken,
+      systemPackages: input.systemPackages,
     });
   }
 
-  async startSmokeRuntime(studioId: string) {
-    return this.startRuntime(studioId);
+  async startSmokeRuntime(studioId: string, input: StartRuntimeInput = {}) {
+    return this.startRuntime(studioId, input);
   }
 
-  async startRuntime(studioId: string) {
+  async startRuntime(studioId: string, input: StartRuntimeInput = {}) {
     const namespace = runtimeNamespace(this.config.namespacePrefix, studioId);
-    const manifest = this.renderRuntime(studioId);
+    const manifest = this.renderRuntime(studioId, input);
     const apply = await this.kubectl.applyManifest(manifest);
     const status = await this.kubectl.getText("pods", ["-n", namespace, "-o", "wide"]);
 
@@ -79,15 +84,24 @@ export class RuntimeControlService {
 
   async runtimeStatus(studioId: string) {
     const namespace = runtimeNamespace(this.config.namespacePrefix, studioId);
-    const [pods, pvc] = await Promise.all([
+    const [pods, pvc, packages] = await Promise.all([
       this.kubectl.getText("pods", ["-n", namespace, "-o", "wide"]),
       this.kubectl.getText("pvc", ["-n", namespace]),
+      this.kubectl
+        .getText("configmap/runtime-agent", [
+          "-n",
+          namespace,
+          "-o",
+          "jsonpath={.data.system-packages\\.txt}",
+        ])
+        .catch(() => ({ stdout: "", stderr: "", exitCode: 0, command: [] })),
     ]);
 
     return {
       namespace,
       pods: pods.stdout,
       pvc: pvc.stdout,
+      systemPackages: packages.stdout,
     };
   }
 

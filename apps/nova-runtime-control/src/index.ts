@@ -62,11 +62,12 @@ const server = createServer(async (request, response) => {
         return;
       }
 
+      const input = request.method === "POST" ? await readJson(request) : {};
       const result =
         request.method === "GET"
           ? await service.runtimeStatus(runtimeStudioId)
           : request.method === "POST"
-            ? await service.startRuntime(runtimeStudioId)
+            ? await service.startRuntime(runtimeStudioId, input as { systemPackages?: string[] })
             : await service.deleteRuntime(runtimeStudioId);
       sendJson(response, 200, {
         ok: true,
@@ -106,9 +107,10 @@ const server = createServer(async (request, response) => {
         return;
       }
 
+      const input = request.method === "POST" ? await readJson(request) : {};
       const result =
         request.method === "POST"
-          ? await service.startSmokeRuntime(studioId)
+          ? await service.startSmokeRuntime(studioId, input as { systemPackages?: string[] })
           : await service.deleteSmokeRuntime(studioId);
       sendJson(response, 200, {
         ok: true,

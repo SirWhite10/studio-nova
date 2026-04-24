@@ -11,6 +11,7 @@ This app is intentionally separate from `apps/nova-cloud` so we can test runtime
 - Creates a runtime namespace, PVC, Secret, ConfigMap, and Pod for a Studio id.
 - Runs a token-protected runtime-agent HTTP server inside the Pod.
 - Supports command execution plus workspace file read/write/list/delete through the runtime agent.
+- Supports optional Alpine system packages per runtime through a persisted APK root and cache PVC.
 - Uses `node:24-alpine` as the first runtime image; this proves the control path before building the full Nova tools image.
 
 ## Expected Deployment Shape
@@ -29,7 +30,14 @@ Nova Cloud
 ```bash
 vp run nova-runtime-control#check
 vp run nova-runtime-control#smoke:render
+vp run nova-runtime-control#smoke:media
 vp run nova-runtime-control#start
+```
+
+When testing from this workstation against the SSH-backed K3s host, pass the local kubectl wrapper explicitly:
+
+```bash
+vp run nova-runtime-control#smoke:media -- --kubectl "$PWD/.tmp/kubectl-ssh"
 ```
 
 ## First K3s Host Target
@@ -83,9 +91,19 @@ Returns `kubectl get nodes`, `kubectl get pods -A`, and `kubectl get storageclas
 
 Creates or reapplies the runtime namespace, runtime-agent ConfigMap, token Secret, workspace PVC, and runtime Pod.
 
+Optional body:
+
+```json
+{
+  "systemPackages": ["ffmpeg", "imagemagick"]
+}
+```
+
+Requested packages are installed by an init container into a persisted `/apk-root` PVC and exposed to the runtime container through `PATH` and package-specific environment paths where needed.
+
 `GET /runtimes/:studioId`
 
-Returns Pod and PVC status for the Studio runtime namespace.
+Returns Pod, PVC, and requested system package status for the Studio runtime namespace.
 
 `DELETE /runtimes/:studioId`
 
@@ -138,11 +156,15 @@ Tested against the initial K3s host:
 - `/exec` returned `node --version`, `pwd`, and workspace listing
 - `/files/write`, `/files/read`, and `/files/list` worked through the runtime-agent API
 - deleting only the Pod and reapplying the runtime preserved `notes/hello.md` on the PVC
+- `systemPackages: ["ffmpeg", "imagemagick"]` installed into the persisted APK root PVC
+- `ffmpeg` generated a PNG frame from `testsrc`
+- ImageMagick generated and identified a PNG file
+- deleting only the Pod and reapplying the runtime preserved both installed packages and generated media files
 - deleting the namespace cleaned up the test runtime
 
 ## Notes
 
 - The first implementation uses `kubectl` for speed and debuggability.
 - The production version can switch the adapter to the Kubernetes API directly.
-- Full Nova runtime image, preview routing, sleep-to-zero, background process management, and real agent execution are later phases.
+- Full Nova runtime image, package policy/allowlists, preview routing, sleep-to-zero, background process management, and real agent execution are later phases.
 - The control plane should get SSH-key-based deployment later; do not build password auth into the app.
