@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 - Added the SvelteKit Node adapter as an optional Nova Cloud build target selected with `NOVA_SVELTE_ADAPTER=node`, while keeping the Cloudflare adapter as the default
 
+### Added - Vendored frp Source
+
+- Vendored upstream `fatedier/frp` under `apps/nova-frp` as the starting point for Nova's domain-control tunnel work
+
 ### Added - Self-Hosted Runtime Lab
 
 - Added a Studio `Runtime Lab` page for testing the new self-hosted K3s runtime control plane from inside Nova Studio
