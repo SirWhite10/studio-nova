@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
 
+### Changed - Node Adapter Support
+
+- Added the SvelteKit Node adapter as an optional Nova Cloud build target selected with `NOVA_SVELTE_ADAPTER=node`, while keeping the Cloudflare adapter as the default
+
 ### Added - Self-Hosted Runtime Lab
 
 - Added a Studio `Runtime Lab` page for testing the new self-hosted K3s runtime control plane from inside Nova Studio
