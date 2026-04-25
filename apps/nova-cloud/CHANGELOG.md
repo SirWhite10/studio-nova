@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-07
 
+### Added - Domain Control Planning
+
+- Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
+
 ### Added - Self-Hosted Runtime Lab
 
 - Added a Studio `Runtime Lab` page for testing the new self-hosted K3s runtime control plane from inside Nova Studio
