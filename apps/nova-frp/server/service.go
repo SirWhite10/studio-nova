@@ -30,12 +30,14 @@ import (
 	fmux "github.com/hashicorp/yamux"
 	quic "github.com/quic-go/quic-go"
 	"github.com/samber/lo"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/fatedier/frp/pkg/auth"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	modelmetrics "github.com/fatedier/frp/pkg/metrics"
 	"github.com/fatedier/frp/pkg/msg"
 	"github.com/fatedier/frp/pkg/nathole"
+	"github.com/fatedier/frp/pkg/nova/domaincontrol"
 	plugin "github.com/fatedier/frp/pkg/plugin/server"
 	"github.com/fatedier/frp/pkg/ssh"
 	"github.com/fatedier/frp/pkg/transport"
@@ -286,17 +288,52 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 	})
 	svr.websocketListener = netpkg.NewWebsocketListener(websocketLn)
 
-	// Create http vhost muxer.
-	if cfg.VhostHTTPPort > 0 {
+	var httpVhostHandler http.Handler
+	if cfg.VhostHTTPPort > 0 || cfg.NovaDomainControl.Enable {
 		rp := vhost.NewHTTPReverseProxy(vhost.HTTPReverseProxyOptions{
 			ResponseHeaderTimeoutS: cfg.VhostHTTPTimeout,
 		}, svr.httpVhostRouter)
 		svr.rc.HTTPReverseProxy = rp
+		httpVhostHandler = rp
+	}
 
+	var novaACMEManager *autocert.Manager
+	if cfg.NovaDomainControl.Enable {
+		var authorizer domaincontrol.HostAuthorizer
+		if cfg.NovaDomainControl.Surreal.URL != "" {
+			authorizer, err = domaincontrol.NewSurrealClient(domaincontrol.SurrealOptions{
+				URL:              cfg.NovaDomainControl.Surreal.URL,
+				Namespace:        cfg.NovaDomainControl.Surreal.Namespace,
+				Database:         cfg.NovaDomainControl.Surreal.Database,
+				Username:         cfg.NovaDomainControl.Surreal.Username,
+				Password:         cfg.NovaDomainControl.Surreal.Password,
+				ConnectTimeoutMS: cfg.NovaDomainControl.Surreal.ConnectTimeoutMS,
+			})
+			if err != nil {
+				return nil, err
+			}
+			log.Infof("nova domain control enabled with direct SurrealDB host policy")
+		} else {
+			authorizer, err = domaincontrol.NewClient(cfg.NovaDomainControl.URL, cfg.NovaDomainControl.Token)
+			if err != nil {
+				return nil, err
+			}
+			log.Infof("nova domain control enabled with HTTP host policy via %s", cfg.NovaDomainControl.URL)
+		}
+		manager := domaincontrol.NewACMEManager(authorizer, domaincontrol.ACMEOptions{
+			Email:    cfg.NovaDomainControl.ACMEEmail,
+			CacheDir: cfg.NovaDomainControl.ACMECertDir,
+		})
+		novaACMEManager = manager
+		httpVhostHandler = domaincontrol.HTTPHandler(manager, domaincontrol.HTTPSRedirectHandler())
+	}
+
+	// Create http vhost muxer.
+	if cfg.VhostHTTPPort > 0 {
 		address := net.JoinHostPort(cfg.ProxyBindAddr, strconv.Itoa(cfg.VhostHTTPPort))
 		server := &http.Server{
 			Addr:              address,
-			Handler:           rp,
+			Handler:           httpVhostHandler,
 			ReadHeaderTimeout: 60 * time.Second,
 		}
 		var l net.Listener
@@ -328,13 +365,25 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 			log.Infof("https service listen on %s", address)
 		}
 
-		svr.rc.VhostHTTPSMuxer, err = vhost.NewHTTPSMuxer(l, vhostReadWriteTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("create vhost httpsMuxer error, %v", err)
-		}
+		if cfg.NovaDomainControl.Enable {
+			server := &http.Server{
+				Handler:           svr.rc.HTTPReverseProxy,
+				TLSConfig:         domaincontrol.TLSConfig(novaACMEManager),
+				ReadHeaderTimeout: 60 * time.Second,
+			}
+			go func() {
+				_ = server.ServeTLS(l, "", "")
+			}()
+			log.Infof("https service uses nova domain control ACME termination")
+		} else {
+			svr.rc.VhostHTTPSMuxer, err = vhost.NewHTTPSMuxer(l, vhostReadWriteTimeout)
+			if err != nil {
+				return nil, fmt.Errorf("create vhost httpsMuxer error, %v", err)
+			}
 
-		// Init HTTPS group controller after HTTPSMuxer is created
-		svr.rc.HTTPSGroupCtl = group.NewHTTPSGroupController(svr.rc.VhostHTTPSMuxer)
+			// Init HTTPS group controller after HTTPSMuxer is created
+			svr.rc.HTTPSGroupCtl = group.NewHTTPSGroupController(svr.rc.VhostHTTPSMuxer)
+		}
 	}
 
 	// frp tls listener

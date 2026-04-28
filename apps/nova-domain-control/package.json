@@ -1,0 +1,23 @@
+{
+  "name": "nova-domain-control",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts",
+    "check": "tsc --noEmit",
+    "smoke:frp-subdomain": "node --experimental-strip-types src/cli/frp-subdomain-smoke.ts",
+    "test": "vp test --run"
+  },
+  "dependencies": {
+    "surrealdb": "^2.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  }
+}

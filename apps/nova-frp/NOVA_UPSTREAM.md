@@ -11,3 +11,44 @@ Upstream source:
 
 The upstream `.git` directory was intentionally removed so this source is tracked directly by the parent `studio-nova` repository rather than as a submodule.
 
+## Nova Domain Control Build
+
+Nova adds an optional `novaDomainControl` block to `frps.toml`.
+
+When enabled, `frps` uses the normal HTTP vhost router for HTTPS workspace traffic. HTTPS is terminated inside `frps` with ACME certificates, and certificate issuance is allowed only when the hostname is active in SurrealDB.
+
+The public HTTP port is still required for ACME HTTP-01 challenges, but non-challenge HTTP requests are redirected to HTTPS instead of being proxied.
+
+Example:
+
+```toml
+bindPort = 7000
+vhostHTTPPort = 80
+vhostHTTPSPort = 443
+subDomainHost = "workspace.dlxstudios.com"
+
+[auth]
+method = "token"
+token = "your-frp-token"
+
+[novaDomainControl]
+enable = true
+acmeEmail = "admin@dlxstudios.com"
+acmeCertDir = "/var/lib/frps-nova/acme"
+
+[novaDomainControl.surreal]
+url = "https://surrealdb.dlxstudios.com/rpc"
+namespace = "main"
+database = "main"
+username = "root"
+password = "change-me"
+connectTimeoutMs = 5000
+```
+
+With this mode enabled, use `http` frpc proxies for workspace web apps. That means the public browser connection is HTTPS, while the tunnel carries normal HTTP to the workspace service after `frps` terminates TLS. Stock frp `https` proxies are TLS passthrough and do not participate in Nova's built-in certificate handling.
+
+Before starting the VPS service, test a hostname against SurrealDB:
+
+```sh
+frps -c /etc/frp/frps.toml nova-check --host test.workspace.dlxstudios.com
+```

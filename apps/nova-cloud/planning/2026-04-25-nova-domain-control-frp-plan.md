@@ -1,32 +1,37 @@
 # Nova Domain Control frp Plan
 
 **Document Name:** `2026-04-25-nova-domain-control-frp-plan.md`
-**Version:** 1.0
+**Version:** 2.0
 **Date:** April 25, 2026
-**Last Updated:** 2026-04-25 09:53:52 UTC
-**Scope:** `apps/nova-cloud`, `apps/nova-runtime-control`, new `apps/nova-domain-control`, VPS/frp deployment
+**Last Updated:** 2026-04-28 02:20:00 UTC
+**Scope:** `apps/nova-cloud`, `apps/nova-runtime-control`, `apps/nova-domain-control`, `apps/nova-frp`, VPS/frp deployment
 
 ## 1. Purpose
 
 Plan a new Nova domain controller app under `apps` that owns public workspace domain routing for Nova Cloud runtimes.
 
-The goal is to replace the current Cloudflared-dependent preview routing path with a Nova-controlled frp-based tunnel system backed by SurrealDB. The domain controller should become the source of truth for workspace proxy records, subdomains, custom domains, and the reconciliation path that turns Nova Cloud runtime state into active frp proxy configuration.
+The goal is to replace the current Cloudflared-dependent preview routing path with a Nova-controlled frp-based tunnel system backed by SurrealDB. SurrealDB is the source of truth for workspace proxy records, subdomains, custom domains, and the status values that decide whether `frps` can issue a certificate and route traffic.
 
-This is a planning document only. No frp fork, Kubernetes manifest change, production DNS change, or Cloudflared removal should happen until the phase 1 stock-frp path is implemented and tested.
+This document now records the finalized direction: a custom standalone `frps` binary under `apps/nova-frp` should own public `80/443`, perform direct SurrealDB host authorization, issue/reuse ACME certificates, redirect HTTP to HTTPS, and route HTTPS traffic through outbound frpc tunnels to local/k3s workspaces.
 
 ## 2. Current Direction
 
-Start with a new Node/TypeScript service named `nova-domain-control`, following the shape of `apps/nova-runtime-control`.
+Finalized runtime direction:
 
-The service should work with stock frp first:
+- `apps/nova-frp` vendors and customizes upstream `fatedier/frp`.
+- custom `frps` is the production edge service on the VPS.
+- `frps` talks directly to SurrealDB through the SQL endpoint.
+- `frps` uses SurrealDB `proxy_domain` + `workspace_proxy` rows as the certificate host policy.
+- public HTTP is used only for ACME HTTP-01 and redirecting users to HTTPS.
+- public HTTPS terminates in `frps`; workspace services can remain plain HTTP behind the encrypted frp tunnel.
+- `frpc` runs near the runtime/workspace and exposes each workspace preview as an HTTP proxy with `customDomains` or `subdomain`.
 
-- SurrealDB is the source of truth for workspace proxies and domains.
-- `nova-domain-control` exposes internal HTTP endpoints for Nova Cloud and runtime control.
-- stock `frps` handles tunnel transport and HTTP vhost routing.
-- stock `frpc` runs in or near the k3s runtime environment.
-- the controller reconciles SurrealDB rows into frpc Store/API or frpc reloadable configuration.
+`apps/nova-domain-control` remains useful as a local/admin API prototype and test harness, but it is no longer required on the VPS for the production edge path. The production deployment should be able to run with only:
 
-Only fork `fatedier/frp` after the stock-frp proof is working and the remaining requirement is clearly native TLS termination, request-time SurrealDB lookup inside frps, or tighter control than frp server plugins provide.
+- custom `frps`
+- `frpc`
+- SurrealDB reachable from the VPS
+- DNS records pointing workspace/custom domains at the VPS
 
 ## 3. Source Notes
 
@@ -41,38 +46,37 @@ frp public docs reviewed:
 Important interpretation:
 
 - frp Store is a local frpc dynamic configuration store, not a remote SurrealDB-backed store.
-- SurrealDB should be Nova's desired-state database. A controller process should reconcile that desired state into frpc.
+- SurrealDB should be Nova's desired-state database.
 - frp HTTP routing can multiplex many workspace domains on one public HTTP port via Host headers.
 - frp subdomains use `subDomainHost` plus each proxy's `subdomain`.
 - frp custom domains use each proxy's `customDomains`.
-- stock frp HTTPS proxying does not terminate TLS at frps. It routes HTTPS traffic to a local HTTPS service by SNI. Native Let's Encrypt at frps requires either an outer TLS terminator or a custom frps fork.
+- stock frp HTTPS proxying does not terminate TLS at frps. It routes HTTPS traffic to a local HTTPS service by SNI.
+- Nova's custom `frps` terminates TLS itself with ACME/autocert and then routes the decrypted HTTP request through the existing HTTP vhost path.
 
 ## 4. Target Architecture
 
 ```txt
 Internet users
-  -> public DNS
-    -> current VPS / this machine
-      -> Cloudflared during transition, then direct 80/443 later
-      -> frps
-        -> HTTP vhost routing for workspace subdomains/custom domains
-        -> server plugin callbacks to nova-domain-control
-        -> authenticated frpc tunnel control
-      -> nova-domain-control
-        -> SurrealDB desired state
-        -> domain resolver/admin API
-        -> frpc Store/API reconciliation
-  <- outbound tunnel from k3s
-    <- frpc
-      <- workspace runtime Service / Pod
+  -> DNS-only workspace/custom domain A/CNAME
+    -> VPS public 80/443
+      -> custom frps
+        -> HTTP-01 ACME challenge handling on 80
+        -> HTTP to HTTPS redirect for non-challenge traffic
+        -> HTTPS termination and certificate cache
+        -> direct SurrealDB host authorization
+        -> HTTP vhost routing by Host header
+        -> authenticated frpc tunnel control on 7000
+  <- outbound frpc tunnel from local/k3s
+    <- workspace runtime service / pod / temporary smoke workspace
 ```
 
 Runtime ownership should stay split:
 
 - `nova-cloud` owns product state, Studio UI, agent tools, and user-facing preview URLs.
 - `nova-runtime-control` owns k3s runtime creation, pod/service lifecycle, and runtime agent access.
-- `nova-domain-control` owns domain/proxy desired state, domain verification, frp plugin decisions, and frpc reconciliation.
-- frp owns tunnel transport.
+- SurrealDB owns domain/proxy desired state.
+- custom `frps` owns tunnel transport, public TLS, ACME, host authorization, and vhost routing.
+- `nova-domain-control` can remain as an admin/control API layer, but it is not required in the minimal VPS runtime.
 
 ## 5. App Boundary
 
@@ -220,58 +224,67 @@ Domain row conventions:
 
 ## 8. frp Configuration
 
-Initial `frps.toml` shape:
+Final standalone `frps.toml` shape:
 
 ```toml
 bindPort = 7000
-vhostHTTPPort = 8080
-subDomainHost = "workspaces.example.com"
+vhostHTTPPort = 80
+vhostHTTPSPort = 443
+subDomainHost = "workspace.dlxstudios.com"
 
-auth.method = "token"
-auth.token = "<strong-shared-token>"
-auth.additionalScopes = ["HeartBeats"]
+[auth]
+method = "token"
+token = "<strong-shared-token>"
 
-[[httpPlugins]]
-name = "nova-domain-control"
-addr = "127.0.0.1:8790"
-path = "/frp/handler"
-ops = ["Login", "NewProxy", "CloseProxy", "NewUserConn", "Ping"]
+[novaDomainControl]
+enable = true
+acmeEmail = "admin@dlxstudios.com"
+acmeCertDir = "/var/lib/frps-nova/acme"
+
+[novaDomainControl.surreal]
+url = "https://surrealdb.dlxstudios.com/rpc"
+namespace = "main"
+database = "main"
+username = "<surreal-user>"
+password = "<surreal-password>"
+connectTimeoutMs = 5000
 ```
 
-Initial `frpc.toml` shape:
+Smoke/test `frpc.toml` shape generated by `frps nova-smoke`:
 
 ```toml
-serverAddr = "<vps-host-or-ip>"
+serverAddr = "127.0.0.1"
 serverPort = 7000
 auth.method = "token"
 auth.token = "<strong-shared-token>"
-user = "nova-k3s"
-metadatas.clientId = "nova-k3s-primary"
+loginFailExit = true
+transport.tls.enable = false
 
-webServer.addr = "127.0.0.1"
-webServer.port = 7400
-
-[store]
-path = "/data/frpc-store.json"
+[[proxies]]
+name = "nova-smoke-workspace"
+type = "http"
+localIP = "127.0.0.1"
+localPort = "<temporary-workspace-port>"
+customDomains = ["test.workspace.dlxstudios.com"]
 ```
 
-The controller should not write SurrealDB directly into frp internals. It should translate active `workspace_proxy` and `proxy_domain` rows into frpc proxy definitions.
+Production frpc can run on the runtime host/k3s side and should publish HTTP proxies for workspace services. The public browser path remains HTTPS because `frps` terminates TLS before forwarding through the tunnel.
 
 ## 9. Cloudflared Transition
 
-The current machine is the VPS and currently uses Cloudflared.
+The early plan assumed the current local machine and Cloudflared would remain in the path during transition. The finalized workspace/custom-domain path requires the VPS to become the public edge for workspace domains.
 
-Transition model:
+Production DNS model:
 
-- keep Cloudflared in front of the initial HTTP proof to avoid immediate public firewall and certificate changes.
-- expose stock frps `vhostHTTPPort` through Cloudflared for generated preview subdomains if the DNS/tunnel setup supports the required hostnames.
-- defer arbitrary user custom domains until either direct public `80/443` is available or Cloudflare custom hostname/SaaS behavior is intentionally adopted.
-- do not remove Cloudflared until direct DNS, firewall, HTTP-01/DNS-01 ACME, and rollback are documented.
+- `*.workspace.dlxstudios.com` should point to the VPS as DNS-only traffic.
+- customer custom domains can point to the VPS by A record or CNAME.
+- `frps` must be reachable on public `80` and `443` for HTTP-01 and HTTPS.
+- Cloudflare can still host DNS, but Cloudflare Tunnel should not be the public wildcard/custom-domain data plane for this feature.
 
 Custom domain constraint:
 
 - If users point arbitrary domains at this machine, public `80/443` or DNS-01 automation is needed for Nova-controlled certificates.
-- Cloudflared alone does not automatically make arbitrary third-party custom domains work unless the Cloudflare account and DNS model are designed for it.
+- the current custom `frps` implementation uses HTTP-01, so the hostname must resolve to the VPS before certificate issuance.
 
 ## 10. Runtime Integration
 
@@ -392,6 +405,51 @@ Exit criteria:
 - port collisions are impossible.
 - quotas prevent unlimited public port exposure.
 
+## 11.a Finalized Implementation Tracker
+
+Current implemented state:
+
+- [x] Vendored upstream `fatedier/frp` into `apps/nova-frp`.
+- [x] Added custom `novaDomainControl` config block to `frps`.
+- [x] Added direct SurrealDB SQL host authorization in custom `frps`.
+- [x] Added ACME/autocert certificate issuance inside `frps`.
+- [x] Changed public HTTP behavior to ACME challenge handling plus HTTPS redirect.
+- [x] Routed public HTTPS through the existing HTTP vhost path after TLS termination.
+- [x] Added `frps nova-check --host <host>` to validate SurrealDB host authorization from the VPS.
+- [x] Added `frps nova-smoke --host test.workspace.dlxstudios.com --frpc-binary ./frpc` for VPS end-to-end testing.
+- [x] Built a VPS smoke bundle containing `frps` and `frpc`.
+- [x] Kept `apps/nova-domain-control` as a local/admin API prototype and compatibility test harness.
+
+VPS smoke command behavior:
+
+1. Load `/etc/frp/frps.toml`.
+2. Connect directly to SurrealDB from the config.
+3. Start a temporary single-page workspace HTTP server.
+4. Reuse an already-running `frps` on the configured `bindPort`, or start `frps` if it is not already running.
+5. Start `frpc` against the local `frps` control port.
+6. Create or update `workspace_proxy` and `proxy_domain` records for the smoke host.
+7. Poll until the host is active and authorized by SurrealDB.
+8. Request `http://<host>/` and require a redirect to HTTPS.
+9. Request `https://<host>/` and require the workspace response.
+10. Leave records in SurrealDB by default; delete them only when `--cleanup` is passed.
+
+Required VPS preconditions:
+
+- `test.workspace.dlxstudios.com` resolves publicly to the VPS.
+- VPS firewall permits `80`, `443`, and the frp control port.
+- no other process owns `80` or `443` when `frps` starts.
+- SurrealDB is reachable from the VPS.
+- `proxy_domain.host` and `workspace_proxy.proxyName` are unique and usable by the smoke records.
+
+Remaining production work:
+
+- [ ] Add a Nova Cloud API path that creates/updates `workspace_proxy` and `proxy_domain` for real runtimes.
+- [ ] Add user custom-domain ownership verification before setting `status = "active"`.
+- [ ] Add rate limits/quotas for domain and proxy creation.
+- [ ] Add persistent frpc deployment on the runtime/k3s side.
+- [ ] Add TCP/UDP allocation and quota support.
+- [ ] Add operational docs for systemd, firewall, DNS, ACME cache backups, and rollback.
+
 ## 12. Security Rules
 
 - require bearer auth for all admin endpoints.
@@ -424,10 +482,10 @@ Use Vite+ commands for workspace operations:
 
 Do not install Vitest directly. If tests are added, import test utilities from `vite-plus/test`.
 
-Keep the first implementation narrow:
+Final implementation status:
 
-- HTTP subdomain previews only.
-- no custom frps fork.
-- no TCP/UDP.
-- no ACME.
-- no removal of Cloudflared.
+- custom `frps` fork exists in `apps/nova-frp`.
+- public browser route is HTTPS-first.
+- HTTP is only for ACME and redirect.
+- SurrealDB is read directly by `frps`.
+- `nova-domain-control` is not required for the minimal VPS runtime, though it remains in the repo for local/admin API work.

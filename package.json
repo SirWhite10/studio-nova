@@ -7,6 +7,7 @@
     "apps/website",
     "apps/surreal-test-old",
     "apps/nova-runtime-control",
+    "apps/nova-domain-control",
     "tools/*"
   ],
   "type": "module",

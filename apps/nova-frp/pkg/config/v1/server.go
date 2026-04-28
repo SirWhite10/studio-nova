@@ -96,6 +96,8 @@ type ServerConfig struct {
 	AllowPorts []types.PortsRange `json:"allowPorts,omitempty"`
 
 	HTTPPlugins []HTTPPluginOptions `json:"httpPlugins,omitempty"`
+
+	NovaDomainControl NovaDomainControlConfig `json:"novaDomainControl,omitempty"`
 }
 
 func (c *ServerConfig) Complete() error {
@@ -131,6 +133,32 @@ type AuthServerConfig struct {
 	Token            string               `json:"token,omitempty"`
 	TokenSource      *ValueSource         `json:"tokenSource,omitempty"`
 	OIDC             AuthOIDCServerConfig `json:"oidc,omitempty"`
+}
+
+type NovaDomainControlConfig struct {
+	// Enable switches frps HTTPS vhost handling from TLS passthrough to built-in
+	// ACME TLS termination backed by Nova domain authorization.
+	Enable bool `json:"enable,omitempty"`
+	// URL is an optional base URL for the legacy nova-domain-control HTTP
+	// service, for example http://127.0.0.1:8787. Prefer Surreal for production.
+	URL string `json:"url,omitempty"`
+	// Token is sent as a bearer token to nova-domain-control when configured.
+	Token string `json:"token,omitempty"`
+	// ACMEEmail is the contact email used for Let's Encrypt registration.
+	ACMEEmail string `json:"acmeEmail,omitempty"`
+	// ACMECertDir stores ACME account and certificate cache data.
+	ACMECertDir string `json:"acmeCertDir,omitempty"`
+	// Surreal config enables direct SurrealDB host authorization in frps.
+	Surreal NovaSurrealConfig `json:"surreal,omitempty"`
+}
+
+type NovaSurrealConfig struct {
+	URL              string `json:"url,omitempty"`
+	Namespace        string `json:"namespace,omitempty"`
+	Database         string `json:"database,omitempty"`
+	Username         string `json:"username,omitempty"`
+	Password         string `json:"password,omitempty"`
+	ConnectTimeoutMS int    `json:"connectTimeoutMs,omitempty"`
 }
 
 func (c *AuthServerConfig) Complete() error {

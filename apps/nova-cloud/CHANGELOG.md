@@ -15,6 +15,19 @@ All notable changes to this project will be documented in this file.
 ### Added - Vendored frp Source
 
 - Vendored upstream `fatedier/frp` under `apps/nova-frp` as the starting point for Nova's domain-control tunnel work
+- Excluded the vendored frp tree from root Vite+ format/lint checks so upstream source formatting remains stable
+
+### Added - Domain Control Service
+
+- Added `apps/nova-domain-control` with SurrealDB-backed proxy/domain schema setup, host resolution helpers, admin proxy endpoints, a minimal frp plugin gate, and unit tests for domain/store/plugin behavior
+- Added a local frp subdomain smoke test that starts frps, frpc, the domain-control plugin, and a fake workspace HTTP server to verify `ws-smoke.workspaces.test` routes end-to-end
+
+### Added - Standalone Nova frps
+
+- Added custom `apps/nova-frp` support for standalone `frps` domain control with direct SurrealDB host authorization, built-in ACME certificate issuance, HTTPS termination, and HTTP-to-HTTPS redirect behavior
+- Added `frps nova-check` for validating whether a host is active/enabled in SurrealDB from the VPS
+- Added `frps nova-smoke` plus a bundled `frpc` smoke binary to create/update a test workspace domain, start a temporary workspace page, verify HTTP redirect, obtain/reuse HTTPS certificates, and validate the frp tunnel path on the VPS
+- Updated [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to record the finalized standalone custom `frps` deployment model and VPS smoke-test flow
 
 ### Added - Self-Hosted Runtime Lab
 
