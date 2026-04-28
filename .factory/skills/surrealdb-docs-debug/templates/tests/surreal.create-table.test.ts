@@ -32,8 +32,16 @@ function getConnectOptions() {
   };
 }
 
+function hasSurrealCredentials() {
+  return Boolean(
+    readEnv("SURREALDB_URL") && readEnv("SURREALDB_USERNAME") && readEnv("SURREALDB_PASSWORD"),
+  );
+}
+
 describe("surreal.create-table preflight", () => {
-  it("creates a project record using create().content()", async () => {
+  const runWithSurreal = hasSurrealCredentials() ? it : it.skip;
+
+  runWithSurreal("creates a project record using create().content()", async () => {
     const db = new Surreal();
     const url = readEnv("SURREALDB_URL") ?? "ws://127.0.0.1:8000";
     const table = new Table("project");

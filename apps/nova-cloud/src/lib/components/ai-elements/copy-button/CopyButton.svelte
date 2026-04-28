@@ -18,8 +18,9 @@
 		onCopy,
 		class: className,
 		tabindex = -1,
+		disabled = false,
+		title,
 		children,
-		...rest
 	}: CopyButtonProps = $props();
 
 	// this way if the user passes text then the button will be the default size
@@ -38,6 +39,8 @@
 	class={cn("flex items-center gap-2", className)}
 	type="button"
 	name="copy"
+	{disabled}
+	{title}
 	onclick={async () => {
 		const status = await clipboard.copy(text);
 

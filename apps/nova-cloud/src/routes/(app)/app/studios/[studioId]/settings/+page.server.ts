@@ -3,6 +3,7 @@ import { requireUserId } from "$lib/server/surreal-query";
 import { getStudioForUser } from "$lib/server/surreal-studios";
 import { getUserPlan } from "$lib/server/surreal-plans";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
+import { createWorkspaceDomainSettings } from "$lib/domains/workspace-domains";
 
 export const load: PageServerLoad = async (event) => {
   const userId = requireUserId(event.locals);
@@ -16,6 +17,7 @@ export const load: PageServerLoad = async (event) => {
   return {
     studioPlan,
     userId,
+    domains: createWorkspaceDomainSettings(rawStudioId),
     studio: studio
       ? {
           id: studio._id,

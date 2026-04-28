@@ -23,7 +23,7 @@ export type CopyButtonPropsWithoutHTML = WithChildren<
     text: string;
     icon?: Snippet<[]>;
     animationDuration?: number;
-    disbled?: boolean;
+    disabled?: boolean;
     onCopy?: (status: UseClipboard["status"]) => void;
   }
 >;

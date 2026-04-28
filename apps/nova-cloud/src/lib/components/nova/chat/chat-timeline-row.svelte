@@ -17,6 +17,20 @@
 		output?: unknown;
 		errorText?: string;
 	};
+	type ArtifactKind = "file" | "preview" | "generated" | "deploy-output";
+	type ArtifactStatus = "ready" | "deleted" | "stopped" | "failed";
+	type TimelineArtifact = {
+		kind: ArtifactKind;
+		title: string;
+		status: ArtifactStatus;
+		url: string | null;
+		path: string | null;
+		contentType: string | null;
+		size: number | null;
+		source: string | null;
+		updatedAt: number | null;
+		metadata: Record<string, unknown> | null;
+	};
 
 	let { entry }: { entry: TimelineItem } = $props();
 
@@ -100,23 +114,23 @@
 		const candidate = (entry.output as Record<string, unknown>).artifact;
 		if (!candidate || typeof candidate !== "object") return null;
 		const record = candidate as Record<string, unknown>;
+		const validKinds = new Set<ArtifactKind>(["file", "preview", "generated", "deploy-output"]);
+		const validStatuses = new Set<ArtifactStatus>(["ready", "deleted", "stopped", "failed"]);
+		const kind = record.kind;
+		const status = record.status;
 		if (
-			(record.kind !== "file" &&
-				record.kind !== "preview" &&
-				record.kind !== "generated" &&
-				record.kind !== "deploy-output") ||
+			typeof kind !== "string" ||
+			!validKinds.has(kind as ArtifactKind) ||
 			typeof record.title !== "string" ||
-			(record.status !== "ready" &&
-				record.status !== "deleted" &&
-				record.status !== "stopped" &&
-				record.status !== "failed")
+			typeof status !== "string" ||
+			!validStatuses.has(status as ArtifactStatus)
 		) {
 			return null;
 		}
 		return {
-			kind: record.kind,
+			kind: kind as ArtifactKind,
 			title: record.title,
-			status: record.status,
+			status: status as ArtifactStatus,
 			url: typeof record.url === "string" ? record.url : null,
 			path: typeof record.path === "string" ? record.path : null,
 			contentType: typeof record.contentType === "string" ? record.contentType : null,
@@ -124,7 +138,7 @@
 			source: typeof record.source === "string" ? record.source : null,
 			updatedAt: typeof record.updatedAt === "number" ? record.updatedAt : null,
 			metadata: record.metadata && typeof record.metadata === "object" ? (record.metadata as Record<string, unknown>) : null,
-		};
+		} satisfies TimelineArtifact;
 	});
 </script>
 

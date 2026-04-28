@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added - Domain Control Planning
 
 - Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
+- Added [planning/2026-04-28-modular-pricing-stripe-plan.md](./planning/2026-04-28-modular-pricing-stripe-plan.md) to track the modular workspace, add-on, sandbox runtime, Nova AI credit, and Stripe billing plan
 
 ### Changed - Node Adapter Support
 
@@ -28,6 +29,17 @@ All notable changes to this project will be documented in this file.
 - Added `frps nova-check` for validating whether a host is active/enabled in SurrealDB from the VPS
 - Added `frps nova-smoke` plus a bundled `frpc` smoke binary to create/update a test workspace domain, start a temporary workspace page, verify HTTP redirect, obtain/reuse HTTPS certificates, and validate the frp tunnel path on the VPS
 - Updated [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to record the finalized standalone custom `frps` deployment model and VPS smoke-test flow
+
+### Added - Workspace Domain Settings
+
+- Added Studio settings UI for each workspace's Nova-managed `*.workspace.dlxstudios.com` URL, custom domain requests, expected DNS records, and FRP domain-control endpoint placeholders at `https://domains.dlxstudios.com`
+- Added authenticated placeholder Studio domain API routes for listing, adding, verifying, and removing workspace domains while the custom `frps` API is finalized
+
+### Fixed - Workspace Checks
+
+- Fixed the shared copy button disabled prop typing so chat message copy controls pass Svelte checks and forward disabled state correctly
+- Tightened chat timeline artifact typing so artifact cards receive validated literal artifact kinds and statuses
+- Isolated root sandbox API tests from app-only alias resolution and skipped SurrealDB template preflight tests unless explicit SurrealDB credentials are provided
 
 ### Added - Self-Hosted Runtime Lab
 

@@ -18,6 +18,24 @@ vi.mock("$lib/server/surreal-runtime-processes", () => ({
   markPrimaryStopped: vi.fn(),
 }));
 
+vi.mock("$lib/server/surreal-artifacts", () => ({
+  listArtifactsForStudio: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("$lib/studios/runtime-state", () => ({
+  resolveRuntimeState: vi.fn(({ sandbox }: { sandbox?: { status?: string } | null }) => ({
+    hasSandbox: Boolean(sandbox),
+    status: sandbox?.status ?? "idle",
+  })),
+}));
+
+vi.mock("$lib/server/runtime-limits", () => ({
+  RuntimeLimitError: class RuntimeLimitError extends Error {
+    code = "runtime_limit";
+    status = 429;
+  },
+}));
+
 vi.mock("$lib/server/sandbox", () => ({
   getConnectedSandbox: vi.fn(),
   ensureSandboxForRuntime: vi.fn(),

@@ -2,8 +2,14 @@
 	import CheckCircleIcon from '@lucide/svelte/icons/check-circle';
 	import Clock3Icon from '@lucide/svelte/icons/clock-3';
 	import CrownIcon from '@lucide/svelte/icons/crown';
+	import CopyIcon from '@lucide/svelte/icons/copy';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import Globe2Icon from '@lucide/svelte/icons/globe-2';
 	import InfinityIcon from '@lucide/svelte/icons/infinity';
+	import LinkIcon from '@lucide/svelte/icons/link';
+	import PlusIcon from '@lucide/svelte/icons/plus';
 	import RocketIcon from '@lucide/svelte/icons/rocket';
+	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -23,7 +29,10 @@
 	let isDeleting = $state(false);
 	let deleteConfirmOpen = $state(false);
 	let isSaving = $state(false);
+	let isAddingDomain = $state(false);
 	let currentPlan = $state(data?.studioPlan?.plan ?? 'free');
+	let customDomain = $state('');
+	let pendingCustomDomains = $state<any[]>([]);
 
 	let studioName = $state(data?.studio?.name ?? '');
 	let studioDescription = $state(data?.studio?.description ?? '');
@@ -33,6 +42,33 @@
 	const isPro = $derived(currentPlan === 'pro');
 	const planLabel = $derived(isPro ? 'Pro' : 'Free');
 	const planDesc = $derived(isPro ? '24hr persistent sandbox runtime per session' : '1hr sandbox runtime per session');
+	const domainSettings = $derived(data?.domains);
+	const displayedCustomDomains = $derived([...(domainSettings?.customDomains ?? []), ...pendingCustomDomains]);
+	const endpointRows = $derived([
+		['Create workspace', domainSettings?.endpoints?.createWorkspace],
+		['List domains', domainSettings?.endpoints?.listDomains],
+		['Add domain', domainSettings?.endpoints?.addDomain],
+		['Verify domain', domainSettings?.endpoints?.verifyDomain],
+		['Remove domain', domainSettings?.endpoints?.removeDomain],
+		['Smoke test', domainSettings?.endpoints?.smokeTest],
+	]);
+	const visibleEndpointRows = $derived(endpointRows.filter((row) => row[1]));
+	const dnsRecords = $derived([
+		...(domainSettings?.defaultDomain?.records ?? []),
+		...displayedCustomDomains.flatMap((domain) => domain.records ?? []),
+	]);
+
+	function statusClass(status: string) {
+		if (status === 'active' || status === 'available') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+		if (status === 'pending' || status === 'verifying') return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+		return 'border-border bg-muted text-muted-foreground';
+	}
+
+	async function copyText(value: string | undefined) {
+		if (!value) return;
+		await navigator.clipboard.writeText(value);
+		toast.success('Copied');
+	}
 
 	async function refreshStudioState(showToast = false) {
 		const res = await fetch(`/api/studios/${studioId}`);
@@ -94,6 +130,32 @@
 			toast.error(e.message || 'Failed to save');
 		} finally {
 			isSaving = false;
+		}
+	}
+
+	async function addCustomDomain() {
+		const host = customDomain.trim().toLowerCase();
+		if (!host) {
+			toast.error('Enter a domain');
+			return;
+		}
+
+		isAddingDomain = true;
+		try {
+			const res = await fetch(`/api/studios/${studioId}/domains`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ host }),
+			});
+			const body = await res.json();
+			if (!res.ok) throw new Error(body.error || 'Failed to add domain');
+			pendingCustomDomains = [body.domain, ...pendingCustomDomains.filter((domain) => domain.host !== body.domain.host)];
+			customDomain = '';
+			toast.success('Domain queued for verification');
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to add domain');
+		} finally {
+			isAddingDomain = false;
 		}
 	}
 
@@ -252,6 +314,163 @@
 				<Button class="rounded-full px-6" onclick={saveAppearance} disabled={isSaving}>
 					{isSaving ? 'Saving...' : 'Apply theme'}
 				</Button>
+			</div>
+		</section>
+
+		<section class="rounded-[2rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur sm:p-8">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div class="flex items-center gap-3">
+					<div class="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+						<Globe2Icon class="size-5 text-primary" />
+					</div>
+					<div>
+						<h2 class="text-lg font-semibold">Workspace Domains</h2>
+						<p class="text-sm text-muted-foreground">Nova workspace URL, custom domains, and domain-control endpoints</p>
+					</div>
+				</div>
+				<Badge variant="outline" class="w-fit rounded-full {statusClass(domainSettings?.defaultDomain?.https ?? 'available')}">
+					<ShieldCheckIcon class="mr-1.5 size-3.5" />
+					HTTPS ready
+				</Badge>
+			</div>
+
+			<div class="mt-6 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+						<div class="min-w-0">
+							<div class="flex items-center gap-2">
+								<LinkIcon class="size-4 text-muted-foreground" />
+								<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Nova URL</p>
+							</div>
+							<p class="mt-3 break-all font-mono text-sm font-semibold sm:text-base">{domainSettings?.defaultDomain?.host}</p>
+							<p class="mt-2 text-sm leading-6 text-muted-foreground">
+								Every workspace gets this generated Nova hostname by default.
+							</p>
+						</div>
+						<div class="flex shrink-0 gap-2">
+							<Button variant="outline" size="icon" class="rounded-full" aria-label="Copy Nova workspace URL" onclick={() => copyText(`https://${domainSettings?.defaultDomain?.host}`)}>
+								<CopyIcon class="size-4" />
+							</Button>
+							<a
+								class="inline-flex size-9 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-accent"
+								href={`https://${domainSettings?.defaultDomain?.host}`}
+								target="_blank"
+								rel="noreferrer"
+								aria-label="Open Nova workspace URL"
+							>
+								<ExternalLinkIcon class="size-4" />
+							</a>
+						</div>
+					</div>
+					<div class="mt-4 flex flex-wrap gap-2">
+						<Badge variant="outline" class="rounded-full {statusClass(domainSettings?.defaultDomain?.status ?? 'available')}">Available</Badge>
+						<Badge variant="outline" class="rounded-full {statusClass(domainSettings?.defaultDomain?.https ?? 'available')}">Certificate managed</Badge>
+					</div>
+				</div>
+
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<div class="flex items-center gap-2">
+						<ShieldCheckIcon class="size-4 text-muted-foreground" />
+						<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">FRP API</p>
+					</div>
+					<p class="mt-3 break-all font-mono text-sm font-semibold">{domainSettings?.apiOrigin}</p>
+					<p class="mt-2 text-sm leading-6 text-muted-foreground">
+						Workspace domain requests target the Nova FRP domain-control API.
+					</p>
+					<Button variant="outline" size="sm" class="mt-4 rounded-full" onclick={() => copyText(domainSettings?.apiOrigin)}>
+						<CopyIcon class="mr-2 size-4" />
+						Copy endpoint
+					</Button>
+				</div>
+			</div>
+
+			<div class="mt-4 rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+					<div class="min-w-0 flex-1 space-y-2">
+						<label for="custom-domain" class="text-sm font-medium">Custom domain</label>
+						<Input
+							id="custom-domain"
+							bind:value={customDomain}
+							placeholder="supremesolutionsusa.com"
+							onkeydown={(event) => {
+								if (event.key === 'Enter') addCustomDomain();
+							}}
+						/>
+					</div>
+					<Button class="rounded-full px-5" onclick={addCustomDomain} disabled={isAddingDomain || !customDomain.trim()}>
+						<PlusIcon class="mr-2 size-4" />
+						{isAddingDomain ? 'Adding...' : 'Add domain'}
+					</Button>
+				</div>
+
+				<div class="mt-5 space-y-3">
+					{#if displayedCustomDomains.length}
+						{#each displayedCustomDomains as domain (domain.host)}
+							<div class="rounded-2xl border border-border/60 bg-muted/20 p-4">
+								<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+									<div class="min-w-0">
+										<p class="break-all font-mono text-sm font-semibold">{domain.host}</p>
+										<p class="mt-1 break-all text-sm text-muted-foreground">Target: {domain.target}</p>
+									</div>
+									<div class="flex shrink-0 flex-wrap gap-2">
+										<Badge variant="outline" class="rounded-full {statusClass(domain.status)}">{domain.status}</Badge>
+										<Badge variant="outline" class="rounded-full {statusClass(domain.https)}">HTTPS {domain.https}</Badge>
+									</div>
+								</div>
+							</div>
+						{/each}
+					{:else}
+						<div class="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+							No custom domains are attached to this workspace yet.
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<div class="mt-4 grid gap-4 lg:grid-cols-2">
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<h3 class="font-semibold">DNS Records</h3>
+							<p class="mt-1 text-sm text-muted-foreground">Expected records for generated and custom domains</p>
+						</div>
+					</div>
+					<div class="mt-4 space-y-3">
+						{#each dnsRecords as record (`${record.type}-${record.name}-${record.value}`)}
+							<div class="grid gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start">
+								<Badge variant="outline" class="w-fit rounded-full">{record.type}</Badge>
+								<div class="min-w-0 space-y-1">
+									<p class="break-all font-mono text-xs font-semibold">{record.name}</p>
+									<p class="break-all font-mono text-xs text-muted-foreground">{record.value}</p>
+									<p class="text-xs text-muted-foreground">{record.purpose}</p>
+								</div>
+								<Button variant="outline" size="icon" class="rounded-full" aria-label="Copy DNS record value" onclick={() => copyText(record.value)}>
+									<CopyIcon class="size-4" />
+								</Button>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<h3 class="font-semibold">Workspace API Endpoints</h3>
+					<p class="mt-1 text-sm text-muted-foreground">Placeholders for the FRP-backed domain workflow</p>
+					<div class="mt-4 space-y-3">
+						{#each visibleEndpointRows as row (row[0])}
+							<div class="rounded-2xl border border-border/60 bg-muted/20 p-4">
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0">
+										<p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">{row[0]}</p>
+										<p class="mt-2 break-all font-mono text-xs font-semibold">{row[1]}</p>
+									</div>
+									<Button variant="outline" size="icon" class="shrink-0 rounded-full" aria-label={`Copy ${row[0]} endpoint`} onclick={() => copyText(row[1])}>
+										<CopyIcon class="size-4" />
+									</Button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
 			</div>
 		</section>
 
