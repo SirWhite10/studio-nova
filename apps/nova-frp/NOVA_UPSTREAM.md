@@ -52,3 +52,16 @@ Before starting the VPS service, test a hostname against SurrealDB:
 ```sh
 frps -c /etc/frp/frps.toml nova-check --host test.workspace.dlxstudios.com
 ```
+
+## Debian VPS Build
+
+To build only the Nova `frps` and `frpc` binaries on a Debian VPS after cloning
+this repository, run:
+
+```sh
+./apps/nova-frp/scripts/build-debian.sh
+```
+
+The script installs Debian build dependencies, installs the required Go toolchain
+when needed, builds static `frps` and `frpc` binaries with the `noweb` tag, and
+writes a tarball under `apps/nova-frp/dist/`.
