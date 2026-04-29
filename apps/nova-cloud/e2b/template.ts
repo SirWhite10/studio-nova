@@ -29,7 +29,7 @@ export const novaBunTemplate = Template()
   .runCmd("curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz -o go.tar.gz")
   .runCmd("tar -C /usr/local -xzf go.tar.gz && rm go.tar.gz")
   .runCmd("curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash")
-  .runCmd("bun install -g typescript sv wrangler")
+  .runCmd("bun install -g typescript sv")
 
   // ── Phase 2: User-level tools ──
   .setUser("user")

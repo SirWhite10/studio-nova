@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "dev:wrangler": "vp run build && wrangler dev --port 8105",
     "surreal:start": "bash ./scripts/start-surreal.sh",
     "surreal:reset": "rm -rf ./surreal/data",
-    "build": "BETTER_AUTH_SECRET=build-placeholder NODE_OPTIONS='--import ./cloudflare-loader.mjs' vp build && node ./scripts/patch-cloudflare-cron.mjs",
-    "preview": "wrangler dev --port 8105",
+    "build": "BETTER_AUTH_SECRET=build-placeholder vp build",
+    "preview": "node build",
     "prepare": "vp config && svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -19,9 +18,7 @@
     "test:e2e:skills:search": "bun --cwd ../nova-sveltekit-test playwright test skills-search",
     "test:e2e:skills:chat": "bun --cwd ../nova-sveltekit-test playwright test skills-chat",
     "serve:test": "bun --cwd ../nova-sveltekit-test dev",
-    "gen": "wrangler types",
-    "deploy": "vp run build && wrangler deploy",
-    "cf-typegen": "wrangler types",
+    "deploy": "vp run build",
     "e2b:build": "bun ./e2b/build.ts"
   },
   "dependencies": {
@@ -43,7 +40,6 @@
     "surrealdb-better-auth": "^0.0.18",
     "svelte-streamdown": "^3.0.1",
     "svelte-toolbelt": "^0.10.6",
-    "wrangler": "^4.75.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -53,7 +49,6 @@
     "@lucide/svelte": "^0.561.0",
     "@neoconfetti/svelte": "^2.2.2",
     "@playwright/test": "^1.58.2",
-    "@sveltejs/adapter-cloudflare": "^7.2.8",
     "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/kit": "^2.50.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -83,9 +78,7 @@
     "typescript": "^5.9.3",
     "vaul-svelte": "^1.0.0-next.7",
     "vite": "catalog:",
-    "vite-plugin-cloudflare": "^0.4.1",
-    "vite-plus": "catalog:",
-    "wrangler": "^4.63.0"
+    "vite-plus": "catalog:"
   },
   "packageManager": "pnpm@10.33.0"
 }

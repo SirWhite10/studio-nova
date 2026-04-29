@@ -434,7 +434,7 @@
 				</div>
 			</div>
 			<div class="grid gap-4 md:grid-cols-3 text-sm leading-7 text-muted-foreground">
-				<p>Files uploaded here are stored in Cloudflare R2 under a unique prefix for this Studio, providing permanent storage.</p>
+				<p>Files uploaded here are stored in R2-compatible object storage under a unique prefix for this Studio, providing permanent storage.</p>
 				<p>When the runtime is active, the sandbox mounts this same prefix at <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/home/user/workspace</code> so the agent can read and write files.</p>
 				<p>Even after a sandbox expires, your files persist. Starting a new runtime automatically re-mounts the same storage.</p>
 			</div>

@@ -19,15 +19,28 @@ declare global {
     // interface PageData {}
     // interface PageState {}
     interface Platform {
-      /** Bun server instance (available when running under bun-serve adapter) */
-      server: { upgrade(request: Request): Promise<void> };
-
-      /** The original Request object (available when running under bun-serve adapter) */
-      request: Request;
-      env: Env;
-      ctx: ExecutionContext;
-      caches: CacheStorage;
-      cf?: IncomingRequestCfProperties;
+      env?: {
+        STORAGE?: {
+          list(options?: { prefix?: string; delimiter?: string }): Promise<{
+            objects?: Array<{
+              key: string;
+              size: number;
+              uploaded: Date;
+            }>;
+            delimitedPrefixes?: string[];
+            delimiters?: string[];
+          }>;
+          get(key: string): Promise<{
+            arrayBuffer(): Promise<ArrayBuffer>;
+          } | null>;
+          put(
+            key: string,
+            value: ArrayBuffer | Uint8Array | string,
+            options?: { httpMetadata?: { contentType?: string } },
+          ): Promise<unknown>;
+          delete(key: string): Promise<void>;
+        };
+      };
     }
   }
 }

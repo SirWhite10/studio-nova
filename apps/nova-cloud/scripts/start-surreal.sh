@@ -2,9 +2,13 @@
 set -euo pipefail
 
 MIN_VERSION="2.1.0"
+DATA_DIR="${SURREAL_DATA_DIR:-./surreal/data}"
+BIND_ADDR="${SURREAL_BIND_ADDR:-0.0.0.0:8000}"
+SURREAL_USERNAME="${SURREAL_USERNAME:-root}"
+SURREAL_PASSWORD="${SURREAL_PASSWORD:-root}"
 
 choose_bin() {
-  if [[ -n "${SURREAL_BIN:-}" && -x "${SURREAL_BIN}" ]]; then
+  if [[ -n "${SURREAL_BIN:-}" && -x "${SURREAL_BIN:-}" ]]; then
     echo "${SURREAL_BIN}"
     return
   fi
@@ -38,8 +42,8 @@ if ! version_ge "$VERSION" "$MIN_VERSION"; then
 fi
 
 exec "$BIN" start \
-  --bind 0.0.0.0:8000 \
-  --username root \
-  --password root \
+  --bind "$BIND_ADDR" \
+  --username "$SURREAL_USERNAME" \
+  --password "$SURREAL_PASSWORD" \
   --no-banner \
-  surrealkv://./surreal/data
+  "surrealkv://${DATA_DIR}"

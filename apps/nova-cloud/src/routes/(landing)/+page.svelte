@@ -2,7 +2,6 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import * as Card from '$lib/components/ui/card';
-  import * as Tabs from '$lib/components/ui/tabs';
   import * as Accordion from '$lib/components/ui/accordion';
   import { Separator } from '$lib/components/ui/separator';
   import ModeToggle from '$lib/components/mode-toggle.svelte';
@@ -11,17 +10,6 @@
 
   let { data } = $props();
   const isLoggedIn = $derived(data.isAuthenticated);
-  let billingCycle = $state<'monthly' | 'annual'>('monthly');
-
-  const prices = {
-    starter:   { monthly: 20,  annual: 16 },
-    pro:       { monthly: 49,  annual: 39 },
-    unlimited: { monthly: 99,  annual: 79 },
-  };
-
-  function price(tier: keyof typeof prices) {
-    return billingCycle === 'annual' ? prices[tier].annual : prices[tier].monthly;
-  }
 
   const features = [
     {
@@ -98,7 +86,7 @@
   const faqs = [
     {
       q: 'Do my files persist when I close the browser?',
-      a: 'Yes. Your sandbox is backed by Cloudflare R2 storage mounted as a real filesystem. Files, installed packages, and git repositories survive across sessions and sandbox restarts.',
+      a: 'Yes. Your sandbox is backed by persistent object storage mounted as a real filesystem. Files, installed packages, and git repositories survive across sessions and sandbox restarts.',
     },
     {
       q: 'How is this different from buying a Mac Mini?',
@@ -131,7 +119,7 @@
     <div class="hidden items-center gap-7 text-sm font-medium md:flex">
       <a href="#features"     class="text-muted-foreground hover:text-foreground transition-colors">Features</a>
       <a href="#how-it-works" class="text-muted-foreground hover:text-foreground transition-colors">How it works</a>
-      <a href="#pricing"      class="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+      <a href="/pricing"      class="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
       <a href="#faq"          class="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
     </div>
 
@@ -158,7 +146,7 @@
 
   <div class="relative mx-auto max-w-7xl px-6 py-28 text-center lg:py-36">
     <Badge class="mb-6 border-primary/30 bg-primary/15 text-primary hover:bg-primary/25">
-      Powered by Grok 4 · Built on Cloudflare
+      Hosted workspaces · Optional Nova AI credits
     </Badge>
 
     <h1 class="mx-auto max-w-4xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl lg:text-7xl">
@@ -186,7 +174,7 @@
         {:else}
           <a href="/auth/sign-up">
             <Button size="lg" class="px-8 text-base shadow-lg">
-              Start for $20 / month
+              Start with a workspace
             </Button>
           </a>
           <a href="#how-it-works">
@@ -244,11 +232,11 @@
           <Card.Title class="text-base">Cloud-Native Agent</Card.Title>
         </Card.Header>
         <Card.Content class="space-y-2 text-sm">
-          <p>✅ Ready in seconds, from $20/mo</p>
+          <p>✅ Workspaces start at $5/mo</p>
           <p class="font-medium">✅ Files persist across sessions</p>
           <p>✅ Access from any device</p>
           <p>✅ Multiple agents & workspaces</p>
-          <p>✅ Cloudflare security, auto-updates</p>
+          <p>✅ Managed security and runtime updates</p>
           <p>✅ Zero setup, zero maintenance</p>
         </Card.Content>
       </Card.Root>
@@ -339,117 +327,75 @@
   <div class="mx-auto max-w-6xl px-6">
     <div class="mb-12 text-center">
       <Badge variant="outline" class="mb-4">Pricing</Badge>
-      <h2 class="text-4xl font-bold tracking-tight">Simple, transparent pricing.</h2>
-      <p class="mt-4 text-muted-foreground">All plans include a 14-day money-back guarantee.</p>
+      <h2 class="text-4xl font-bold tracking-tight">Start small. Add only what your workspace needs.</h2>
+      <p class="mx-auto mt-4 max-w-2xl text-muted-foreground">
+        Studios are free. Pay for live workspaces, business add-ons, optional sandbox runtime, and optional Nova AI credits.
+      </p>
     </div>
 
-    <!-- Billing toggle -->
-    <div class="mb-10 flex justify-center">
-      <Tabs.Root bind:value={billingCycle}>
-        <Tabs.List>
-          <Tabs.Trigger value="monthly">Monthly</Tabs.Trigger>
-          <Tabs.Trigger value="annual" class="gap-2">
-            Annual
-            <Badge class="border-0 bg-primary/15 px-1.5 py-0 text-xs text-primary">Save 20%</Badge>
-          </Tabs.Trigger>
-        </Tabs.List>
-      </Tabs.Root>
-    </div>
-
-    <div class="grid gap-6 md:grid-cols-3">
-      <!-- Starter -->
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       <Card.Root class="flex flex-col">
         <Card.Header>
-          <Card.Title>Starter</Card.Title>
-          <Card.Description>Testing the waters</Card.Description>
+          <Card.Title>Studio</Card.Title>
+          <Card.Description>Organize work freely</Card.Description>
           <div class="pt-3">
-            <span class="text-4xl font-extrabold">${price('starter')}</span>
-            <span class="text-muted-foreground"> /mo</span>
-            {#if billingCycle === 'annual'}
-              <p class="mt-1 text-xs text-muted-foreground">Billed as ${prices.starter.annual * 12}/yr</p>
-            {/if}
+            <span class="text-4xl font-extrabold">Free</span>
           </div>
         </Card.Header>
         <Card.Content class="flex-1 space-y-1.5 text-sm text-muted-foreground">
-          <p>✓ 1 agent, 1 workspace</p>
-          <p>✓ Ephemeral sandbox</p>
-          <p>✓ Guided UI</p>
-          <p>✓ ~400 interactions / month</p>
-          <p>✓ ~15 sandbox hours</p>
-          <p>✓ BYOK support</p>
+          <p>Chats, memory, skills, integrations, and workspace planning.</p>
         </Card.Content>
-        <Card.Footer class="pt-4">
-          <a href="/auth/sign-up" class="w-full">
-            <Button variant="outline" class="w-full">Get started</Button>
-          </a>
-        </Card.Footer>
       </Card.Root>
 
-      <!-- Pro (highlighted) -->
       <Card.Root class="relative flex flex-col border-primary shadow-lg ring-2 ring-primary">
         <div class="absolute -top-3.5 left-1/2 -translate-x-1/2">
-          <Badge class="bg-primary text-primary-foreground shadow-sm">Most popular</Badge>
+          <Badge class="bg-primary text-primary-foreground shadow-sm">Start here</Badge>
         </div>
         <Card.Header>
-          <Card.Title>Pro</Card.Title>
-          <Card.Description>Most daily users</Card.Description>
+          <Card.Title>Workspace</Card.Title>
+          <Card.Description>Host the public app</Card.Description>
           <div class="pt-3">
-            <span class="text-4xl font-extrabold">${price('pro')}</span>
+            <span class="text-4xl font-extrabold">$5</span>
             <span class="text-muted-foreground"> /mo</span>
-            {#if billingCycle === 'annual'}
-              <p class="mt-1 text-xs text-muted-foreground">Billed as ${prices.pro.annual * 12}/yr</p>
-            {/if}
-          </div>
-        </Card.Header>
-        <Card.Content class="flex-1 space-y-1.5 text-sm">
-          <p>✓ 3 agents, 3 workspaces</p>
-          <p class="font-medium">✓ <strong>Persistent</strong> sandbox</p>
-          <p>✓ GitHub clone + any language</p>
-          <p>✓ Dev servers with hot reload</p>
-          <p>✓ Live preview URLs</p>
-          <p>✓ Email / Notion integrations</p>
-          <p>✓ BYOK support</p>
-        </Card.Content>
-        <Card.Footer class="pt-4">
-          <a href="/auth/sign-up" class="w-full">
-            <Button class="w-full">Get started</Button>
-          </a>
-        </Card.Footer>
-      </Card.Root>
-
-      <!-- Unlimited -->
-      <Card.Root class="flex flex-col">
-        <Card.Header>
-          <Card.Title>Unlimited</Card.Title>
-          <Card.Description>Power users & teams</Card.Description>
-          <div class="pt-3">
-            <span class="text-4xl font-extrabold">${price('unlimited')}</span>
-            <span class="text-muted-foreground"> /mo</span>
-            {#if billingCycle === 'annual'}
-              <p class="mt-1 text-xs text-muted-foreground">Billed as ${prices.unlimited.annual * 12}/yr</p>
-            {/if}
           </div>
         </Card.Header>
         <Card.Content class="flex-1 space-y-1.5 text-sm text-muted-foreground">
-          <p>✓ Unlimited agents & workspaces</p>
-          <p>✓ Persistent + priority sandbox</p>
-          <p>✓ Priority Grok 4 beta access</p>
-          <p>✓ Custom tools</p>
-          <p>✓ Team sharing</p>
-          <p>✓ Dedicated support</p>
-          <p>✓ BYOK support</p>
+          <p>Hosted website, app, store, portal, or product surface.</p>
         </Card.Content>
-        <Card.Footer class="pt-4">
-          <a href="/auth/sign-up" class="w-full">
-            <Button variant="outline" class="w-full">Get started</Button>
-          </a>
-        </Card.Footer>
+      </Card.Root>
+
+      <Card.Root class="flex flex-col">
+        <Card.Header>
+          <Card.Title>Add-ons</Card.Title>
+          <Card.Description>Business capabilities</Card.Description>
+          <div class="pt-3">
+            <span class="text-4xl font-extrabold">$10+</span>
+            <span class="text-muted-foreground"> /mo</span>
+          </div>
+        </Card.Header>
+        <Card.Content class="flex-1 space-y-1.5 text-sm text-muted-foreground">
+          <p>CMS, commerce, automation, forms, memberships, and more.</p>
+        </Card.Content>
+      </Card.Root>
+
+      <Card.Root class="flex flex-col">
+        <Card.Header>
+          <Card.Title>Nova AI</Card.Title>
+          <Card.Description>Optional hosted models</Card.Description>
+          <div class="pt-3">
+            <span class="text-4xl font-extrabold">$5+</span>
+            <span class="text-muted-foreground"> /mo</span>
+          </div>
+        </Card.Header>
+        <Card.Content class="flex-1 space-y-1.5 text-sm text-muted-foreground">
+          <p>Use BYOK for no AI markup, or buy monthly and top-up credits.</p>
+        </Card.Content>
       </Card.Root>
     </div>
 
-    <p class="mt-8 text-center text-sm text-muted-foreground">
-      All plans include BYOK at no extra cost · Fair-use policy · No surprise bills
-    </p>
+    <div class="mt-10 flex justify-center">
+      <Button href="/pricing" size="lg">Explore full pricing</Button>
+    </div>
   </div>
 </section>
 
@@ -527,15 +473,15 @@
         </a>
       {:else}
         <a href="/auth/sign-up">
-          <Button size="lg" class="px-10 text-base shadow-lg">Start for $20 / month</Button>
+          <Button size="lg" class="px-10 text-base shadow-lg">Start with a workspace</Button>
         </a>
-        <a href="#pricing">
+        <a href="/pricing">
           <Button
             size="lg"
             variant="outline"
             class="border-background/25 px-10 text-base text-background hover:bg-background/10 hover:text-background"
           >
-            View all plans
+            View pricing
           </Button>
         </a>
       {/if}
@@ -551,7 +497,7 @@
   <NovaLogo class="gap-1.5 text-lg font-extrabold tracking-tight" />
       <nav class="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
         <a href="#features"     class="hover:text-foreground transition-colors">Features</a>
-        <a href="#pricing"      class="hover:text-foreground transition-colors">Pricing</a>
+        <a href="/pricing"      class="hover:text-foreground transition-colors">Pricing</a>
         <a href="#faq"          class="hover:text-foreground transition-colors">FAQ</a>
         <a href="/about"        class="hover:text-foreground transition-colors">About</a>
         {#if !isLoggedIn}

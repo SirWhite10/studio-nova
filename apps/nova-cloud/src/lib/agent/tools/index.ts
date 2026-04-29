@@ -22,7 +22,6 @@ import {
   createRuntimeShellTool,
   createRuntimeStatusTool,
   createRuntimeViteCreateTool,
-  createRuntimeWranglerTool,
 } from "./runtime";
 import type { ToolSet } from "ai";
 import { listResolvedStudioIntegrations } from "$lib/server/surreal-integrations";
@@ -56,7 +55,6 @@ export function createLazyRuntimeTools(
     runtime_browser: createRuntimeBrowserTool(runtimeContext),
     runtime_firecrawl: createRuntimeFirecrawlTool(runtimeContext),
     runtime_context7: createRuntimeContext7Tool(runtimeContext),
-    runtime_wrangler: createRuntimeWranglerTool(runtimeContext),
     runtime_vite_create: createRuntimeViteCreateTool(runtimeContext),
     runtime_svelte_create: createRuntimeSvelteCreateTool(runtimeContext),
     runtime_dev_start: createRuntimeDevStartTool(runtimeContext),

@@ -14,7 +14,6 @@ import {
   upsertPrimaryForStudio,
   markPrimaryStopped,
 } from "$lib/server/surreal-runtime-processes";
-import { upsertArtifact } from "$lib/server/surreal-artifacts";
 import { publishRunChunkByRunId } from "$lib/server/chat-run-registry";
 
 type RuntimeContext = Omit<SandboxRuntimeContext, "event"> & { event: RequestEvent };
@@ -390,20 +389,6 @@ function createCommandWrapperTool(
   };
 }
 
-function parseDeploymentUrl(stdout: string, stderr: string) {
-  const matches = `${stdout}\n${stderr}`.match(/https:\/\/[^\s'"`<>]+/g);
-  return matches?.at(-1) ?? null;
-}
-
-function isDeployLikeWranglerCommand(args: string[]) {
-  const lowered = args.map((arg) => arg.toLowerCase());
-  return (
-    lowered.includes("deploy") ||
-    lowered.includes("publish") ||
-    (lowered[0] === "pages" && lowered.includes("deploy"))
-  );
-}
-
 export function createRuntimeBrowserTool(context: RuntimeContext): Tool {
   return createCommandWrapperTool(context, {
     name: "runtime_browser",
@@ -429,79 +414,6 @@ export function createRuntimeContext7Tool(context: RuntimeContext): Tool {
     description:
       "Run the Context7 CLI in the Studio runtime to search for current library documentation and fetch docs by library id.",
   });
-}
-
-export function createRuntimeWranglerTool(context: RuntimeContext): Tool {
-  const runtimeShell = createRuntimeShellTool(context);
-  const executeRuntimeShell = runtimeShell.execute as
-    | ((input: { command: string; cwd?: string; timeout: number }) => Promise<any>)
-    | undefined;
-
-  return {
-    description:
-      "Run Wrangler in the Studio runtime for Cloudflare Worker, R2, D1, and deployment commands.",
-    inputSchema: RuntimeCommandInputSchema,
-    execute: async ({ args, cwd, timeout }) => {
-      const escapedArgs = args.map((arg: string) => JSON.stringify(arg)).join(" ");
-      const command = `wrangler${escapedArgs ? ` ${escapedArgs}` : ""}`;
-      if (!executeRuntimeShell) {
-        return { success: false, error: "runtime_wrangler runtime tool is unavailable" };
-      }
-
-      const result = await executeRuntimeShell({ command, cwd, timeout });
-      const typedResult = result as
-        | {
-            success?: boolean;
-            result?: { stdout?: string; stderr?: string; exitCode?: number; sandboxId?: string };
-          }
-        | undefined;
-
-      if (
-        typedResult?.success &&
-        typedResult.result?.exitCode === 0 &&
-        context.studioId &&
-        isDeployLikeWranglerCommand(args)
-      ) {
-        const stdout = typedResult.result.stdout ?? "";
-        const stderr = typedResult.result.stderr ?? "";
-        const url = parseDeploymentUrl(stdout, stderr);
-        const artifact = await upsertArtifact({
-          userId: context.userId,
-          studioId: context.studioId,
-          kind: "deploy-output",
-          key: `wrangler-deploy:${Date.now()}`,
-          title: args[0] === "pages" ? "Cloudflare Pages Deploy" : "Cloudflare Deploy",
-          status: "ready",
-          url,
-          source: "runtime_wrangler",
-          metadata: {
-            args,
-            cwd: cwd ?? null,
-            sandboxId: typedResult.result.sandboxId ?? null,
-            stdoutPreview: stdout.slice(-1000),
-            stderrPreview: stderr.slice(-1000),
-          },
-        });
-
-        await recordRuntimeEvent(context, {
-          runId: context.runId,
-          action: "tool",
-          sandboxId: typedResult.result.sandboxId,
-          artifact: {
-            kind: artifact.kind,
-            title: artifact.title,
-            status: artifact.status,
-            url: artifact.url ?? null,
-            source: artifact.source ?? null,
-            updatedAt: artifact.updatedAt,
-            metadata: artifact.metadata ?? null,
-          },
-        });
-      }
-
-      return result;
-    },
-  };
 }
 
 const RuntimeScaffoldInputSchema = z.object({

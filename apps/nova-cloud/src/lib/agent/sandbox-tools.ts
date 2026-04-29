@@ -10,7 +10,7 @@ Prefer these runtime tools:
 - \`runtime_status\` - inspect whether the Studio runtime is available
 - \`runtime_start\` / \`runtime_stop\` - explicitly control runtime lifecycle
 - \`runtime_shell\` / \`runtime_filesystem\` - general execution and file access
-- \`runtime_browser\`, \`runtime_firecrawl\`, \`runtime_context7\`, \`runtime_wrangler\` - dedicated wrappers for installed CLI workflows
+- \`runtime_browser\`, \`runtime_firecrawl\`, \`runtime_context7\` - dedicated wrappers for installed CLI workflows
 - \`runtime_vite_create\`, \`runtime_svelte_create\` - structured project scaffolding wrappers
 - \`runtime_dev_start\`, \`runtime_dev_stop\`, \`runtime_dev_logs\`, \`runtime_preview_status\` - manage one primary Studio preview/dev server
 
@@ -50,10 +50,6 @@ The Studio runtime includes the following pre-installed tools:
   - Docs: https://context7.com/docs
   - CLI index: https://context7.com/docs/llms.txt
   - Use for: fetching current library documentation, API references
-
-### Cloud & Deployment
-- **Wrangler** - Cloudflare Workers CLI. Command: \`wrangler\`
-  - Use for: deploying to Cloudflare, managing Workers, R2, D1, KV
 
 ### Storage
 - **s3fs** - Mount S3/R2 buckets. Used for persistent workspace storage.

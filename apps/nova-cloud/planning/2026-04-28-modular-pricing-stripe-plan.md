@@ -839,20 +839,22 @@ Timestamp:
 
 ### Phase 5: Pricing Pages
 
-[ ] `5.a` Build `/pricing` overview route
+[x] `5.a` Build `/pricing` overview route
 Timestamp:
 
 - 2026-04-28 00:00:00 UTC: checkpoint created
+- 2026-04-28 15:50:00 UTC: built `/pricing` overview route using shared pricing catalog and reusable pricing components.
   Definition of done:
 - route exists under landing/public routes
 - page explains Studios, Workspaces, Add-ons, Sandboxes, and Nova AI credits
 - page links to detailed pricing subpages
 - landing page links to `/pricing`
 
-[ ] `5.b` Build pricing detail subpages
+[x] `5.b` Build pricing detail subpages
 Timestamp:
 
 - 2026-04-28 00:00:00 UTC: checkpoint created
+- 2026-04-28 15:50:00 UTC: built `/pricing/workspaces`, `/pricing/add-ons`, `/pricing/ai-credits`, and `/pricing/sandbox`.
   Definition of done:
 - `/pricing/workspaces` exists
 - `/pricing/add-ons` exists
@@ -860,10 +862,11 @@ Timestamp:
 - `/pricing/sandbox` exists
 - each page uses shared catalog data where practical
 
-[ ] `5.c` Build `/pricing/examples`
+[x] `5.c` Build `/pricing/examples`
 Timestamp:
 
 - 2026-04-28 00:00:00 UTC: checkpoint created
+- 2026-04-28 15:50:00 UTC: built `/pricing/examples` with package examples and broad use-case cards.
   Definition of done:
 - examples page includes several use cases and component price breakdowns
 - examples include creators, streamers, ecommerce, blogs, news, services, and custom apps
@@ -871,10 +874,11 @@ Timestamp:
 
 ### Phase 6: Use-Case Navigation Foundation
 
-[ ] `6.a` Define use-case content model
+[x] `6.a` Define use-case content model
 Timestamp:
 
 - 2026-04-28 00:00:00 UTC: checkpoint created
+- 2026-04-28 15:50:00 UTC: added reusable `src/lib/pricing/use-cases.ts` content model used by pricing examples.
   Definition of done:
 - use cases can be represented as structured data
 - each use case includes title, audience, benefits, recommended products, estimated price, and route slug

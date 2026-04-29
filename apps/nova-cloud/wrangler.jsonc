@@ -1,24 +1,5 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "nova-cloud",
-  "compatibility_date": "2026-03-17",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "_worker/index.js",
-  "assets": {
-    "binding": "ASSETS",
-    "directory": ".svelte-kit/cloudflare",
-  },
-  "workers_dev": true,
-  "preview_urls": true,
-  "triggers": {
-    "crons": ["* * * * *"],
-  },
-  "observability": {
-    "enabled": true,
-  },
-  "ai": {
-    "binding": "AI",
-  },
+  // Storage binding reference only. Nova Cloud runs on the SvelteKit Node adapter.
   "r2_buckets": [
     {
       "binding": "STORAGE",
