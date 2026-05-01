@@ -1,0 +1,12 @@
+{
+  "name": "nova-domain-schema",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ensure-schema": "node --experimental-strip-types src/ensure-schema.ts"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

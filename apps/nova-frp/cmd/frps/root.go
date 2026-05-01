@@ -51,8 +51,9 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "frps",
-	Short: "frps is the server of frp (https://github.com/fatedier/frp)",
+	Use:          "frps",
+	Short:        "frps is the server of frp (https://github.com/fatedier/frp)",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if showVersion {
 			fmt.Println(version.Full())

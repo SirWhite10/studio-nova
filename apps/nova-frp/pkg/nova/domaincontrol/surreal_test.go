@@ -75,6 +75,31 @@ func TestSurrealClientHostAllowedRejectsInactiveDomain(t *testing.T) {
 	}
 }
 
+func TestSurrealClientHostAllowedReturnsRichStatementErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		_, _ = rw.Write([]byte(`[{"status":"ERR","result":"The namespace 'nova' does not exist","details":{"kind":"Namespace","details":{"name":"nova"}}}]`))
+	}))
+	defer server.Close()
+
+	client, err := NewSurrealClient(SurrealOptions{URL: server.URL + "/sql"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.HostAllowed(context.Background(), "missing.example.com")
+	if err == nil {
+		t.Fatal("expected surreal statement error")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "The namespace 'nova' does not exist") {
+		t.Fatalf("expected result text in error, got %q", message)
+	}
+	if !strings.Contains(message, `"kind":"Namespace"`) {
+		t.Fatalf("expected details payload in error, got %q", message)
+	}
+}
+
 func TestSurrealSQLURL(t *testing.T) {
 	tests := map[string]string{
 		"wss://surrealdb.example.com/rpc": "https://surrealdb.example.com/sql",

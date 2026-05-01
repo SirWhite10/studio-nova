@@ -35,9 +35,10 @@ type SurrealClient struct {
 }
 
 type surrealStatement struct {
-	Status string          `json:"status"`
-	Result json.RawMessage `json:"result"`
-	Detail string          `json:"detail"`
+	Status  string          `json:"status"`
+	Result  json.RawMessage `json:"result"`
+	Detail  string          `json:"detail"`
+	Details json.RawMessage `json:"details"`
 }
 
 type proxyDomainRow struct {
@@ -179,10 +180,7 @@ func (c *SurrealClient) queryOne(ctx context.Context, sql string, out any) error
 		return fmt.Errorf("surreal sql returned no statements")
 	}
 	if !strings.EqualFold(statements[0].Status, "OK") {
-		if statements[0].Detail != "" {
-			return fmt.Errorf("surreal sql error: %s", statements[0].Detail)
-		}
-		return fmt.Errorf("surreal sql error: %s", statements[0].Status)
+		return surrealStatementError(statements[0])
 	}
 	return json.Unmarshal(statements[0].Result, out)
 }
@@ -198,13 +196,27 @@ func (c *SurrealClient) exec(ctx context.Context, sql string) error {
 	}
 	for _, statement := range statements {
 		if !strings.EqualFold(statement.Status, "OK") {
-			if statement.Detail != "" {
-				return fmt.Errorf("surreal sql error: %s", statement.Detail)
-			}
-			return fmt.Errorf("surreal sql error: %s", statement.Status)
+			return surrealStatementError(statement)
 		}
 	}
 	return nil
+}
+
+func surrealStatementError(statement surrealStatement) error {
+	parts := []string{}
+	if statement.Detail != "" {
+		parts = append(parts, statement.Detail)
+	}
+	if len(statement.Result) > 0 && string(statement.Result) != "null" {
+		parts = append(parts, strings.TrimSpace(string(statement.Result)))
+	}
+	if len(statement.Details) > 0 && string(statement.Details) != "null" {
+		parts = append(parts, strings.TrimSpace(string(statement.Details)))
+	}
+	if len(parts) == 0 {
+		parts = append(parts, statement.Status)
+	}
+	return fmt.Errorf("surreal sql error: %s", strings.Join(parts, " | "))
 }
 
 func (c *SurrealClient) doSQL(ctx context.Context, sql string) ([]byte, error) {

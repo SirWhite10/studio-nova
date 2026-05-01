@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
 - Added [planning/2026-04-28-modular-pricing-stripe-plan.md](./planning/2026-04-28-modular-pricing-stripe-plan.md) to track the modular workspace, add-on, sandbox runtime, Nova AI credit, and Stripe billing plan
 
+### Added - Nova Domain Schema Utility
+
+- Added a standalone `tools/nova-domain-schema` utility with `vp run nova-domain-schema#ensure-schema` so the SurrealDB schema for `workspace_proxy`, `proxy_domain`, and `frp_client` can be initialized once without keeping the `nova-domain-control` service deployed
+
 ### Changed - Node Adapter Support
 
 - Added the SvelteKit Node adapter as an optional Nova Cloud build target selected with `NOVA_SVELTE_ADAPTER=node`, while keeping the Cloudflare adapter as the default
