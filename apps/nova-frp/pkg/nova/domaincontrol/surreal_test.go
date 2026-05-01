@@ -31,7 +31,7 @@ func TestSurrealClientHostAllowed(t *testing.T) {
 				t.Fatalf("host was not normalized in query: %s", body)
 			}
 			_, _ = rw.Write([]byte(`[{"status":"OK","result":[{"proxyId":"workspace_proxy:abc123"}]}]`))
-		case strings.Contains(body, "FROM workspace_proxy:abc123"):
+		case strings.Contains(body, `FROM type::thing("workspace_proxy", "abc123")`):
 			_, _ = rw.Write([]byte(`[{"status":"OK","result":[{"enabled":true}]}]`))
 		default:
 			t.Fatalf("unexpected query: %s", body)
@@ -115,6 +115,17 @@ func TestSurrealSQLURL(t *testing.T) {
 		if actual != expected {
 			t.Fatalf("expected %q, got %q", expected, actual)
 		}
+	}
+}
+
+func TestSurrealRecordExpr(t *testing.T) {
+	actual, err := surrealRecordExpr("workspace_proxy:nova-smoke-workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `type::thing("workspace_proxy", "nova-smoke-workspace")`
+	if actual != expected {
+		t.Fatalf("expected %q, got %q", expected, actual)
 	}
 }
 

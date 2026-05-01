@@ -105,9 +105,13 @@ func (c *SurrealClient) HostAllowed(ctx context.Context, host string) error {
 	}
 
 	proxyRows := []workspaceProxyRow{}
+	proxyExpr, err := surrealRecordExpr(proxyID)
+	if err != nil {
+		return err
+	}
 	if err := c.queryOne(ctx, fmt.Sprintf(
 		"SELECT enabled FROM %s WHERE enabled = true LIMIT 1;",
-		proxyID,
+		proxyExpr,
 	), &proxyRows); err != nil {
 		return err
 	}
@@ -132,19 +136,27 @@ func (c *SurrealClient) UpsertSmokeWorkspace(ctx context.Context, opts SmokeWork
 
 	proxyRecord := "workspace_proxy:" + safeRecordPart(proxyName)
 	domainRecord := "proxy_domain:" + safeRecordPart(host)
+	proxyExpr, err := surrealRecordExpr(proxyRecord)
+	if err != nil {
+		return err
+	}
+	domainExpr, err := surrealRecordExpr(domainRecord)
+	if err != nil {
+		return err
+	}
 	now := time.Now().UnixMilli()
 
 	sql := strings.Join([]string{
 		fmt.Sprintf(
 			"UPSERT %s MERGE { userId: 'nova-smoke', studioId: 'nova-smoke', proxyName: %s, proxyType: 'http', localIP: '127.0.0.1', localPort: %d, enabled: true, updatedAt: %d };",
-			proxyRecord,
+			proxyExpr,
 			surrealString(proxyName),
 			opts.LocalPort,
 			now,
 		),
 		fmt.Sprintf(
 			"UPSERT %s MERGE { host: %s, proxyId: %s, kind: 'custom', status: 'active', updatedAt: %d };",
-			domainRecord,
+			domainExpr,
 			surrealString(host),
 			surrealString(proxyRecord),
 			now,
@@ -159,9 +171,17 @@ func (c *SurrealClient) DeleteSmokeWorkspace(ctx context.Context, host, proxyNam
 	if host == "" || proxyName == "" {
 		return nil
 	}
+	domainExpr, err := surrealRecordExpr("proxy_domain:" + safeRecordPart(host))
+	if err != nil {
+		return err
+	}
+	proxyExpr, err := surrealRecordExpr("workspace_proxy:" + safeRecordPart(proxyName))
+	if err != nil {
+		return err
+	}
 	sql := strings.Join([]string{
-		fmt.Sprintf("DELETE %s;", "proxy_domain:"+safeRecordPart(host)),
-		fmt.Sprintf("DELETE %s;", "workspace_proxy:"+safeRecordPart(proxyName)),
+		fmt.Sprintf("DELETE %s;", domainExpr),
+		fmt.Sprintf("DELETE %s;", proxyExpr),
 	}, "\n")
 	return c.exec(ctx, sql)
 }
@@ -273,6 +293,18 @@ func surrealSQLURL(raw string) (string, error) {
 func surrealString(value string) string {
 	encoded, _ := json.Marshal(value)
 	return string(encoded)
+}
+
+func surrealRecordExpr(recordID string) (string, error) {
+	recordID = strings.TrimSpace(recordID)
+	if !recordIDPattern.MatchString(recordID) {
+		return "", fmt.Errorf("invalid surreal record id %q", recordID)
+	}
+	table, id, ok := strings.Cut(recordID, ":")
+	if !ok || table == "" || id == "" {
+		return "", fmt.Errorf("invalid surreal record id %q", recordID)
+	}
+	return fmt.Sprintf("type::thing(%s, %s)", surrealString(table), surrealString(id)), nil
 }
 
 func safeRecordPart(value string) string {
