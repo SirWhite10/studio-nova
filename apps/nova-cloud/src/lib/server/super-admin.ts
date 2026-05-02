@@ -1,4 +1,5 @@
 import type { RequestEvent } from "@sveltejs/kit";
+import { surrealGetSession } from "$lib/server/surreal-better-auth";
 
 function parseEmailList(value: string | undefined) {
   return (value ?? "")
@@ -18,7 +19,17 @@ export async function isSuperAdmin(event: RequestEvent) {
     return process.env.NODE_ENV !== "production";
   }
 
-  const email = event.locals.session?.user?.email?.trim().toLowerCase();
+  const session =
+    event.locals.session ||
+    (await surrealGetSession(event.request.headers)
+      .then((result) => {
+        const resolved = result?.user ? { user: result.user } : null;
+        event.locals.session = resolved;
+        return resolved;
+      })
+      .catch(() => null));
+
+  const email = session?.user?.email?.trim().toLowerCase();
   if (!email) return false;
 
   return configuredEmails.includes(email);

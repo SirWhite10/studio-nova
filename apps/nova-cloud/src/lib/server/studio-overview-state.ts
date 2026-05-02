@@ -4,11 +4,12 @@ import { listRunsForStudio } from "$lib/server/surreal-chat-runs";
 import { getSandboxForStudio } from "$lib/server/surreal-sandbox";
 import { getPrimaryForStudio } from "$lib/server/surreal-runtime-processes";
 import { listArtifactsForStudio } from "$lib/server/surreal-artifacts";
+import { listWorkspacesForStudio } from "$lib/server/surreal-workspaces";
 import { resolveRuntimeState } from "$lib/studios/runtime-state";
 import { getUserPlan } from "$lib/server/surreal-plans";
 
 export async function getStudioOverviewState(userId: string, studioId: string) {
-  const [sandbox, primaryProcess, studioPlan, artifacts, chats, integrations, runs] =
+  const [sandbox, primaryProcess, studioPlan, artifacts, chats, integrations, runs, workspaces] =
     await Promise.all([
       getSandboxForStudio(userId, studioId).catch(() => null),
       getPrimaryForStudio(userId, studioId).catch(() => null),
@@ -17,6 +18,7 @@ export async function getStudioOverviewState(userId: string, studioId: string) {
       listChatsForUser(userId, studioId).catch(() => []),
       listResolvedStudioIntegrations(userId, studioId).catch(() => []),
       listRunsForStudio(userId, studioId, 8).catch(() => []),
+      listWorkspacesForStudio(userId, studioId).catch(() => []),
     ]);
 
   return {
@@ -26,6 +28,7 @@ export async function getStudioOverviewState(userId: string, studioId: string) {
     integrations,
     artifacts: artifacts.slice(0, 4),
     runs,
+    workspaces,
     chats: chats.map((chat: any) => ({
       id: chat._id,
       title: chat.title,

@@ -8,11 +8,11 @@ This app is intentionally separate from `apps/nova-cloud` so we can test runtime
 
 - Runs as a small TypeScript HTTP service.
 - Uses local `kubectl` through a narrow adapter.
-- Creates a runtime namespace, PVC, Secret, ConfigMap, and Pod for a Studio id.
+- Creates an on-demand runtime namespace, PVC, Secret, ConfigMap, and Pod for a Studio id.
 - Runs a token-protected runtime-agent HTTP server inside the Pod.
 - Supports command execution plus workspace file read/write/list/delete through the runtime agent.
 - Supports optional Alpine system packages per runtime through a persisted APK root and cache PVC.
-- Uses `node:24-alpine` as the first runtime image; this proves the control path before building the full Nova tools image.
+- The long-term workspace/runtime contract is blank-slate: workspace-specific tools, files, and runtime state come from the workspace storage layer, not from a pre-baked base image.
 
 ## Expected Deployment Shape
 
@@ -166,5 +166,5 @@ Tested against the initial K3s host:
 
 - The first implementation uses `kubectl` for speed and debuggability.
 - The production version can switch the adapter to the Kubernetes API directly.
-- Full Nova runtime image, package policy/allowlists, preview routing, sleep-to-zero, background process management, and real agent execution are later phases.
+- Full Nova runtime policy, preview routing, sleep-to-zero, background process management, and real agent execution are later phases.
 - The control plane should get SSH-key-based deployment later; do not build password auth into the app.

@@ -1,17 +1,14 @@
 package domaincontrol
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	surrealdb "github.com/surrealdb/surrealdb.go"
+	"github.com/surrealdb/surrealdb.go/pkg/models"
 )
 
 var recordIDPattern = regexp.MustCompile(`^[A-Za-z0-9_]+:[A-Za-z0-9_-]+$`)
@@ -26,19 +23,9 @@ type SurrealOptions struct {
 }
 
 type SurrealClient struct {
-	sqlURL    string
 	namespace string
 	database  string
-	username  string
-	password  string
-	http      *http.Client
-}
-
-type surrealStatement struct {
-	Status  string          `json:"status"`
-	Result  json.RawMessage `json:"result"`
-	Detail  string          `json:"detail"`
-	Details json.RawMessage `json:"details"`
+	db        *surrealdb.DB
 }
 
 type proxyDomainRow struct {
@@ -56,14 +43,16 @@ type SmokeWorkspaceOptions struct {
 }
 
 func NewSurrealClient(opts SurrealOptions) (*SurrealClient, error) {
-	sqlURL, err := surrealSQLURL(opts.URL)
+	endpointURL, err := surrealEndpointURL(opts.URL)
 	if err != nil {
 		return nil, err
 	}
+
 	timeout := time.Duration(opts.ConnectTimeoutMS) * time.Millisecond
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
+
 	namespace := strings.TrimSpace(opts.Namespace)
 	if namespace == "" {
 		namespace = "main"
@@ -72,13 +61,30 @@ func NewSurrealClient(opts SurrealOptions) (*SurrealClient, error) {
 	if database == "" {
 		database = "main"
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	db, err := surrealdb.FromEndpointURLString(ctx, endpointURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Use(ctx, namespace, database); err != nil {
+		_ = db.Close(context.Background())
+		return nil, err
+	}
+	if _, err := db.SignIn(ctx, &surrealdb.Auth{
+		Username: opts.Username,
+		Password: opts.Password,
+	}); err != nil {
+		_ = db.Close(context.Background())
+		return nil, err
+	}
+
 	return &SurrealClient{
-		sqlURL:    sqlURL,
 		namespace: namespace,
 		database:  database,
-		username:  opts.Username,
-		password:  opts.Password,
-		http:      &http.Client{Timeout: timeout},
+		db:        db,
 	}, nil
 }
 
@@ -88,34 +94,30 @@ func (c *SurrealClient) HostAllowed(ctx context.Context, host string) error {
 		return fmt.Errorf("empty host")
 	}
 
-	domainRows := []proxyDomainRow{}
-	if err := c.queryOne(ctx, fmt.Sprintf(
-		"SELECT proxyId FROM proxy_domain WHERE host = %s AND status = 'active' LIMIT 1;",
-		surrealString(host),
-	), &domainRows); err != nil {
-		return err
-	}
-	if len(domainRows) == 0 {
-		return fmt.Errorf("host %q is not active in SurrealDB", host)
-	}
-
-	proxyID := strings.TrimSpace(domainRows[0].ProxyID)
-	if !recordIDPattern.MatchString(proxyID) {
-		return fmt.Errorf("invalid proxy id for host %q", host)
-	}
-
-	proxyRows := []workspaceProxyRow{}
-	proxyExpr, err := surrealRecordExpr(proxyID)
+	domainRows, err := surrealdb.Query[[]proxyDomainRow](
+		ctx,
+		c.db,
+		"SELECT proxyId FROM proxy_domain WHERE host = $host AND status = 'active' LIMIT 1",
+		map[string]any{"host": host},
+	)
 	if err != nil {
 		return err
 	}
-	if err := c.queryOne(ctx, fmt.Sprintf(
-		"SELECT enabled FROM %s WHERE enabled = true LIMIT 1;",
-		proxyExpr,
-	), &proxyRows); err != nil {
+	if len(*domainRows) == 0 || len((*domainRows)[0].Result) == 0 {
+		return fmt.Errorf("host %q is not active in SurrealDB", host)
+	}
+
+	proxyID := strings.TrimSpace((*domainRows)[0].Result[0].ProxyID)
+	recordID, err := parseRecordID(proxyID)
+	if err != nil {
+		return fmt.Errorf("invalid proxy id for host %q: %w", host, err)
+	}
+
+	proxy, err := surrealdb.Select[workspaceProxyRow](ctx, c.db, *recordID)
+	if err != nil {
 		return err
 	}
-	if len(proxyRows) == 0 || !proxyRows[0].Enabled {
+	if proxy == nil || !proxy.Enabled {
 		return fmt.Errorf("proxy %q for host %q is not enabled", proxyID, host)
 	}
 	return nil
@@ -134,35 +136,36 @@ func (c *SurrealClient) UpsertSmokeWorkspace(ctx context.Context, opts SmokeWork
 		return fmt.Errorf("local port is required")
 	}
 
-	proxyRecord := "workspace_proxy:" + safeRecordPart(proxyName)
-	domainRecord := "proxy_domain:" + safeRecordPart(host)
-	proxyExpr, err := surrealRecordExpr(proxyRecord)
-	if err != nil {
-		return err
-	}
-	domainExpr, err := surrealRecordExpr(domainRecord)
-	if err != nil {
-		return err
-	}
+	proxyRecord := models.NewRecordID("workspace_proxy", safeRecordPart(proxyName))
+	domainRecord := models.NewRecordID("proxy_domain", safeRecordPart(host))
 	now := time.Now().UnixMilli()
 
-	sql := strings.Join([]string{
-		fmt.Sprintf(
-			"UPSERT %s MERGE { userId: 'nova-smoke', studioId: 'nova-smoke', proxyName: %s, proxyType: 'http', localIP: '127.0.0.1', localPort: %d, enabled: true, updatedAt: %d };",
-			proxyExpr,
-			surrealString(proxyName),
-			opts.LocalPort,
-			now,
-		),
-		fmt.Sprintf(
-			"UPSERT %s MERGE { host: %s, proxyId: %s, kind: 'custom', status: 'active', updatedAt: %d };",
-			domainExpr,
-			surrealString(host),
-			surrealString(proxyRecord),
-			now,
-		),
-	}, "\n")
-	return c.exec(ctx, sql)
+	if _, err := surrealdb.Upsert[map[string]any](ctx, c.db, proxyRecord, map[string]any{
+		"userId":    "nova-smoke",
+		"studioId":  "nova-smoke",
+		"proxyName": proxyName,
+		"proxyType": "http",
+		"localIP":   "127.0.0.1",
+		"localPort": opts.LocalPort,
+		"enabled":   true,
+		"createdAt": now,
+		"updatedAt": now,
+	}); err != nil {
+		return err
+	}
+
+	if _, err := surrealdb.Upsert[map[string]any](ctx, c.db, domainRecord, map[string]any{
+		"host":      host,
+		"proxyId":   recordIDValue(proxyRecord),
+		"kind":      "custom",
+		"status":    "active",
+		"createdAt": now,
+		"updatedAt": now,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *SurrealClient) DeleteSmokeWorkspace(ctx context.Context, host, proxyName string) error {
@@ -171,140 +174,56 @@ func (c *SurrealClient) DeleteSmokeWorkspace(ctx context.Context, host, proxyNam
 	if host == "" || proxyName == "" {
 		return nil
 	}
-	domainExpr, err := surrealRecordExpr("proxy_domain:" + safeRecordPart(host))
-	if err != nil {
-		return err
-	}
-	proxyExpr, err := surrealRecordExpr("workspace_proxy:" + safeRecordPart(proxyName))
-	if err != nil {
-		return err
-	}
-	sql := strings.Join([]string{
-		fmt.Sprintf("DELETE %s;", domainExpr),
-		fmt.Sprintf("DELETE %s;", proxyExpr),
-	}, "\n")
-	return c.exec(ctx, sql)
-}
 
-func (c *SurrealClient) queryOne(ctx context.Context, sql string, out any) error {
-	body, err := c.doSQL(ctx, sql)
-	if err != nil {
+	domainRecord := models.NewRecordID("proxy_domain", safeRecordPart(host))
+	if _, err := surrealdb.Delete[map[string]any](ctx, c.db, domainRecord); err != nil {
 		return err
 	}
 
-	var statements []surrealStatement
-	if err := json.Unmarshal(body, &statements); err != nil {
+	proxyRecord := models.NewRecordID("workspace_proxy", safeRecordPart(proxyName))
+	if _, err := surrealdb.Delete[map[string]any](ctx, c.db, proxyRecord); err != nil {
 		return err
 	}
-	if len(statements) == 0 {
-		return fmt.Errorf("surreal sql returned no statements")
-	}
-	if !strings.EqualFold(statements[0].Status, "OK") {
-		return surrealStatementError(statements[0])
-	}
-	return json.Unmarshal(statements[0].Result, out)
-}
 
-func (c *SurrealClient) exec(ctx context.Context, sql string) error {
-	body, err := c.doSQL(ctx, sql)
-	if err != nil {
-		return err
-	}
-	var statements []surrealStatement
-	if err := json.Unmarshal(body, &statements); err != nil {
-		return err
-	}
-	for _, statement := range statements {
-		if !strings.EqualFold(statement.Status, "OK") {
-			return surrealStatementError(statement)
-		}
-	}
 	return nil
 }
 
-func surrealStatementError(statement surrealStatement) error {
-	parts := []string{}
-	if statement.Detail != "" {
-		parts = append(parts, statement.Detail)
-	}
-	if len(statement.Result) > 0 && string(statement.Result) != "null" {
-		parts = append(parts, strings.TrimSpace(string(statement.Result)))
-	}
-	if len(statement.Details) > 0 && string(statement.Details) != "null" {
-		parts = append(parts, strings.TrimSpace(string(statement.Details)))
-	}
-	if len(parts) == 0 {
-		parts = append(parts, statement.Status)
-	}
-	return fmt.Errorf("surreal sql error: %s", strings.Join(parts, " | "))
-}
-
-func (c *SurrealClient) doSQL(ctx context.Context, sql string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.sqlURL, bytes.NewBufferString(sql))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "text/plain")
-	req.Header.Set("Surreal-NS", c.namespace)
-	req.Header.Set("Surreal-DB", c.database)
-	if c.username != "" || c.password != "" {
-		req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(c.username+":"+c.password)))
-	}
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("surreal sql status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-	return body, nil
-}
-
-func surrealSQLURL(raw string) (string, error) {
+func surrealEndpointURL(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", fmt.Errorf("surreal URL is required")
 	}
-	parsed, err := url.Parse(raw)
+
+	switch {
+	case strings.HasSuffix(raw, "/sql"):
+		raw = strings.TrimSuffix(raw, "/sql")
+	case strings.HasSuffix(raw, "/rpc"):
+		raw = strings.TrimSuffix(raw, "/rpc")
+	}
+
+	if strings.HasPrefix(raw, "ws://") || strings.HasPrefix(raw, "wss://") {
+		return raw, nil
+	}
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		return raw, nil
+	}
+	return "", fmt.Errorf("unsupported surreal URL scheme in %q", raw)
+}
+
+func recordIDValue(recordID models.RecordID) string {
+	return fmt.Sprintf("%s:%v", recordID.Table, recordID.ID)
+}
+
+func parseRecordID(value string) (*models.RecordID, error) {
+	value = strings.TrimSpace(value)
+	if !recordIDPattern.MatchString(value) {
+		return nil, fmt.Errorf("invalid surreal record id %q", value)
+	}
+	recordID, err := models.ParseRecordID(value)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	if parsed.Scheme == "ws" {
-		parsed.Scheme = "http"
-	}
-	if parsed.Scheme == "wss" {
-		parsed.Scheme = "https"
-	}
-	if strings.HasSuffix(parsed.Path, "/rpc") {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/rpc") + "/sql"
-	} else if !strings.HasSuffix(parsed.Path, "/sql") {
-		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/sql"
-	}
-	return parsed.String(), nil
-}
-
-func surrealString(value string) string {
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
-}
-
-func surrealRecordExpr(recordID string) (string, error) {
-	recordID = strings.TrimSpace(recordID)
-	if !recordIDPattern.MatchString(recordID) {
-		return "", fmt.Errorf("invalid surreal record id %q", recordID)
-	}
-	table, id, ok := strings.Cut(recordID, ":")
-	if !ok || table == "" || id == "" {
-		return "", fmt.Errorf("invalid surreal record id %q", recordID)
-	}
-	return fmt.Sprintf("type::thing(%s, %s)", surrealString(table), surrealString(id)), nil
+	return recordID, nil
 }
 
 func safeRecordPart(value string) string {

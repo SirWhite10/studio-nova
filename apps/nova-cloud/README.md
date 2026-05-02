@@ -1,8 +1,8 @@
 # Nova Cloud
 
-Nova Cloud is a Studio-first AI application platform built with SvelteKit, Svelte 5, Convex, Better Auth, and E2B.
+Nova Cloud is a Studio-first AI application platform built with SvelteKit, Svelte 5, SurrealDB, Better Auth, and Nova-managed runtimes.
 
-The product is designed around persistent user environments called `Studios`. Each Studio gives a user a dedicated context for conversations, runtime state, skills, and future capabilities like files and integrations.
+The product is designed around persistent user environments called `Studios`. Each Studio gives a user a dedicated context for conversations, runtime state, skills, files, integrations, and deployable workspaces.
 
 ## Core Concepts
 
@@ -20,10 +20,18 @@ The product is designed around persistent user environments called `Studios`. Ea
 ### Runtime / Sandbox
 
 - `sandbox` is the technical execution term.
-- Each Studio is backed by an isolated runtime environment used for code execution, tools, and long-running tasks.
-- E2B currently powers Nova's execution layer.
+- Each Studio is backed by an isolated, on-demand runtime environment used for code execution, tools, and workspace preparation.
+- The target runtime path is self-hosted on K3s, with studio-scoped runtime pods and scale-to-zero behavior.
 - Runtime access is on-demand: normal chat stays lightweight until Nova explicitly uses runtime-backed tools.
 - Each Studio can keep one primary preview/dev server record with persisted status, preview URL, and recent logs.
+
+### Workspaces
+
+- `workspace` is the deployable product surface for a Studio.
+- A workspace is not the sandbox itself. It is the public app or site served from a published runtime revision.
+- The sandbox owns project generation, dependency installation, file edits, runtime-contract generation, and workspace publication.
+- The workspace runtime owns executing the stored runtime contract, deployment status, domains, and health.
+- Initial workspace direction favors template-backed presets such as blogs, docs, landing pages, and future custom app types.
 
 ### Skills
 
@@ -46,8 +54,12 @@ The product is designed around persistent user environments called `Studios`. Ea
   - durable application state, chat persistence, run records, and backend functions
 - `Better Auth`
   - authentication and user session integration
-- `E2B`
-  - isolated execution runtime for Nova sandboxes
+- `Nova runtime control`
+  - on-demand execution runtime for Studio sandboxes and workspace prep
+- `Custom frps`
+  - public workspace domain routing, HTTPS, and tunnel termination for Nova-managed workspace URLs
+- `R2-compatible storage`
+  - persistent Studio files, workspace content, and future deployment artifacts
 
 ## Studio Runtime Workflow
 
@@ -67,6 +79,38 @@ The Studio runtime page is now the manual operational surface for:
 - viewing the current primary preview/dev server
 - refreshing preview logs or stopping the active preview
 
+## Workspace Deployment Direction
+
+Nova is moving toward a split model:
+
+- the sandbox creates and maintains the source project plus runtime/deployment spec
+- the workspace serves the published app or job result
+- Nova Cloud manages orchestration, metadata, domains, and deployment status
+
+Each workspace stores a declarative runtime contract. The sandbox writes that contract, and the runtime reads it on demand.
+
+- runtime base is blank slate
+- workspace-specific files, tools, and assets come from R2-backed storage
+- the runtime contract uses a single `runCommand`
+- lifecycle is always on-demand and scales to zero when idle
+- the workspace can represent a static site, a long-running web app, or a one-shot job
+
+For deployable web workspaces, the current preferred shape is:
+
+- the sandbox scaffolds a project with `vp`
+- the sandbox installs dependencies and writes the app structure
+- the sandbox publishes the runtime contract and workspace files to R2-backed storage
+- Nova starts the on-demand workspace runtime when traffic or an agent request arrives
+- the workspace reads the stored contract and files, then executes the declared `runCommand`
+- the workspace serves the published app, API, or job result on its Nova URL or custom domain
+
+The first concrete example under this model is a blog workspace template:
+
+- scaffolded by the sandbox
+- implemented as a `vp` React project
+- content-aware and integration-aware
+- deployed from a workspace runtime contract instead of depending on a live sandbox process
+
 ## Current Product Direction
 
 Nova is moving from a chat-first shell to a Studio-first information architecture.
@@ -80,30 +124,59 @@ See the canonical Studios planning reference for the full IA direction:
 
 - `planning/STUDIOS_INFORMATION_ARCHITECTURE_PLAN.md`
 
+## Pricing Direction
+
+Nova pricing is being split into clearer product surfaces instead of one flat runtime bundle.
+
+The scaffolded pricing route now reflects separate concepts for:
+
+- workspaces
+- sandbox/runtime usage
+- add-ons
+- Nova AI credits
+- pricing examples
+
+Current pricing route structure:
+
+- `/pricing`
+- `/pricing/workspaces`
+- `/pricing/sandbox`
+- `/pricing/add-ons`
+- `/pricing/ai-credits`
+- `/pricing/examples`
+
+The product direction behind this split is:
+
+- a user may want a hosted workspace without paying for an always-on development runtime
+- sandbox/runtime cost should remain separate from workspace hosting
+- Nova AI usage should remain optional instead of bundled into every plan
+
+Nova also plans to offer a self-hosted option later. That path is intended to be fully free on the Nova side, with users providing and operating their own infrastructure. It should exist as a later deployment model, not as part of the first hosted workspace rollout.
+
 ## Development
 
 ### Install dependencies
 
 ```bash
-bun install
+vp install
 ```
 
 ### Run checks
 
 ```bash
-bun run check
+vp check
 ```
 
 ### Start development server
 
 ```bash
-bun run dev
+vp dev
 ```
 
 ### Build
 
 ```bash
-bun run build
+vp build
 ```
 
 ## Important Project References
@@ -116,6 +189,8 @@ bun run build
   - canonical plan for the Studio-first app shell, sidebar, onboarding, and Integrations model
 - `planning/NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md`
   - broader product, pricing, and business direction
+- `planning/2026-05-01-workspace-template-blog-plan.md`
+  - plan for sandbox-generated `vp` React blog workspaces, deployment artifacts, UI/API flow, and testing strategy
 
 ## Svelte Guidance
 

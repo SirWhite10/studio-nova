@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import Clock3Icon from '@lucide/svelte/icons/clock-3';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import MessageSquareIcon from '@lucide/svelte/icons/message-square';
 	import PlugZapIcon from '@lucide/svelte/icons/plug-zap';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
@@ -23,8 +24,11 @@
 	let integrations = $state.raw(data.integrations ?? []);
 	let recentArtifacts = $state.raw(data.artifacts ?? []);
 	let recentRuns = $state.raw(data.runs ?? []);
+	let workspaces = $state.raw(data.workspaces ?? []);
 	let studioPlan = $state.raw(data.studioPlan);
 	let isRefreshingOverview = $state(false);
+	let isCreatingWorkspace = $state(false);
+	let workspaceActionById = $state<Record<string, string>>({});
 	const enabledIntegrations = $derived((integrations ?? []).filter((integration: any) => integration.enabled));
 	const suggestedIntegrations = $derived((integrations ?? []).filter((integration: any) => !integration.enabled));
 	const chatTitleById = $derived(new Map((chats ?? []).map((chat: any) => [chat.id, chat.title])));
@@ -47,6 +51,7 @@
 			integrations = payload.integrations ?? integrations;
 			recentArtifacts = payload.artifacts ?? recentArtifacts;
 			recentRuns = payload.runs ?? recentRuns;
+			workspaces = payload.workspaces ?? workspaces;
 			studioPlan = payload.studioPlan ?? studioPlan;
 			if (showToast) toast.success('Studio refreshed');
 		} finally {
@@ -109,6 +114,57 @@
 			await refreshOverview(false);
 		} finally {
 			isStartingDirectTask = false;
+		}
+	}
+
+	async function createWorkspace() {
+		if (isCreatingWorkspace) return;
+		isCreatingWorkspace = true;
+		try {
+			const res = await fetch(`/api/studios/${data.studio._id}/workspaces`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: `${data.studio.name} Blog`,
+					templateKind: 'blog-react-vp',
+					framework: 'react'
+				})
+			});
+			const payload = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				toast.error(payload.error || 'Failed to create workspace');
+				return;
+			}
+			toast.success('Workspace contract created');
+			await refreshOverview(false);
+		} finally {
+			isCreatingWorkspace = false;
+		}
+	}
+
+	async function runWorkspaceAction(
+		workspaceId: string,
+		action: 'provision' | 'preview'
+	) {
+		if (workspaceActionById[workspaceId]) return;
+		workspaceActionById = { ...workspaceActionById, [workspaceId]: action };
+		try {
+			const res = await fetch(`/api/studios/${data.studio._id}/workspaces/${workspaceId}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action })
+			});
+			const payload = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				toast.error(payload.error || `Failed to ${action} workspace`);
+				return;
+			}
+			toast.success(action === 'preview' ? 'Workspace preview started' : 'Workspace provisioned');
+			await refreshOverview(false);
+		} finally {
+			const next = { ...workspaceActionById };
+			delete next[workspaceId];
+			workspaceActionById = next;
 		}
 	}
 
@@ -277,6 +333,68 @@
 							Sleep runtime
 						</Button>
 					</div>
+				</section>
+
+				<section class="rounded-[2rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur">
+					<div class="mb-5 flex items-center gap-3">
+						<div class="rounded-2xl bg-emerald-500/10 p-3 text-emerald-700">
+							<GlobeIcon class="size-5" />
+						</div>
+						<div class="flex-1">
+							<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspaces</p>
+							<h2 class="text-lg font-semibold">Deployable apps</h2>
+						</div>
+						<Button size="sm" class="rounded-full" onclick={createWorkspace} disabled={isCreatingWorkspace}>
+							{isCreatingWorkspace ? 'Creating...' : 'Create blog workspace'}
+						</Button>
+					</div>
+
+					{#if workspaces.length > 0}
+						<div class="space-y-3">
+							{#each workspaces as workspace (workspace._id)}
+								<div class="rounded-[1.5rem] border border-border/60 bg-background/70 px-4 py-4">
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="truncate font-medium">{workspace.name}</p>
+											<p class="text-sm text-muted-foreground">{workspace.framework} · {workspace.templateKind}</p>
+										</div>
+										<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.18em]">
+											{workspace.status}
+										</Badge>
+									</div>
+									<div class="mt-3 space-y-1 text-xs leading-6 text-muted-foreground">
+										<p>Host: {workspace.defaultHost ?? 'pending'}</p>
+										<p>Source: {workspace.sourcePath}</p>
+										<p>Build: {workspace.buildPath}</p>
+									</div>
+									<div class="mt-4 flex flex-wrap gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											class="rounded-full"
+											onclick={() => runWorkspaceAction(workspace._id, 'provision')}
+											disabled={!!workspaceActionById[workspace._id]}
+										>
+											{workspaceActionById[workspace._id] === 'provision' ? 'Provisioning...' : 'Provision'}
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											class="rounded-full"
+											onclick={() => runWorkspaceAction(workspace._id, 'preview')}
+											disabled={!!workspaceActionById[workspace._id]}
+										>
+											{workspaceActionById[workspace._id] === 'preview' ? 'Starting...' : 'Start preview'}
+										</Button>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-sm leading-7 text-muted-foreground">
+							Create the first workspace contract for this Studio. The sandbox will own the React `vp` project and the workspace runtime will serve its built output.
+						</p>
+					{/if}
 				</section>
 
 				<section class="rounded-[2rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur">

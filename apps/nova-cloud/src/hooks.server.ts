@@ -1,5 +1,4 @@
 import { redirect, type Handle } from "@sveltejs/kit";
-import { surrealGetSession } from "$lib/server/surreal-better-auth";
 import { getUserIdFromLocals } from "$lib/server/surreal-query";
 import { scanAndSeedSkills } from "$lib/server/skill-seeder";
 import { ensureTables } from "$lib/server/surreal-tables";
@@ -14,26 +13,22 @@ if (!seeded) {
 export const handle: Handle = async ({ event, resolve }) => {
   const pathname = event.url.pathname;
 
-  try {
-    await ensureTables();
-  } catch (err) {
-    console.error("Failed to initialize Surreal tables:", err);
-  }
+  const authToken =
+    event.cookies.get("better-auth.session_token") ||
+    event.cookies.get("__Secure-better-auth.session_token") ||
+    undefined;
 
-  let session;
-  try {
-    const result = await surrealGetSession(event.request.headers);
-    session = result?.user ? { user: result.user } : null;
-  } catch (err: any) {
-    console.warn("Surreal auth session failed:", err);
-    session = null;
-  }
+  event.locals.token = authToken;
+  event.locals.userId = getUserIdFromLocals({ token: authToken } as App.Locals) || null;
+  event.locals.session = null;
 
-  event.locals.session = session;
-  event.locals.userId =
-    session?.user?.id ||
-    getUserIdFromLocals({ token: event.cookies.get("better-auth.session_token") } as App.Locals) ||
-    null;
+  if (pathname.startsWith("/app") || pathname.startsWith("/api")) {
+    try {
+      await ensureTables();
+    } catch (err) {
+      console.error("Failed to initialize Surreal tables:", err);
+    }
+  }
 
   const isAuthenticated = !!event.locals.userId;
 

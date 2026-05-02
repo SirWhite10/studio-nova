@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-07
 
+### Added - Workspace Runtime Contract Docs
+
+- Updated the Nova Cloud README and workspace planning docs to describe the studio-owned sandbox/runtime model, workspace publication lifecycle, blank-slate runtime base, R2-backed runtime state, single `runCommand` contract, and on-demand scale-to-zero execution model
+- Updated the Nova runtime-control README to match the same on-demand k3s runtime direction and to remove stale build/image assumptions from the documentation
+
+### Added - Workspace Contract Planning
+
+- Clarified the `blog-react-vp` workspace plan so each Studio owns its sandbox/runtime environment, each Studio can own multiple workspaces, and the sandbox publishes runtime contracts plus workspace state instead of treating the workspace as the sandbox itself
+
 ### Added - Domain Control Planning
 
 - Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap

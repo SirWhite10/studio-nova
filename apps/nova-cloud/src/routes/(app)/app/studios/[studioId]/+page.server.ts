@@ -12,8 +12,17 @@ export const load: PageServerLoad = async (event) => {
     getStudioForUser(userId, studioId),
     getStudioOverviewState(userId, studioId),
   ]);
-  const { sandbox, runtime, primaryProcess, integrations, artifacts, runs, chats, studioPlan } =
-    overviewState;
+  const {
+    sandbox,
+    runtime,
+    primaryProcess,
+    integrations,
+    artifacts,
+    runs,
+    chats,
+    workspaces,
+    studioPlan,
+  } = overviewState;
 
   if (!studio) {
     return {
@@ -32,6 +41,7 @@ export const load: PageServerLoad = async (event) => {
       integrations: [],
       artifacts: [],
       runs: [],
+      workspaces: [],
       studioPlan: {
         plan: studioPlan?.plan ?? "free",
         label: studioPlan?.plan === "pro" ? "Pro" : "Free",
@@ -48,6 +58,7 @@ export const load: PageServerLoad = async (event) => {
     integrations,
     artifacts: artifacts.slice(0, 4),
     runs,
+    workspaces,
     studioPlan,
   };
 };
