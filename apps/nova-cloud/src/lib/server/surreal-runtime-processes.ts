@@ -3,11 +3,14 @@ import { markArtifactStatus, upsertArtifact } from "./surreal-artifacts";
 import { createStudioEvent } from "./surreal-studio-events";
 import { getSurreal } from "./surreal";
 import { ensureRecordPrefix, queryRows, recordIdToString, withRecordIds } from "./surreal-records";
+import { ensureTables } from "./surreal-tables";
 
 export type RuntimeProcessRow = {
+  _id: string;
   id: unknown;
   userId: string;
   studioId: string;
+  workspaceId?: string | null;
   sandboxId: string;
   label: string;
   command: string;
@@ -15,6 +18,13 @@ export type RuntimeProcessRow = {
   pid: number;
   port?: number;
   previewUrl?: string;
+  runtimeKind?: string | null;
+  lifecycleMode?: string | null;
+  runCommand?: string | null;
+  healthCheckPath?: string | null;
+  publicHost?: string | null;
+  statePath?: string | null;
+  runtimeImage?: string | null;
   status: "starting" | "running" | "stopped" | "failed";
   logSummary?: string;
   createdAt: number;
@@ -22,9 +32,8 @@ export type RuntimeProcessRow = {
 };
 
 async function ensureRuntimeProcessTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS runtime_process SCHEMALESS").collect();
-  return db;
+  await ensureTables();
+  return getSurreal();
 }
 
 export async function getPrimaryForStudio(userId: string, studioId: string) {
@@ -53,12 +62,20 @@ export async function upsertPrimaryForStudio(
   studioId: string,
   process: {
     sandboxId: string;
+    workspaceId?: string | null;
     label: string;
     command: string;
     cwd: string;
     pid: number;
     port?: number;
     previewUrl?: string;
+    runtimeKind?: string | null;
+    lifecycleMode?: string | null;
+    runCommand?: string | null;
+    healthCheckPath?: string | null;
+    publicHost?: string | null;
+    statePath?: string | null;
+    runtimeImage?: string | null;
     status: "starting" | "running" | "stopped" | "failed";
     logSummary?: string;
   },
@@ -88,6 +105,14 @@ export async function upsertPrimaryForStudio(
         port: row.port ?? null,
         previewUrl: row.previewUrl ?? null,
         logSummary: row.logSummary ?? null,
+        workspaceId: row.workspaceId ?? null,
+        runtimeKind: row.runtimeKind ?? null,
+        lifecycleMode: row.lifecycleMode ?? null,
+        runCommand: row.runCommand ?? null,
+        healthCheckPath: row.healthCheckPath ?? null,
+        publicHost: row.publicHost ?? null,
+        statePath: row.statePath ?? null,
+        runtimeImage: row.runtimeImage ?? null,
       },
     });
     return row;
@@ -115,6 +140,14 @@ export async function upsertPrimaryForStudio(
       port: row.port ?? null,
       previewUrl: row.previewUrl ?? null,
       logSummary: row.logSummary ?? null,
+      workspaceId: row.workspaceId ?? null,
+      runtimeKind: row.runtimeKind ?? null,
+      lifecycleMode: row.lifecycleMode ?? null,
+      runCommand: row.runCommand ?? null,
+      healthCheckPath: row.healthCheckPath ?? null,
+      publicHost: row.publicHost ?? null,
+      statePath: row.statePath ?? null,
+      runtimeImage: row.runtimeImage ?? null,
     },
   });
   return row;
@@ -165,12 +198,20 @@ async function syncPreviewArtifact(
     metadata: {
       runtimeProcessId: process._id ?? null,
       sandboxId: process.sandboxId,
+      workspaceId: process.workspaceId ?? null,
       pid: process.pid,
       port: process.port ?? null,
       command: process.command,
       cwd: process.cwd,
       previewStatus: process.status,
       logSummary: process.logSummary ?? null,
+      runtimeKind: process.runtimeKind ?? null,
+      lifecycleMode: process.lifecycleMode ?? null,
+      runCommand: process.runCommand ?? null,
+      healthCheckPath: process.healthCheckPath ?? null,
+      publicHost: process.publicHost ?? null,
+      statePath: process.statePath ?? null,
+      runtimeImage: process.runtimeImage ?? null,
     },
   });
 }

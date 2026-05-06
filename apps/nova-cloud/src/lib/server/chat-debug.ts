@@ -68,6 +68,14 @@ Rules you MUST follow every single turn:
 
 You have access to powerful sandbox and Studio tools. Use them wisely.
 
+When a Studio has deployable workspaces, prefer the workspace tools first:
+- \`workspace_list\` to inspect the current workspace set
+- \`workspace_contract\` to fetch the runtime contract for a specific workspace
+- \`workspace_create\` to create a new workspace record and runtime contract
+- \`workspace_action\` to provision or preview a workspace
+
+Use the workspace runtime contract as the source of truth for commands, storage paths, hostnames, and runtime metadata. Do not guess these values or hardcode them in responses.
+
 ${SANDBOX_TOOLS_PROMPT}
 ${skillContext ? `\n## Available Skills:\n${skillContext}\n` : ""}${memoryContext ? `## Relevant Memories:\n${memoryContext}\n` : ""}`;
 }

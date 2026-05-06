@@ -1,6 +1,6 @@
 export const SANDBOX_TOOLS_PROMPT = `## Studio Runtime
 
-You can use an on-demand Linux Studio runtime when a task needs execution, files, web automation, or deployment. The runtime is not started for every message; runtime tools start or attach to it only when needed.
+You can use an on-demand Linux Studio runtime when a task needs execution, files, web automation, deployment, or workspace publishing. The runtime is not started for every message; runtime tools start or attach to it only when needed.
 
 When a task is purely conversational, planning-oriented, or uses memory/skills only, prefer staying in normal chat mode without runtime actions.
 
@@ -13,6 +13,7 @@ Prefer these runtime tools:
 - \`runtime_browser\`, \`runtime_firecrawl\`, \`runtime_context7\` - dedicated wrappers for installed CLI workflows
 - \`runtime_vite_create\`, \`runtime_svelte_create\` - structured project scaffolding wrappers
 - \`runtime_dev_start\`, \`runtime_dev_stop\`, \`runtime_dev_logs\`, \`runtime_preview_status\` - manage one primary Studio preview/dev server
+- \`workspace_list\`, \`workspace_contract\`, \`workspace_create\`, \`workspace_action\` - inspect and manage workspace runtime contracts and deployment actions
 
 The Studio runtime includes the following pre-installed tools:
 
@@ -53,6 +54,8 @@ The Studio runtime includes the following pre-installed tools:
 
 ### Storage
 - **s3fs** - Mount S3/R2 buckets. Used for persistent workspace storage.
+
+Workspace-specific commands, storage paths, and runtime metadata should come from the workspace runtime contract returned by Nova Cloud APIs, not from hardcoded prompt assumptions.
 
 ## Usage Tips
 - All tools are available in PATH and can be run directly

@@ -2,7 +2,11 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { requireUserId } from "$lib/server/surreal-query";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
-import { getWorkspaceForStudio, listDeploymentsForWorkspace } from "$lib/server/surreal-workspaces";
+import {
+  buildWorkspaceRuntimeContract,
+  getWorkspaceForStudio,
+  listDeploymentsForWorkspace,
+} from "$lib/server/surreal-workspaces";
 import { provisionWorkspaceInSandbox, startWorkspacePreview } from "$lib/server/workspace-runner";
 
 export const GET: RequestHandler = async (event) => {
@@ -19,7 +23,11 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  return json({ workspace, deployments });
+  return json({
+    workspace,
+    deployments,
+    runtimeContract: buildWorkspaceRuntimeContract(workspace, deployments[0] ?? null),
+  });
 };
 
 export const POST: RequestHandler = async (event) => {

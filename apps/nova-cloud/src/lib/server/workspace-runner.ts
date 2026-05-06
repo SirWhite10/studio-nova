@@ -2,9 +2,11 @@ import { WORKSPACE_PATH, ensureSandboxForRuntime } from "./sandbox";
 import { upsertArtifact } from "./surreal-artifacts";
 import { upsertPrimaryForStudio } from "./surreal-runtime-processes";
 import {
+  buildWorkspaceRuntimeContract,
   getWorkspaceForStudio,
   listDeploymentsForWorkspace,
   markWorkspaceDeploymentStatus,
+  normalizeWorkspaceBuildCommand,
 } from "./surreal-workspaces";
 
 const BLOG_INDEX_JSON = JSON.stringify(
@@ -352,6 +354,13 @@ export async function provisionWorkspaceInSandbox(input: {
     studioId: input.studioId,
   });
 
+  const buildCommand = normalizeWorkspaceBuildCommand(
+    workspace.buildCommand,
+    workspace.sourcePath.replace(/source\/?$/, "source").replace(/\/$/, ""),
+  );
+  const normalizedWorkspace =
+    buildCommand === workspace.buildCommand ? workspace : { ...workspace, buildCommand };
+
   await markWorkspaceDeploymentStatus({
     userId: input.userId,
     studioId: input.studioId,
@@ -395,7 +404,7 @@ export async function provisionWorkspaceInSandbox(input: {
 
   await writeBlogWorkspaceStarter(sandbox, workspace);
 
-  const buildResult = await sandbox.commands.run(workspace.buildCommand, {
+  const buildResult = await sandbox.commands.run(buildCommand, {
     cwd: WORKSPACE_PATH,
     timeoutMs: 240000,
   });
@@ -433,6 +442,8 @@ export async function provisionWorkspaceInSandbox(input: {
     },
   });
 
+  const runtimeContract = buildWorkspaceRuntimeContract(normalizedWorkspace, marked.deployment);
+
   const artifact = await upsertArtifact({
     userId: input.userId,
     studioId: input.studioId,
@@ -447,7 +458,13 @@ export async function provisionWorkspaceInSandbox(input: {
       deploymentId: deployment._id,
       framework: workspace.framework,
       templateKind: workspace.templateKind,
-      buildCommand: workspace.buildCommand,
+      buildCommand,
+      runCommand: workspace.runCommand,
+      runtimeKind: workspace.runtimeKind,
+      lifecycleMode: workspace.lifecycleMode,
+      healthCheckPath: workspace.healthCheckPath ?? null,
+      publicHost: workspace.publicHost ?? workspace.defaultHost ?? null,
+      statePath: workspace.statePath,
       outputDir: deployment.outputDir,
     },
   });
@@ -456,6 +473,7 @@ export async function provisionWorkspaceInSandbox(input: {
     workspace: marked.workspace,
     deployment: marked.deployment,
     artifact,
+    runtimeContract,
     scaffoldResult,
     buildResult,
   };
@@ -480,7 +498,8 @@ export async function startWorkspacePreview(input: {
   });
 
   const port = input.port ?? 4173;
-  const handle = await sandbox.commands.run(workspace.serveCommand, {
+  const runCommand = workspace.runCommand || workspace.serveCommand;
+  const handle = await sandbox.commands.run(runCommand, {
     cwd: WORKSPACE_PATH,
     background: true,
     timeoutMs: 60000,
@@ -492,14 +511,22 @@ export async function startWorkspacePreview(input: {
   const previewUrl = `https://${sandbox.getHost(port)}`;
   const process = await upsertPrimaryForStudio(input.userId, input.studioId, {
     sandboxId: sandbox.sandboxId,
+    workspaceId: workspace._id,
     label: `${workspace.name} Preview`,
-    command: workspace.serveCommand,
+    command: runCommand,
     cwd: workspace.sourcePath,
     pid: handle.pid,
     port,
     previewUrl,
     status: "running",
     logSummary: `Serving ${workspace.name} from ${workspace.buildPath}`,
+    runtimeKind: workspace.runtimeKind,
+    lifecycleMode: workspace.lifecycleMode,
+    runCommand,
+    healthCheckPath: workspace.healthCheckPath ?? "/",
+    publicHost: workspace.publicHost ?? workspace.defaultHost ?? null,
+    statePath: workspace.statePath,
+    runtimeImage: workspace.runtimeImage ?? null,
   });
 
   return {

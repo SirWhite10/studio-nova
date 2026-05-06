@@ -13,7 +13,7 @@ const FilesystemInputSchema = z.object({
 export function createFilesystemTool(sandbox: Sandbox | null, _userId?: string): Tool {
   return {
     description:
-      "Read, write, and manipulate files in the E2B sandbox workspace. Supports reading files, writing content, listing directories, creating directories, and deleting files.",
+      "Read, write, and manipulate files in the active Studio runtime workspace. Supports reading files, writing content, listing directories, creating directories, and deleting files.",
     inputSchema: FilesystemInputSchema,
     execute: async ({ operation, path, content }) => {
       if (!sandbox) {

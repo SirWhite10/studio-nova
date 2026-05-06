@@ -36,6 +36,32 @@
 	let directTaskInput = $state('');
 	let isStartingDirectTask = $state(false);
 
+	function workspaceDeploymentBadge(status?: string | null) {
+		if (status === 'active') return 'Active';
+		if (status === 'ready') return 'Ready';
+		if (status === 'building') return 'Building';
+		if (status === 'failed') return 'Failed';
+		return 'Pending';
+	}
+
+	function workspaceDeploymentTone(status?: string | null) {
+		switch (status) {
+			case 'active':
+			case 'ready':
+				return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700';
+			case 'building':
+				return 'border-sky-500/25 bg-sky-500/10 text-sky-700';
+			case 'failed':
+				return 'border-destructive/25 bg-destructive/10 text-destructive';
+			default:
+				return 'border-border/70 bg-muted text-muted-foreground';
+		}
+	}
+
+	function workspaceCanPreview(workspace: any) {
+		return workspace?.workspace?.status === 'published' || workspace?.deployment?.status === 'active';
+	}
+
 	async function refreshOverview(showToast = false) {
 		if (isRefreshingOverview) return;
 		isRefreshingOverview = true;
@@ -351,41 +377,57 @@
 
 					{#if workspaces.length > 0}
 						<div class="space-y-3">
-							{#each workspaces as workspace (workspace._id)}
+						{#each workspaces as workspace (workspace.workspace._id)}
 								<div class="rounded-[1.5rem] border border-border/60 bg-background/70 px-4 py-4">
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="truncate font-medium">{workspace.name}</p>
-											<p class="text-sm text-muted-foreground">{workspace.framework} · {workspace.templateKind}</p>
+											<p class="truncate font-medium">{workspace.workspace.name}</p>
+											<p class="text-sm text-muted-foreground">{workspace.workspace.framework} · {workspace.workspace.templateKind}</p>
 										</div>
-										<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.18em]">
-											{workspace.status}
+										<Badge variant="outline" class={`rounded-full text-[11px] uppercase tracking-[0.18em] ${workspaceDeploymentTone(workspace.deployment?.status)}`}>
+											{workspaceDeploymentBadge(workspace.deployment?.status ?? workspace.workspace.status)}
 										</Badge>
 									</div>
-									<div class="mt-3 space-y-1 text-xs leading-6 text-muted-foreground">
-										<p>Host: {workspace.defaultHost ?? 'pending'}</p>
-										<p>Source: {workspace.sourcePath}</p>
-										<p>Build: {workspace.buildPath}</p>
+									<div class="mt-3 grid gap-2 text-xs leading-6 text-muted-foreground sm:grid-cols-2">
+										<p>Workspace: <span class="font-medium text-foreground">{workspace.workspace.status}</span></p>
+										<p>Deployment: <span class="font-medium text-foreground">{workspace.deployment?.status ?? 'pending'}</span></p>
+										<p>Revision: <span class="font-medium text-foreground">{workspace.deployment?.revision ?? 0}</span></p>
+										<p>Host: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.defaultHost ?? 'pending'}</span></p>
+										<p>Source: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.sourcePath}</span></p>
+										<p>Build: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.buildPath}</span></p>
+										<p>State: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.statePath ?? workspace.workspace.rootPath}</span></p>
+										<p>Runtime: <span class="font-medium text-foreground">{workspace.workspace.runtimeKind}</span> · <span class="font-medium text-foreground">{workspace.workspace.lifecycleMode}</span></p>
+										<p>Run: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.runCommand || workspace.workspace.serveCommand}</span></p>
+										<p>Health: <span class="font-medium text-foreground">{workspace.workspace.healthCheckPath ?? '/'}</span></p>
+										<p>Public: <span class="font-mono text-[11px] text-foreground">{workspace.workspace.publicHost ?? workspace.workspace.defaultHost ?? 'pending'}</span></p>
+										<p>API: <span class="font-mono text-[11px] text-foreground">{workspace.runtimeContract.api.runtimePath}</span></p>
+										<p>Artifact: <span class="font-mono text-[11px] text-foreground">{workspace.deployment?.artifactPath ?? 'pending'}</span></p>
 									</div>
-									<div class="mt-4 flex flex-wrap gap-2">
+									<div class="mt-4 flex flex-wrap items-center gap-2">
 										<Button
 											variant="outline"
 											size="sm"
 											class="rounded-full"
-											onclick={() => runWorkspaceAction(workspace._id, 'provision')}
-											disabled={!!workspaceActionById[workspace._id]}
+											onclick={() => runWorkspaceAction(workspace.workspace._id, 'provision')}
+											disabled={!!workspaceActionById[workspace.workspace._id]}
 										>
-											{workspaceActionById[workspace._id] === 'provision' ? 'Provisioning...' : 'Provision'}
+											{workspaceActionById[workspace.workspace._id] === 'provision' ? 'Provisioning...' : 'Provision'}
 										</Button>
-										<Button
-											variant="outline"
-											size="sm"
-											class="rounded-full"
-											onclick={() => runWorkspaceAction(workspace._id, 'preview')}
-											disabled={!!workspaceActionById[workspace._id]}
-										>
-											{workspaceActionById[workspace._id] === 'preview' ? 'Starting...' : 'Start preview'}
-										</Button>
+										{#if workspaceCanPreview(workspace)}
+											<Button
+												variant="outline"
+												size="sm"
+												class="rounded-full"
+												onclick={() => runWorkspaceAction(workspace.workspace._id, 'preview')}
+												disabled={!!workspaceActionById[workspace.workspace._id]}
+											>
+												{workspaceActionById[workspace.workspace._id] === 'preview' ? 'Starting...' : 'Start preview'}
+											</Button>
+										{:else}
+											<span class="text-xs text-muted-foreground">
+												Provision first to enable preview.
+											</span>
+										{/if}
 									</div>
 								</div>
 							{/each}

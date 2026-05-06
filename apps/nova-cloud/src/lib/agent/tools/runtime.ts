@@ -205,7 +205,7 @@ export function createRuntimeStatusTool(context: RuntimeContext): Tool {
 export function createRuntimeStartTool(context: RuntimeContext): Tool {
   return {
     description:
-      "Start or attach to the Studio runtime sandbox and return its availability details.",
+      "Start or attach to the Studio runtime workspace and return its availability details.",
     inputSchema: RuntimeLifecycleInputSchema,
     execute: async () => {
       try {
@@ -232,7 +232,7 @@ export function createRuntimeStartTool(context: RuntimeContext): Tool {
 export function createRuntimeStopTool(context: RuntimeContext): Tool {
   return {
     description:
-      "Mark the Studio runtime sandbox as expired so it can stop being reused until explicitly started again.",
+      "Mark the Studio runtime workspace as expired so it can stop being reused until explicitly started again.",
     inputSchema: RuntimeLifecycleInputSchema,
     execute: async () => {
       try {

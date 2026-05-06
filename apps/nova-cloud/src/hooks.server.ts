@@ -1,7 +1,7 @@
 import { redirect, type Handle } from "@sveltejs/kit";
-import { getUserIdFromLocals } from "$lib/server/surreal-query";
 import { scanAndSeedSkills } from "$lib/server/skill-seeder";
 import { ensureTables } from "$lib/server/surreal-tables";
+import { surrealGetSession } from "$lib/server/surreal-better-auth";
 
 let seeded = false;
 
@@ -19,8 +19,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     undefined;
 
   event.locals.token = authToken;
-  event.locals.userId = getUserIdFromLocals({ token: authToken } as App.Locals) || null;
+
   event.locals.session = null;
+  const maybeSession =
+    authToken &&
+    (pathname.startsWith("/app") || pathname.startsWith("/auth") || pathname.startsWith("/api"))
+      ? await surrealGetSession(event.request.headers).catch(() => null)
+      : null;
+
+  if (maybeSession?.user) {
+    event.locals.session = maybeSession;
+    const sessionUser = maybeSession.user as { id?: string; userId?: string; _id?: string };
+    event.locals.userId = sessionUser.id ?? sessionUser.userId ?? sessionUser._id ?? null;
+  } else {
+    event.locals.userId = null;
+  }
 
   if (pathname.startsWith("/app") || pathname.startsWith("/api")) {
     try {

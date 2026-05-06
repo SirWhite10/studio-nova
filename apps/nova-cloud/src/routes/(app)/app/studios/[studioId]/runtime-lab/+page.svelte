@@ -17,7 +17,9 @@
     status: unknown;
   };
 
-  let { data }: { data: RuntimeLabPayload & { studio?: any; studioId: string } } = $props();
+  let {
+    data,
+  }: { data: RuntimeLabPayload & { studio?: any; studioId: string; workspaces?: any[] } } = $props();
 
   let health = $state.raw(data.health);
   let status = $state.raw(data.status);
@@ -34,6 +36,7 @@
       .map((pkg) => pkg.trim())
       .filter(Boolean),
   );
+  const primaryWorkspace = $derived((data.workspaces ?? [])[0] ?? null);
 
   function formatJson(value: unknown) {
     return JSON.stringify(value, null, 2);
@@ -86,7 +89,7 @@
           </div>
           <h1 class="text-3xl font-semibold tracking-tight sm:text-5xl">{data.studio?.name ?? "Studio"} runtime lab</h1>
           <p class="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-            Test the K3s runtime control plane, persisted APK packages, and AI execution path before wiring it into production runtime tools.
+            Test the K3s runtime control plane, runtime package set, workspace contract, and AI execution path before wiring it into production runtime tools.
           </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -116,12 +119,12 @@
             </div>
             <div>
               <p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Packages</p>
-              <h2 class="text-lg font-semibold">APK package set</h2>
+              <h2 class="text-lg font-semibold">Runtime package set</h2>
             </div>
           </div>
           <Input bind:value={systemPackages} placeholder="ffmpeg, imagemagick" />
           <p class="mt-3 text-xs leading-6 text-muted-foreground">
-            Re-starting with a changed list recreates only the runtime pod and keeps the workspace and APK PVCs.
+            Re-starting with a changed list recreates only the runtime pod and keeps the workspace and runtime PVCs.
           </p>
         </div>
 
@@ -164,6 +167,27 @@
             <Badge variant={statusOk ? "default" : "outline"}>{statusOk ? "ready" : "not created"}</Badge>
           </div>
           <pre class="max-h-80 overflow-auto bg-muted p-4 text-xs leading-6">{formatJson(status)}</pre>
+        </div>
+
+        <div class="border border-border/70 bg-background/90 p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold">Workspace contract</h2>
+            <Badge variant={primaryWorkspace ? "default" : "outline"}>{primaryWorkspace ? "linked" : "none"}</Badge>
+          </div>
+          {#if primaryWorkspace}
+            <div class="space-y-2 text-xs leading-6 text-muted-foreground">
+              <p>Name: {primaryWorkspace.name}</p>
+              <p>Host: {primaryWorkspace.publicHost ?? primaryWorkspace.defaultHost ?? "pending"}</p>
+              <p>Runtime: {primaryWorkspace.runtimeKind} · {primaryWorkspace.lifecycleMode}</p>
+              <p>Run: <span class="font-mono text-foreground">{primaryWorkspace.runCommand || primaryWorkspace.serveCommand}</span></p>
+              <p>State: {primaryWorkspace.statePath ?? primaryWorkspace.rootPath}</p>
+              <p>API: <span class="font-mono text-foreground">/api/studios/{data.studioId}/workspaces/{primaryWorkspace._id}/runtime</span></p>
+            </div>
+          {:else}
+            <p class="text-sm leading-7 text-muted-foreground">
+              No workspace exists for this Studio yet. Create one in Studio overview to generate a runtime contract.
+            </p>
+          {/if}
         </div>
 
         <div class="border border-border/70 bg-background/90 p-5 shadow-sm">

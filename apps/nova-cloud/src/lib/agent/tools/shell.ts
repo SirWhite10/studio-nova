@@ -12,7 +12,7 @@ const ShellInputSchema = z.object({
 export function createShellTool(sandbox: Sandbox | null, _userId?: string): Tool {
   return {
     description:
-      "Execute shell commands in an isolated E2B sandbox environment with user-specific file storage. Supports timeouts and working directory specification.",
+      "Execute shell commands in the active Studio runtime environment with user-specific file storage. Supports timeouts and working directory specification.",
     inputSchema: ShellInputSchema,
     execute: async ({ command, cwd, timeout }) => {
       if (!sandbox) {

@@ -1,4 +1,5 @@
 import { StringRecordId, Table } from "surrealdb";
+import { ensureTables } from "./surreal-tables";
 import { getSurreal } from "./surreal";
 import { createStudioEvent } from "./surreal-studio-events";
 import { getStudioForUser } from "./surreal-studios";
@@ -12,10 +13,13 @@ import {
 
 export type WorkspaceTemplateKind = "blog-react-vp";
 export type WorkspaceFramework = "react";
+export type WorkspaceRuntimeKind = "node-server" | "container" | "static" | "job";
+export type WorkspaceLifecycleMode = "on-demand";
 export type WorkspaceStatus = "creating" | "ready" | "building" | "published" | "failed";
 export type WorkspaceDeploymentStatus = "pending" | "building" | "ready" | "active" | "failed";
 
 export type WorkspaceRow = {
+  _id: string;
   id: unknown;
   userId: string;
   studioId: string;
@@ -25,6 +29,13 @@ export type WorkspaceRow = {
   templateKind: WorkspaceTemplateKind;
   framework: WorkspaceFramework;
   status: WorkspaceStatus;
+  runtimeKind: WorkspaceRuntimeKind;
+  lifecycleMode: WorkspaceLifecycleMode;
+  runCommand: string;
+  healthCheckPath?: string | null;
+  publicHost?: string | null;
+  statePath: string;
+  runtimeImage?: string | null;
   rootPath: string;
   sourcePath: string;
   buildPath: string;
@@ -41,6 +52,7 @@ export type WorkspaceRow = {
 };
 
 export type WorkspaceDeploymentRow = {
+  _id: string;
   id: unknown;
   userId: string;
   studioId: string;
@@ -52,9 +64,50 @@ export type WorkspaceDeploymentRow = {
   buildCommand: string;
   serveCommand: string;
   activatedAt?: number | null;
+  runtimeKind?: WorkspaceRuntimeKind | null;
+  lifecycleMode?: WorkspaceLifecycleMode | null;
+  runCommand?: string | null;
+  healthCheckPath?: string | null;
+  publicHost?: string | null;
+  statePath?: string | null;
+  runtimeImage?: string | null;
   metadata?: Record<string, unknown> | null;
   createdAt: number;
   updatedAt: number;
+};
+
+export type WorkspaceRuntimeContract = {
+  studioId: string;
+  workspaceId: string;
+  sandboxId: string | null;
+  templateKind: WorkspaceTemplateKind;
+  framework: WorkspaceFramework;
+  status: WorkspaceStatus;
+  runtimeKind: WorkspaceRuntimeKind;
+  lifecycleMode: WorkspaceLifecycleMode;
+  runCommand: string;
+  healthCheckPath: string | null;
+  publicHost: string | null;
+  statePath: string;
+  runtimeImage: string | null;
+  defaultHost: string | null;
+  storage: WorkspaceStoragePaths;
+  commands: {
+    scaffoldCommand: string;
+    installCommand: string;
+    buildCommand: string;
+    serveCommand: string;
+    runCommand: string;
+  };
+  deployment: WorkspaceDeploymentRow | null;
+  api: {
+    basePath: string;
+    runtimePath: string;
+    previewPath: string;
+  };
+  database: {
+    tables: string[];
+  };
 };
 
 type WorkspaceStoragePaths = {
@@ -68,10 +121,8 @@ const WORKSPACE_ROOT_DOMAIN = "workspace.dlxstudios.com";
 const DEFAULT_OUTPUT_DIR = "dist";
 
 async function ensureWorkspaceTables() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS workspace SCHEMALESS").collect();
-  await db.query("DEFINE TABLE IF NOT EXISTS workspace_deployment SCHEMALESS").collect();
-  return db;
+  await ensureTables();
+  return getSurreal();
 }
 
 export function workspaceSlug(name: string) {
@@ -100,6 +151,18 @@ export function buildWorkspaceDefaultHost(workspaceId: string) {
   return `ws-${cleanId}.${WORKSPACE_ROOT_DOMAIN}`;
 }
 
+export function buildWorkspaceRuntimeKind() {
+  return "node-server" as const;
+}
+
+export function buildWorkspaceLifecycleMode() {
+  return "on-demand" as const;
+}
+
+export function buildWorkspaceStatePath(workspaceId: string) {
+  return buildWorkspaceStoragePaths(workspaceId).rootPath;
+}
+
 export function buildWorkspaceScaffoldCommand(projectDirName: string) {
   return `vp create vite --package-manager pnpm --no-interactive -- ${JSON.stringify(projectDirName)} --template ${JSON.stringify("react")}`;
 }
@@ -109,12 +172,64 @@ export function buildWorkspaceInstallCommand(projectRoot: string) {
 }
 
 export function buildWorkspaceBuildCommand(projectRoot: string) {
-  return `cd ${JSON.stringify(projectRoot)} && mkdir -p public/content && rm -rf public/content/* && cp -R ../content/. ./public/content/ && mkdir -p ../build && rm -rf ../build/* && vp build --outDir ../build`;
+  return `cd ${JSON.stringify(projectRoot)} && mkdir -p public/content && rm -rf public/content/* && cp -R ../content/. ./public/content/ && mkdir -p ../build && rm -rf ../build/* && vp build --outDir ../build --emptyOutDir`;
+}
+
+export function normalizeWorkspaceBuildCommand(command: string, projectRoot: string) {
+  const expected = buildWorkspaceBuildCommand(projectRoot);
+  if (command.includes("--emptyOutDir")) return command;
+  return expected;
 }
 
 export function buildWorkspaceServeCommand(buildPath: string) {
   const sourceRoot = buildPath.replace(/build\/?$/, "source").replace(/\/$/, "");
   return `cd ${JSON.stringify(sourceRoot)} && vp preview --host 0.0.0.0 --outDir "../build"`;
+}
+
+export function buildWorkspaceRunCommand(buildPath: string) {
+  return buildWorkspaceServeCommand(buildPath);
+}
+
+export function buildWorkspaceRuntimeContract(
+  workspace: WorkspaceRow,
+  deployment: WorkspaceDeploymentRow | null = null,
+): WorkspaceRuntimeContract {
+  const storage = buildWorkspaceStoragePaths(workspace._id);
+  const studioId = normalizeRouteParam(workspace.studioId);
+  const defaultHost = workspace.defaultHost ?? buildWorkspaceDefaultHost(workspace._id);
+  return {
+    studioId,
+    workspaceId: workspace._id,
+    sandboxId: workspace.sandboxId ?? null,
+    templateKind: workspace.templateKind,
+    framework: workspace.framework,
+    status: workspace.status,
+    runtimeKind: workspace.runtimeKind,
+    lifecycleMode: workspace.lifecycleMode,
+    runCommand: workspace.runCommand,
+    healthCheckPath: workspace.healthCheckPath ?? null,
+    publicHost: workspace.publicHost ?? defaultHost,
+    statePath: workspace.statePath,
+    runtimeImage: workspace.runtimeImage ?? null,
+    defaultHost,
+    storage,
+    commands: {
+      scaffoldCommand: workspace.scaffoldCommand,
+      installCommand: workspace.installCommand,
+      buildCommand: workspace.buildCommand,
+      serveCommand: workspace.serveCommand,
+      runCommand: workspace.runCommand,
+    },
+    deployment,
+    api: {
+      basePath: `/api/studios/${studioId}/workspaces/${workspace._id}`,
+      runtimePath: `/api/studios/${studioId}/workspaces/${workspace._id}/runtime`,
+      previewPath: `/api/studios/${studioId}/workspaces/${workspace._id}`,
+    },
+    database: {
+      tables: ["workspace", "workspace_deployment", "runtime_process", "sandbox"],
+    },
+  };
 }
 
 export async function listWorkspacesForStudio(userId: string, studioId: string) {
@@ -177,15 +292,20 @@ export async function createWorkspaceForStudio(input: {
   const framework = input.framework ?? "react";
   const slug = workspaceSlug(input.name);
 
-  const created = await db.create(new Table("workspace")).content({
+  const workspaceContent: Record<string, unknown> = {
     userId: input.userId,
     studioId: ensureRecordPrefix("studio", normalizeRouteParam(input.studioId)),
-    sandboxId: sandbox?.sandboxId ?? null,
+    ...(sandbox?.sandboxId ? { sandboxId: sandbox.sandboxId } : {}),
     name: input.name.trim() || "Workspace",
     slug,
     templateKind,
     framework,
     status: "creating",
+    runtimeKind: buildWorkspaceRuntimeKind(),
+    lifecycleMode: buildWorkspaceLifecycleMode(),
+    runCommand: "",
+    healthCheckPath: "/",
+    statePath: "",
     rootPath: "",
     sourcePath: "",
     buildPath: "",
@@ -195,11 +315,11 @@ export async function createWorkspaceForStudio(input: {
     installCommand: "",
     buildCommand: "",
     serveCommand: "",
-    defaultHost: null,
-    activeDeploymentId: null,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+
+  const created = await db.create(new Table("workspace")).content(workspaceContent);
 
   const row = withRecordIds((Array.isArray(created) ? created[0] : created) as WorkspaceRow);
   const paths = buildWorkspaceStoragePaths(row._id);
@@ -212,17 +332,23 @@ export async function createWorkspaceForStudio(input: {
     sourcePath: paths.sourcePath,
     buildPath: paths.buildPath,
     contentPath: paths.contentPath,
+    statePath: buildWorkspaceStatePath(row._id),
     scaffoldCommand: buildWorkspaceScaffoldCommand(projectDirName),
     installCommand: buildWorkspaceInstallCommand(projectRoot),
     buildCommand: buildWorkspaceBuildCommand(projectRoot),
     serveCommand: buildWorkspaceServeCommand(paths.buildPath),
+    runCommand: buildWorkspaceRunCommand(paths.buildPath),
+    runtimeKind: buildWorkspaceRuntimeKind(),
+    lifecycleMode: buildWorkspaceLifecycleMode(),
+    healthCheckPath: "/",
+    publicHost: buildWorkspaceDefaultHost(row._id),
     defaultHost: buildWorkspaceDefaultHost(row._id),
     updatedAt: Date.now(),
   });
 
   const workspace = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as WorkspaceRow);
 
-  const deployment = await db.create(new Table("workspace_deployment")).content({
+  const deploymentContent: Record<string, unknown> = {
     userId: input.userId,
     studioId: ensureRecordPrefix("studio", normalizeRouteParam(input.studioId)),
     workspaceId: fullWorkspaceId,
@@ -232,7 +358,12 @@ export async function createWorkspaceForStudio(input: {
     outputDir: DEFAULT_OUTPUT_DIR,
     buildCommand: workspace.buildCommand,
     serveCommand: workspace.serveCommand,
-    activatedAt: null,
+    runtimeKind: workspace.runtimeKind,
+    lifecycleMode: workspace.lifecycleMode,
+    runCommand: workspace.runCommand,
+    healthCheckPath: workspace.healthCheckPath ?? "/",
+    publicHost: workspace.publicHost ?? workspace.defaultHost ?? null,
+    statePath: workspace.statePath,
     metadata: {
       templateKind,
       framework,
@@ -240,7 +371,13 @@ export async function createWorkspaceForStudio(input: {
     },
     createdAt: now,
     updatedAt: now,
-  });
+  };
+
+  if (workspace.runtimeImage) {
+    deploymentContent.runtimeImage = workspace.runtimeImage;
+  }
+
+  const deployment = await db.create(new Table("workspace_deployment")).content(deploymentContent);
 
   const deploymentRow = withRecordIds(
     (Array.isArray(deployment) ? deployment[0] : deployment) as WorkspaceDeploymentRow,
@@ -274,7 +411,12 @@ export async function createWorkspaceForStudio(input: {
       rootPath: finalWorkspace.rootPath,
       sourcePath: finalWorkspace.sourcePath,
       buildPath: finalWorkspace.buildPath,
+      statePath: finalWorkspace.statePath,
+      runtimeKind: finalWorkspace.runtimeKind,
+      lifecycleMode: finalWorkspace.lifecycleMode,
+      runCommand: finalWorkspace.runCommand,
       defaultHost: finalWorkspace.defaultHost ?? null,
+      publicHost: finalWorkspace.publicHost ?? null,
       activeDeploymentId: deploymentRow._id,
     },
   });
@@ -282,6 +424,7 @@ export async function createWorkspaceForStudio(input: {
   return {
     workspace: finalWorkspace,
     deployment: deploymentRow,
+    runtimeContract: buildWorkspaceRuntimeContract(finalWorkspace, deploymentRow),
   };
 }
 
@@ -307,9 +450,9 @@ export async function markWorkspaceDeploymentStatus(input: {
     .update<WorkspaceDeploymentRow>(new StringRecordId(fullDeploymentId))
     .merge({
       status: input.deploymentStatus,
-      activatedAt: input.activated ? now : null,
-      metadata: input.metadata ?? null,
       updatedAt: now,
+      ...(input.activated ? { activatedAt: now } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
     });
 
   const deployment = withRecordIds(
@@ -344,6 +487,11 @@ export async function markWorkspaceDeploymentStatus(input: {
       deploymentStatus: deployment.status,
       workspaceStatus: workspace.status,
       artifactPath: deployment.artifactPath,
+      runtimeKind: deployment.runtimeKind ?? null,
+      lifecycleMode: deployment.lifecycleMode ?? null,
+      runCommand: deployment.runCommand ?? null,
+      healthCheckPath: deployment.healthCheckPath ?? null,
+      publicHost: deployment.publicHost ?? null,
     },
   });
 

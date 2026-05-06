@@ -8,6 +8,12 @@ import { createSkillsTool } from "./skills-tool";
 import { createSearchSkillsTool } from "./search-skills-tool";
 import { createUseSkillTool } from "./use-skill-tool";
 import {
+  createWorkspaceActionTool,
+  createWorkspaceContractTool,
+  createWorkspaceCreateTool,
+  createWorkspaceListTool,
+} from "./workspaces";
+import {
   createRuntimeBrowserTool,
   createRuntimeContext7Tool,
   createRuntimeDevLogsTool,
@@ -64,6 +70,15 @@ export function createLazyRuntimeTools(
   };
 }
 
+export function createWorkspaceTools(event: RequestEvent, studioId?: string) {
+  return {
+    workspace_list: createWorkspaceListTool({ event, studioId }),
+    workspace_contract: createWorkspaceContractTool({ event, studioId }),
+    workspace_create: createWorkspaceCreateTool({ event, studioId }),
+    workspace_action: createWorkspaceActionTool({ event, studioId }),
+  };
+}
+
 export async function createAgentTools(
   event: RequestEvent,
   userId: string,
@@ -79,6 +94,7 @@ export async function createAgentTools(
     ...createCoreTools(token, userId),
     studio_integrations: createStudioIntegrationsTool(resolvedIntegrations),
     ...createConfiguredIntegrationTools(resolvedIntegrations),
+    ...createWorkspaceTools(event, studioId),
     ...createLazyRuntimeTools(event, userId, studioId, runId),
   };
 }

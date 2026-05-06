@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-07
 
+### Added - Workspace Runtime Agent Surface
+
+- Added a first-class workspace runtime contract API at `/api/studios/[studioId]/workspaces/[workspaceId]/runtime` so clients and the Nova agent can read the workspace commands, storage paths, hostnames, and deployment metadata from one source of truth
+- Added Nova agent workspace tools for listing workspaces, fetching runtime contracts, creating blog workspaces, and provisioning or previewing them through the existing Studio APIs
+- Added runtime-contract display to the Studio workspace cards and linked the runtime-lab page to the same workspace state so the runtime control plane and workspace view stay aligned
+- Extended the workspace smoke route to return both the pre-provision and post-provision runtime contract snapshots for backend verification
+
 ### Added - Workspace Runtime Contract Docs
 
 - Updated the Nova Cloud README and workspace planning docs to describe the studio-owned sandbox/runtime model, workspace publication lifecycle, blank-slate runtime base, R2-backed runtime state, single `runCommand` contract, and on-demand scale-to-zero execution model

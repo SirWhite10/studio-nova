@@ -4,7 +4,10 @@ import { Table } from "surrealdb";
 import { getPrivateEnv } from "$lib/server/env";
 import { getSurreal } from "$lib/server/surreal";
 import { createStudioForUser } from "$lib/server/surreal-studios";
-import { createWorkspaceForStudio } from "$lib/server/surreal-workspaces";
+import {
+  buildWorkspaceRuntimeContract,
+  createWorkspaceForStudio,
+} from "$lib/server/surreal-workspaces";
 import { provisionWorkspaceInSandbox, startWorkspacePreview } from "$lib/server/workspace-runner";
 
 function isAuthorized(event: Parameters<RequestHandler>[0]) {
@@ -78,6 +81,12 @@ export const POST: RequestHandler = async (event) => {
     workspaceId: created.workspace._id,
   });
 
+  const createdRuntimeContract =
+    created.runtimeContract ?? buildWorkspaceRuntimeContract(created.workspace, created.deployment);
+  const provisionedRuntimeContract =
+    provisioned.runtimeContract ??
+    buildWorkspaceRuntimeContract(provisioned.workspace, provisioned.deployment);
+
   const preview = body.startPreview
     ? await startWorkspacePreview({
         event,
@@ -95,6 +104,8 @@ export const POST: RequestHandler = async (event) => {
     },
     studio,
     workspace: provisioned.workspace,
+    workspaceContract: createdRuntimeContract,
+    runtimeContract: provisionedRuntimeContract,
     deployment: provisioned.deployment,
     artifact: provisioned.artifact,
     preview,

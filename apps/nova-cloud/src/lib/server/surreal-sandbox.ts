@@ -1,11 +1,14 @@
 import { StringRecordId, Table } from "surrealdb";
 import { getSurreal } from "./surreal";
 import { ensureRecordPrefix, queryRows, recordIdToString, withRecordIds } from "./surreal-records";
+import { ensureTables } from "./surreal-tables";
 
 export type SandboxRow = {
+  _id: string;
   id: unknown;
   userId: string;
   studioId?: string;
+  workspaceId?: string | null;
   sandboxId: string;
   templateId: string;
   status: "active" | "expired" | "creating" | "paused" | "unhealthy" | "limit-reached";
@@ -16,9 +19,8 @@ export type SandboxRow = {
 };
 
 async function ensureSandboxTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS sandbox SCHEMALESS").collect();
-  return db;
+  await ensureTables();
+  return getSurreal();
 }
 
 export async function getSandboxForStudio(userId: string, studioId: string) {
@@ -55,6 +57,7 @@ export async function listSandboxesForUser(userId: string) {
 export async function upsertSandbox(input: {
   userId: string;
   studioId?: string;
+  workspaceId?: string | null;
   sandboxId: string;
   templateId: string;
   status: SandboxRow["status"];
@@ -68,20 +71,23 @@ export async function upsertSandbox(input: {
     const existing = await getSandboxForStudio(input.userId, input.studioId!);
     if (existing) {
       const rid = recordIdToString(existing.id);
-      const updated = await db.update<SandboxRow>(new StringRecordId(rid)).merge({
+      const patch: Record<string, unknown> = {
         sandboxId: input.sandboxId,
         templateId: input.templateId,
         status: input.status,
         expiresAt: input.expiresAt,
         updatedAt: now,
-      });
+      };
+      const nextWorkspaceId = input.workspaceId ?? existing.workspaceId;
+      if (nextWorkspaceId) patch.workspaceId = nextWorkspaceId;
+      if (fullStudioId) patch.studioId = fullStudioId;
+      const updated = await db.update<SandboxRow>(new StringRecordId(rid)).merge(patch);
       return withRecordIds((Array.isArray(updated) ? updated[0] : updated) as SandboxRow);
     }
   }
 
-  const created = await db.create(new Table("sandbox")).content({
+  const content: Record<string, unknown> = {
     userId: input.userId,
-    studioId: fullStudioId ?? null,
     sandboxId: input.sandboxId,
     templateId: input.templateId,
     status: input.status,
@@ -89,7 +95,11 @@ export async function upsertSandbox(input: {
     expiresAt: input.expiresAt,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  if (fullStudioId) content.studioId = fullStudioId;
+  if (input.workspaceId) content.workspaceId = input.workspaceId;
+
+  const created = await db.create(new Table("sandbox")).content(content);
   return withRecordIds((Array.isArray(created) ? created[0] : created) as SandboxRow);
 }
 
