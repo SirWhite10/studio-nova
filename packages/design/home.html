@@ -1,0 +1,705 @@
+<!doctype html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>PrestigeDB - The Context Layer for Infinite Scale</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Manrope:wght@200..800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-on-surface": "#343027",
+              outline: "#99907c",
+              "inverse-surface": "#eae1d4",
+              "surface-variant": "#38342b",
+              "on-primary": "#3c2f00",
+              "on-background": "#eae1d4",
+              "primary-fixed": "#ffe088",
+              "on-tertiary-fixed-variant": "#27438a",
+              "primary-container": "#d4af37",
+              "on-tertiary-fixed": "#00174b",
+              "on-secondary-fixed": "#1b1d0e",
+              "on-secondary": "#303221",
+              background: "#16130b",
+              "surface-container-low": "#1f1b13",
+              "surface-container": "#231f17",
+              "on-error": "#690005",
+              "on-secondary-fixed-variant": "#474836",
+              "surface-dim": "#16130b",
+              "on-secondary-container": "#b9baa3",
+              "on-error-container": "#ffdad6",
+              error: "#ffb4ab",
+              tertiary: "#bfcdff",
+              "surface-tint": "#e9c349",
+              "surface-container-lowest": "#110e07",
+              "primary-fixed-dim": "#e9c349",
+              primary: "#f2ca50",
+              "surface-bright": "#3d392f",
+              "secondary-container": "#494a38",
+              surface: "#16130b",
+              "tertiary-fixed": "#dbe1ff",
+              "tertiary-fixed-dim": "#b4c5ff",
+              "outline-variant": "#4d4635",
+              "tertiary-container": "#97b0ff",
+              "on-tertiary": "#082b72",
+              "secondary-fixed-dim": "#c8c8b0",
+              secondary: "#c8c8b0",
+              "surface-container-highest": "#38342b",
+              "secondary-fixed": "#e4e4cc",
+              "on-primary-container": "#554300",
+              "on-surface-variant": "#d0c5af",
+              "error-container": "#93000a",
+              "surface-container-high": "#2d2a21",
+              "inverse-primary": "#735c00",
+              "on-primary-fixed-variant": "#574500",
+              "on-primary-fixed": "#241a00",
+              "on-tertiary-container": "#254188",
+              "on-surface": "#eae1d4",
+            },
+            borderRadius: {
+              DEFAULT: "0.125rem",
+              lg: "0.25rem",
+              xl: "0.5rem",
+              full: "0.75rem",
+            },
+            spacing: {
+              "section-padding": "8rem",
+              "container-max": "1440px",
+              "margin-mobile": "1.5rem",
+              gutter: "2rem",
+              "stack-lg": "4rem",
+              "stack-sm": "0.5rem",
+              "stack-md": "1.5rem",
+            },
+            fontFamily: {
+              "headline-lg": ["Manrope"],
+              "body-md": ["Hanken Grotesk"],
+              "label-caps": ["Geist"],
+              "headline-xl": ["Manrope"],
+              "body-lg": ["Hanken Grotesk"],
+            },
+            fontSize: {
+              "headline-lg": [
+                "32px",
+                { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "600" },
+              ],
+              "body-md": [
+                "16px",
+                { lineHeight: "1.6", letterSpacing: "0.01em", fontWeight: "400" },
+              ],
+              "label-caps": [
+                "12px",
+                { lineHeight: "1", letterSpacing: "0.2em", fontWeight: "600" },
+              ],
+              "headline-xl": [
+                "48px",
+                { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" },
+              ],
+              "body-lg": [
+                "18px",
+                { lineHeight: "1.6", letterSpacing: "0.01em", fontWeight: "400" },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .glass-panel {
+        background: rgba(22, 19, 11, 0.6);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(212, 175, 55, 0.15);
+      }
+      .text-gradient-gold {
+        background: linear-gradient(to right, #f2ca50, #d4af37);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero-glow {
+        background: radial-gradient(
+          circle at top center,
+          rgba(212, 175, 55, 0.15) 0%,
+          rgba(22, 19, 11, 0) 60%
+        );
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container"
+  >
+    <!-- Top Notification Bar -->
+    <div
+      class="w-full bg-surface-container-highest/30 border-b border-outline/10 text-center py-2 px-4 flex justify-center items-center gap-4 text-sm font-label-caps tracking-widest text-on-surface-variant"
+    >
+      <span class="bg-primary/20 text-primary px-2 py-1 rounded text-xs font-bold uppercase"
+        >New</span
+      >
+      <span>The wait is over. PrestigeDB 3.0 is here!</span>
+      <a
+        class="text-primary hover:text-primary-fixed transition-colors flex items-center gap-1 group"
+        href="#"
+      >
+        Learn more
+        <span
+          class="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform"
+          >chevron_right</span
+        >
+      </a>
+    </div>
+    <!-- TopNavBar -->
+    <nav
+      class="bg-background/70 backdrop-blur-xl w-full sticky top-0 z-50 border-b border-outline/20"
+    >
+      <div
+        class="flex justify-between items-center w-full px-section-padding py-4 max-w-container-max mx-auto md:flex hidden relative group/nav"
+      >
+        <!-- Brand -->
+        <a
+          class="font-headline-lg text-headline-lg font-bold tracking-tighter text-primary dark:text-primary flex items-center gap-2"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-4xl"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >hexagon</span
+          >
+          PRESTIGE_DB
+        </a>
+        <!-- Navigation Links -->
+        <div class="hidden md:flex items-center gap-8">
+          <div class="relative group">
+            <button
+              class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-300 flex items-center gap-1 py-4"
+            >
+              Platform
+              <span class="material-symbols-outlined text-[16px]">expand_more</span>
+            </button>
+            <!-- Mega Menu Dropdown -->
+            <div
+              class="absolute top-full left-1/2 -translate-x-1/2 mt-0 w-max opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top pt-2"
+            >
+              <div
+                class="glass-panel rounded-xl p-8 shadow-2xl grid grid-cols-3 gap-12 w-[1000px] max-w-[90vw]"
+              >
+                <!-- Context Column -->
+                <div class="flex flex-col gap-6">
+                  <h4
+                    class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest border-b border-outline/10 pb-2"
+                  >
+                    Context
+                  </h4>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">database</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">PrestigeDB</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        One database for documents, graph, vectors, and SQL
+                      </p>
+                    </div>
+                  </a>
+                  <h4
+                    class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest border-b border-outline/10 pb-2 mt-4"
+                  >
+                    Tools
+                  </h4>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">cloud</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">PrestigeDB Cloud</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        The context-layer which automatically scales with you
+                      </p>
+                    </div>
+                  </a>
+                </div>
+                <!-- Memory Column -->
+                <div class="flex flex-col gap-6">
+                  <h4
+                    class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest border-b border-outline/10 pb-2"
+                  >
+                    Memory
+                  </h4>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">memory</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">Agent Memory</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        Persistent, queryable, autonomous memory for AI agents
+                      </p>
+                    </div>
+                  </a>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20 mt-[3.25rem]"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">extension</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">Extend with custom logic</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        Custom functions and logic inside PrestigeDB
+                      </p>
+                    </div>
+                  </a>
+                </div>
+                <!-- Storage Column -->
+                <div class="flex flex-col gap-6">
+                  <h4
+                    class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest border-b border-outline/10 pb-2"
+                  >
+                    Storage
+                  </h4>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">hard_drive</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">Scalable Storage</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        Horizontally scalable, consistent, transactional storage
+                      </p>
+                    </div>
+                  </a>
+                  <a
+                    class="flex items-start gap-4 hover:bg-surface-container/50 p-3 rounded-lg transition-colors border border-transparent hover:border-outline/20 mt-[3.25rem]"
+                    href="#"
+                  >
+                    <div class="p-2 bg-surface-container rounded-lg text-primary">
+                      <span class="material-symbols-outlined text-2xl">hub</span>
+                    </div>
+                    <div>
+                      <h5 class="text-primary font-bold mb-1">Prestigelist</h5>
+                      <p class="text-on-surface-variant text-sm leading-relaxed">
+                        Explore, and manage your data and knowledge-graphs visually
+                      </p>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-300 flex items-center gap-1"
+          >
+            Resources
+            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+          </button>
+          <button
+            class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-300 flex items-center gap-1"
+          >
+            Solutions
+            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+          </button>
+          <a
+            class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-300"
+            href="#"
+            >Docs</a
+          >
+          <a
+            class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-300"
+            href="#"
+            >Pricing</a
+          >
+        </div>
+        <!-- Actions -->
+        <div class="flex items-center gap-6">
+          <div
+            class="flex items-center gap-4 text-on-surface-variant border-r border-outline/20 pr-6"
+          >
+            <a
+              class="hover:text-primary transition-colors flex items-center gap-2 text-sm font-bold"
+              href="#"
+            >
+              <svg class="w-5 h-5 fill-current" viewbox="0 0 24 24">
+                <path
+                  d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                ></path>
+              </svg>
+              32k
+            </a>
+          </div>
+          <a
+            class="font-label-caps text-label-caps text-on-surface hover:text-primary transition-colors"
+            href="#"
+            >Sign In</a
+          >
+          <a
+            class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-full hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300 scale-95 active:scale-90"
+            href="#"
+            >Get Started</a
+          >
+        </div>
+      </div>
+      <!-- Mobile Nav Placeholder -->
+      <div
+        class="md:hidden flex justify-between items-center w-full px-margin-mobile py-4 border-b border-outline/20"
+      >
+        <a
+          class="font-headline-lg text-headline-lg font-bold tracking-tighter text-primary flex items-center gap-2"
+          href="#"
+        >
+          <span
+            class="material-symbols-outlined text-3xl"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >hexagon</span
+          >
+          PRESTIGE_DB
+        </a>
+        <button class="text-on-surface p-2">
+          <span class="material-symbols-outlined text-2xl">menu</span>
+        </button>
+      </div>
+    </nav>
+    <!-- Main Content Canvas -->
+    <main class="flex-grow flex flex-col relative w-full overflow-hidden">
+      <!-- Hero Section -->
+      <section
+        class="relative pt-32 pb-48 px-section-padding flex flex-col items-center justify-center text-center w-full max-w-container-max mx-auto hero-glow z-10"
+      >
+        <!-- Aurora Background Element -->
+        <div
+          class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] pointer-events-none -z-10 opacity-40 mix-blend-screen"
+          style="
+            background: radial-gradient(
+              ellipse at top,
+              rgba(212, 175, 55, 0.3) 0%,
+              rgba(151, 176, 255, 0.1) 40%,
+              transparent 70%
+            );
+          "
+        ></div>
+        <div class="max-w-4xl flex flex-col items-center gap-8 relative z-20">
+          <h1
+            class="font-headline-xl text-[80px] leading-[1.05] tracking-[-0.03em] font-extrabold text-on-surface"
+          >
+            The context layer<br />
+            <span class="text-gradient-gold">for infinite scale</span>
+          </h1>
+          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
+            The luxury database where storage, context, and memory are unified into one seamless,
+            high-performance transaction. Engineered for AI agents.
+          </p>
+          <div class="flex items-center gap-6 mt-8">
+            <a
+              class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-8 py-4 rounded-full text-lg hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] transition-all duration-300"
+              href="#"
+            >
+              Start building
+            </a>
+            <a
+              class="border border-primary/50 text-primary font-bold px-8 py-4 rounded-full text-lg hover:bg-primary/10 transition-all duration-300"
+              href="#"
+            >
+              Book a demo
+            </a>
+          </div>
+        </div>
+      </section>
+      <!-- Partner Logo Cloud -->
+      <section
+        class="w-full border-y border-outline/10 bg-surface-container-lowest/50 py-12 relative z-10"
+      >
+        <div
+          class="max-w-container-max mx-auto px-section-padding flex flex-wrap justify-center items-center gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-700"
+        >
+          <!-- Abstract Logo representations using text for high-end feel -->
+          <span class="font-headline-lg text-2xl font-bold tracking-widest text-on-surface-variant"
+            >VERTEX</span
+          >
+          <span class="font-headline-lg text-2xl font-light tracking-widest text-on-surface-variant"
+            >AURA_CORP</span
+          >
+          <span
+            class="font-headline-lg text-2xl font-bold tracking-tight text-on-surface-variant italic"
+            >NEXUS</span
+          >
+          <span
+            class="font-headline-lg text-2xl font-extrabold tracking-widest text-on-surface-variant"
+            >OMNI</span
+          >
+          <span
+            class="font-headline-lg text-2xl font-medium tracking-[0.3em] text-on-surface-variant"
+            >QUANTUM</span
+          >
+        </div>
+      </section>
+      <!-- Value Proposition Section -->
+      <section class="py-32 px-section-padding w-full max-w-container-max mx-auto relative z-10">
+        <div class="flex flex-col items-center text-center mb-24">
+          <span class="font-label-caps text-label-caps text-primary uppercase tracking-[0.3em] mb-6"
+            >Multi-Model Architecture</span
+          >
+          <h2 class="font-headline-xl text-[56px] leading-tight font-bold text-on-surface mb-6">
+            Five databases become one
+          </h2>
+          <p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl mx-auto">
+            Stop stitching databases together. PrestigeDB unifies your entire context layer in a
+            single multi-model engine — one query language, one transaction, one deployment.
+          </p>
+        </div>
+        <!-- Bento Grid Feature Display -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+          <!-- Large Feature Card -->
+          <div
+            class="glass-panel rounded-2xl p-8 col-span-1 md:col-span-2 row-span-2 flex flex-col justify-between group hover:bg-surface-container/40 transition-colors duration-500 relative overflow-hidden"
+          >
+            <div
+              class="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none transition-opacity group-hover:opacity-100 opacity-50"
+            ></div>
+            <div>
+              <span
+                class="material-symbols-outlined text-4xl text-primary mb-6 block"
+                style="font-variation-settings: &quot;FILL&quot; 1"
+                >account_tree</span
+              >
+              <h3 class="font-headline-lg text-3xl font-bold text-on-surface mb-4">
+                Relational Graph
+              </h3>
+              <p class="text-on-surface-variant text-lg max-w-md">
+                Query across highly connected data without JOINs. Traverse relationships infinitely
+                with sub-millisecond latency.
+              </p>
+            </div>
+            <div
+              class="w-full h-48 bg-surface-container-highest/30 rounded-xl border border-outline/10 flex items-center justify-center overflow-hidden relative"
+            >
+              <!-- Decorative Code Snippet Representation -->
+              <div
+                class="absolute inset-0 p-6 font-mono text-sm text-outline-variant opacity-70 leading-loose"
+              >
+                <span class="text-primary">SELECT</span> *
+                <span class="text-primary">FROM</span> user:admin<br />
+                <span class="text-primary">FETCH</span> -&gt;purchased-&gt;product;<br />
+                <br />
+                <span class="text-tertiary">CREATE</span> person:john
+                <span class="text-primary">SET</span><br />
+                  name = <span class="text-secondary">'John Doe'</span>,<br />
+                  metadata = { age: 30 };
+              </div>
+            </div>
+          </div>
+          <!-- Small Feature Card 1 -->
+          <div
+            class="glass-panel rounded-2xl p-8 col-span-1 row-span-1 flex flex-col justify-between group hover:bg-surface-container/40 transition-colors duration-500"
+          >
+            <div>
+              <span class="material-symbols-outlined text-3xl text-primary mb-4 block"
+                >document_scanner</span
+              >
+              <h3 class="font-headline-lg text-xl font-bold text-on-surface mb-2">
+                Document Store
+              </h3>
+              <p class="text-on-surface-variant text-sm">
+                Store schema-less or schema-full objects with deep nesting.
+              </p>
+            </div>
+          </div>
+          <!-- Small Feature Card 2 -->
+          <div
+            class="glass-panel rounded-2xl p-8 col-span-1 row-span-1 flex flex-col justify-between group hover:bg-surface-container/40 transition-colors duration-500"
+          >
+            <div>
+              <span class="material-symbols-outlined text-3xl text-primary mb-4 block"
+                >polyline</span
+              >
+              <h3 class="font-headline-lg text-xl font-bold text-on-surface mb-2">Vector Search</h3>
+              <p class="text-on-surface-variant text-sm">
+                Native support for embedding storage and similarity search for AI.
+              </p>
+            </div>
+          </div>
+          <!-- Wide Feature Card -->
+          <div
+            class="glass-panel rounded-2xl p-8 col-span-1 md:col-span-3 row-span-1 flex flex-row items-center justify-between group hover:bg-surface-container/40 transition-colors duration-500 overflow-hidden relative"
+          >
+            <div
+              class="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-32 bg-primary/5 rounded-full blur-[60px] pointer-events-none"
+            ></div>
+            <div class="max-w-xl z-10">
+              <span
+                class="material-symbols-outlined text-3xl text-primary mb-4 block"
+                style="font-variation-settings: &quot;FILL&quot; 1"
+                >speed</span
+              >
+              <h3 class="font-headline-lg text-2xl font-bold text-on-surface mb-2">
+                Real-time Subscriptions
+              </h3>
+              <p class="text-on-surface-variant text-base">
+                Listen to live queries and receive updates instantly over WebSockets.
+              </p>
+            </div>
+            <div class="hidden md:flex gap-4 z-10">
+              <div
+                class="w-16 h-16 rounded-full border border-primary/30 flex items-center justify-center animate-[pulse_3s_ease-in-out_infinite]"
+              >
+                <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <div class="w-8 h-8 rounded-full bg-primary"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-surface-container-lowest w-full border-t border-outline/10 mt-24">
+      <div
+        class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-gutter px-section-padding py-stack-lg max-w-container-max mx-auto"
+      >
+        <div class="col-span-2 lg:col-span-2 flex flex-col gap-6">
+          <a
+            class="font-headline-xl text-[32px] font-bold text-primary flex items-center gap-2 tracking-tighter"
+            href="#"
+          >
+            <span
+              class="material-symbols-outlined text-3xl"
+              style="font-variation-settings: &quot;FILL&quot; 1"
+              >hexagon</span
+            >
+            PRESTIGE_DB
+          </a>
+          <p class="text-on-surface-variant text-sm max-w-xs leading-relaxed">
+            The ultimate context layer for infinite scale. Empowering the next generation of AI and
+            highly connected applications.
+          </p>
+          <div class="flex gap-4 mt-4">
+            <a class="text-on-surface-variant hover:text-primary transition-colors" href="#"
+              ><span class="material-symbols-outlined">code</span></a
+            >
+            <a class="text-on-surface-variant hover:text-primary transition-colors" href="#"
+              ><span class="material-symbols-outlined">terminal</span></a
+            >
+            <a class="text-on-surface-variant hover:text-primary transition-colors" href="#"
+              ><span class="material-symbols-outlined">forum</span></a
+            >
+          </div>
+        </div>
+        <div class="flex flex-col gap-4">
+          <h4
+            class="font-label-caps text-label-caps text-on-surface tracking-widest uppercase mb-2"
+          >
+            Product
+          </h4>
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Architecture</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Cloud</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Pricing</a
+          >
+        </div>
+        <div class="flex flex-col gap-4">
+          <h4
+            class="font-label-caps text-label-caps text-on-surface tracking-widest uppercase mb-2"
+          >
+            Developers
+          </h4>
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Docs</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >API Reference</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Status</a
+          >
+        </div>
+        <div class="flex flex-col gap-4">
+          <h4
+            class="font-label-caps text-label-caps text-on-surface tracking-widest uppercase mb-2"
+          >
+            Company
+          </h4>
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >About</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Careers</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Security</a
+          >
+        </div>
+        <div class="flex flex-col gap-4">
+          <h4
+            class="font-label-caps text-label-caps text-on-surface tracking-widest uppercase mb-2"
+          >
+            Connect
+          </h4>
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Community</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Contact</a
+          >
+          <a
+            class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors underline-offset-4 hover:underline"
+            href="#"
+            >Blog</a
+          >
+        </div>
+      </div>
+      <div class="w-full border-t border-outline/10 py-6 text-center">
+        <p class="font-body-md text-sm text-on-surface-variant">
+          © 2024 Prestige Engineering. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,103 @@
+@import "tailwindcss";
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@theme inline {
+  --color-inverse-on-surface: #343027;
+  --color-outline: #99907c;
+  --color-inverse-surface: #eae1d4;
+  --color-surface-variant: #38342b;
+  --color-on-primary: #3c2f00;
+  --color-on-background: #eae1d4;
+  --color-primary-fixed: #ffe088;
+  --color-on-tertiary-fixed-variant: #27438a;
+  --color-primary-container: #d4af37;
+  --color-on-tertiary-fixed: #00174b;
+  --color-on-secondary-fixed: #1b1d0e;
+  --color-on-secondary: #303221;
+  --color-background: #16130b;
+  --color-surface-container-low: #1f1b13;
+  --color-surface-container: #231f17;
+  --color-on-error: #690005;
+  --color-on-secondary-fixed-variant: #474836;
+  --color-surface-dim: #16130b;
+  --color-on-secondary-container: #b9baa3;
+  --color-on-error-container: #ffdad6;
+  --color-error: #ffb4ab;
+  --color-tertiary: #bfcdff;
+  --color-surface-tint: #e9c349;
+  --color-surface-container-lowest: #110e07;
+  --color-primary-fixed-dim: #e9c349;
+  --color-primary: #f2ca50;
+  --color-surface-bright: #3d392f;
+  --color-secondary-container: #494a38;
+  --color-surface: #16130b;
+  --color-tertiary-fixed: #dbe1ff;
+  --color-tertiary-fixed-dim: #b4c5ff;
+  --color-outline-variant: #4d4635;
+  --color-tertiary-container: #97b0ff;
+  --color-on-tertiary: #082b72;
+  --color-secondary-fixed-dim: #c8c8b0;
+  --color-secondary: #c8c8b0;
+  --color-surface-container-highest: #38342b;
+  --color-secondary-fixed: #e4e4cc;
+  --color-on-primary-container: #554300;
+  --color-on-surface-variant: #d0c5af;
+  --color-error-container: #93000a;
+  --color-surface-container-high: #2d2a21;
+  --color-inverse-primary: #735c00;
+  --color-on-primary-fixed-variant: #574500;
+  --color-on-primary-fixed: #241a00;
+  --color-on-tertiary-container: #254188;
+  --color-on-surface: #eae1d4;
+
+  --font-headline-xl: "Manrope", sans-serif;
+  --font-headline-lg: "Manrope", sans-serif;
+  --font-body-lg: "Hanken Grotesk", sans-serif;
+  --font-body-md: "Hanken Grotesk", sans-serif;
+  --font-label-caps: "Geist", sans-serif;
+
+  --radius-sm: 0.125rem;
+  --radius: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  --spacing-section-padding: 8rem;
+  --spacing-container-max: 1440px;
+  --spacing-gutter: 2rem;
+  --spacing-margin-mobile: 1.5rem;
+  --spacing-stack-sm: 0.5rem;
+  --spacing-stack-md: 1.5rem;
+  --spacing-stack-lg: 4rem;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-body-md antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(22, 19, 11, 0.6);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(to right, #f2ca50, #d4af37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-glow {
+    background: radial-gradient(
+      circle at top center,
+      rgba(212, 175, 55, 0.15) 0%,
+      rgba(22, 19, 11, 0) 60%
+    );
+  }
+}

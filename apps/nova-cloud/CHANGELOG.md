@@ -13,6 +13,17 @@ All notable changes to this project will be documented in this file.
 - Removed the active E2B dependency, template build script, and E2B runtime imports from Nova Cloud while keeping a k3s-backed compatibility shim for older sandbox call sites
 - Fixed SurrealDB record-id handling for runtime process and artifact updates so existing preview rows update cleanly when a k3s workspace preview is restarted
 
+### Added - Password Reset Flow
+
+- Added forgot-password and reset-password routes under `/auth/forgot-password` and `/auth/reset-password` for the Better Auth email/password flow
+- Added Resend-backed password reset email delivery with configurable `RESEND_API_KEY` and `RESEND_FROM_EMAIL` environment variables
+- Added sign-in success feedback after a completed password reset and linked the sign-in form to the forgot-password screen
+
+### Fixed - Password Reset Delivery and Links
+
+- Fixed reset emails to generate app-facing links that point to `https://devnova.dlxstudios.com/auth/reset-password?token=...` in development and `https://nova.dlxstudios.com/auth/reset-password?token=...` in production instead of localhost or the Better Auth backend callback path
+- Enabled password-reset session revocation so existing sessions are invalidated after a successful password change
+
 ### Added - Workspace Runtime Agent Surface
 
 - Added a first-class workspace runtime contract API at `/api/studios/[studioId]/workspaces/[workspaceId]/runtime` so clients and the Nova agent can read the workspace commands, storage paths, hostnames, and deployment metadata from one source of truth

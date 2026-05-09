@@ -1,10 +1,10 @@
-// @ts-nocheck
-import Root, {
+import Root from "./button.svelte";
+import {
+  buttonVariants,
   type ButtonProps,
   type ButtonSize,
   type ButtonVariant,
-  buttonVariants,
-} from "./button.svelte";
+} from "./button-variants.js";
 
 export {
   Root,

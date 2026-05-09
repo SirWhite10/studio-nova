@@ -21,7 +21,7 @@
   <nav class="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
       <a href="/" aria-label="Nova Cloud home">
-        <NovaLogo class="gap-1.5 text-xl font-extrabold tracking-tight" href={null} />
+        <NovaLogo class="gap-1.5 text-xl font-extrabold tracking-tight" />
       </a>
       <div class="hidden items-center gap-5 text-sm font-medium lg:flex">
         {#each routeLinks as link}

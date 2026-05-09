@@ -28,3 +28,6 @@ dist-ssr
 
 # Local scratch files
 .tmp/
+
+# Local deploy secrets
+deploy/.env

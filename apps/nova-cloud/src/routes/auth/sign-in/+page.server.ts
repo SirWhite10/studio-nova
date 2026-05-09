@@ -27,5 +27,7 @@ export const load: PageServerLoad = async (event) => {
   if (event.locals.userId) {
     throw redirect(303, "/app");
   }
-  return {};
+  return {
+    reset: event.url.searchParams.get("reset") === "1",
+  };
 };
