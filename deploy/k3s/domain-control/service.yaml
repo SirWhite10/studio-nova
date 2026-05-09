@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nova-domain-control
+  namespace: nova-domain
+  labels:
+    app.kubernetes.io/name: nova-domain-control
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nova-domain-control
+  ports:
+    - name: http
+      port: 8790
+      targetPort: http

@@ -1,7 +1,15 @@
 import { type Tool } from "ai";
 import { z } from "zod";
-import type { Sandbox } from "e2b";
-import { WORKSPACE_PATH } from "$lib/server/sandbox";
+import { K3S_WORKSPACE_PATH } from "$lib/server/k3s-runtime";
+
+type RuntimeShell = {
+  commands: {
+    run(
+      command: string,
+      options?: { cwd?: string; timeoutMs?: number },
+    ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  };
+};
 
 const ShellInputSchema = z.object({
   command: z.string(),
@@ -9,7 +17,7 @@ const ShellInputSchema = z.object({
   timeout: z.number().default(60000),
 });
 
-export function createShellTool(sandbox: Sandbox | null, _userId?: string): Tool {
+export function createShellTool(sandbox: RuntimeShell | null, _userId?: string): Tool {
   return {
     description:
       "Execute shell commands in the active Studio runtime environment with user-specific file storage. Supports timeouts and working directory specification.",
@@ -21,7 +29,7 @@ export function createShellTool(sandbox: Sandbox | null, _userId?: string): Tool
 
       try {
         const result = await sandbox.commands.run(command, {
-          cwd: cwd ? `${WORKSPACE_PATH}/${cwd}` : WORKSPACE_PATH,
+          cwd: cwd ? `${K3S_WORKSPACE_PATH}/${cwd}` : K3S_WORKSPACE_PATH,
           timeoutMs: timeout,
         });
 

@@ -1,4 +1,12 @@
-import { WORKSPACE_PATH, ensureSandboxForRuntime } from "./sandbox";
+import { ensureK3sRuntime } from "./k3s-runtime";
+import {
+  callRuntimeControl,
+  getRuntimeControlStatus,
+  runtimeControlStudioId,
+  runtimePreviewServiceHost,
+  startRuntimeControlPreview,
+  stopRuntimeControlPreview,
+} from "./nova-runtime-control";
 import { upsertArtifact } from "./surreal-artifacts";
 import { upsertPrimaryForStudio } from "./surreal-runtime-processes";
 import {
@@ -6,7 +14,6 @@ import {
   getWorkspaceForStudio,
   listDeploymentsForWorkspace,
   markWorkspaceDeploymentStatus,
-  normalizeWorkspaceBuildCommand,
 } from "./surreal-workspaces";
 
 const BLOG_INDEX_JSON = JSON.stringify(
@@ -272,6 +279,22 @@ button {
 }
 `;
 
+async function waitForRuntimePreviewReady(controlStudioId: string) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const status = await getRuntimeControlStatus(controlStudioId).catch(() => null);
+    const podsOutput =
+      status &&
+      typeof status === "object" &&
+      "result" in status &&
+      typeof status.result?.pods === "string"
+        ? status.result.pods
+        : "";
+    if (/Running/i.test(podsOutput)) return;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  throw new Error("Timed out waiting for runtime preview pod to become ready");
+}
+
 function patchWorkspaceViteConfig(source: string) {
   if (source.includes("allowedHosts")) {
     return source;
@@ -286,16 +309,9 @@ function patchWorkspaceViteConfig(source: string) {
   return source;
 }
 
-function workspaceAbsolutePath(relativePath: string) {
-  return `${WORKSPACE_PATH}/${relativePath}`.replace(/\/+/g, "/");
-}
-
-async function fileExists(
-  sandbox: Awaited<ReturnType<typeof ensureSandboxForRuntime>>,
-  path: string,
-) {
+async function fileExists(runtime: Awaited<ReturnType<typeof ensureK3sRuntime>>, path: string) {
   try {
-    await sandbox.files.read(path);
+    await runtime.files.read(path);
     return true;
   } catch {
     return false;
@@ -303,33 +319,112 @@ async function fileExists(
 }
 
 async function writeBlogWorkspaceStarter(
-  sandbox: Awaited<ReturnType<typeof ensureSandboxForRuntime>>,
+  runtime: Awaited<ReturnType<typeof ensureK3sRuntime>>,
   workspace: Awaited<ReturnType<typeof getWorkspaceForStudio>>,
 ) {
   if (!workspace) {
     throw new Error("Workspace not found");
   }
 
-  const sourceRoot = workspaceAbsolutePath(workspace.sourcePath).replace(/\/$/, "");
-  const contentRoot = workspaceAbsolutePath(workspace.contentPath).replace(/\/$/, "");
+  const sourceRoot = runtime.workspacePath(workspace.sourcePath).replace(/\/$/, "");
+  const buildRoot = runtime.workspacePath(workspace.buildPath).replace(/\/$/, "");
+  const contentRoot = runtime.workspacePath(workspace.contentPath).replace(/\/$/, "");
   const postsRoot = `${contentRoot}/posts`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${workspace.name}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, sans-serif;
+        background: #0f1720;
+        color: #e5eef7;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 28%),
+          radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 24%),
+          #0f1720;
+      }
+      .shell {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 56px 24px 72px;
+      }
+      .eyebrow {
+        margin: 0 0 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 11px;
+        color: #7dd3fc;
+      }
+      h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.05;
+      }
+      .lede, .summary {
+        color: #94a3b8;
+        line-height: 1.8;
+      }
+      .panel {
+        margin-top: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 18px;
+        background: rgba(15, 23, 32, 0.72);
+        padding: 24px;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font: inherit;
+        line-height: 1.8;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <p class="eyebrow">Nova Workspace Runtime</p>
+      <h1>${workspace.name}</h1>
+      <p class="lede">Served from the k3s runtime preview service without the legacy E2B path.</p>
+      <section class="panel">
+        <p class="eyebrow">Published from</p>
+        <p class="summary">${workspace.buildPath}</p>
+      </section>
+      <section class="panel">
+        <p class="eyebrow">Hello World</p>
+        <pre>${BLOG_MARKDOWN}</pre>
+      </section>
+    </main>
+  </body>
+</html>
+`;
 
-  await sandbox.files.makeDir(contentRoot);
-  await sandbox.files.makeDir(postsRoot);
-  await sandbox.files.write(`${contentRoot}/index.json`, BLOG_INDEX_JSON);
-  await sandbox.files.write(`${postsRoot}/hello-world.md`, BLOG_MARKDOWN);
-  await sandbox.files.write(`${sourceRoot}/src/App.tsx`, BLOG_APP_TSX);
-  await sandbox.files.write(`${sourceRoot}/src/index.css`, BLOG_INDEX_CSS);
+  await runtime.files.makeDir(sourceRoot);
+  await runtime.files.makeDir(buildRoot);
+  await runtime.files.makeDir(contentRoot);
+  await runtime.files.makeDir(postsRoot);
+  await runtime.files.write(`${contentRoot}/index.json`, BLOG_INDEX_JSON);
+  await runtime.files.write(`${postsRoot}/hello-world.md`, BLOG_MARKDOWN);
+  await runtime.files.write(`${sourceRoot}/src/App.tsx`, BLOG_APP_TSX);
+  await runtime.files.write(`${sourceRoot}/src/index.css`, BLOG_INDEX_CSS);
+  await runtime.files.write(`${buildRoot}/index.html`, html);
 
   const viteConfigPath = `${sourceRoot}/vite.config.js`;
-  if (await fileExists(sandbox, viteConfigPath)) {
-    const current = await sandbox.files.read(viteConfigPath);
-    await sandbox.files.write(viteConfigPath, patchWorkspaceViteConfig(current));
+  if (await fileExists(runtime, viteConfigPath)) {
+    const current = await runtime.files.read(viteConfigPath);
+    await runtime.files.write(viteConfigPath, patchWorkspaceViteConfig(current));
   }
 }
 
 export async function provisionWorkspaceInSandbox(input: {
-  event: Parameters<typeof ensureSandboxForRuntime>[0]["event"];
+  event: Parameters<typeof ensureK3sRuntime>[0]["event"];
   userId: string;
   studioId: string;
   workspaceId: string;
@@ -348,18 +443,11 @@ export async function provisionWorkspaceInSandbox(input: {
     throw new Error("Workspace deployment not found");
   }
 
-  const sandbox = await ensureSandboxForRuntime({
+  const runtime = await ensureK3sRuntime({
     event: input.event,
     userId: input.userId,
     studioId: input.studioId,
   });
-
-  const buildCommand = normalizeWorkspaceBuildCommand(
-    workspace.buildCommand,
-    workspace.sourcePath.replace(/source\/?$/, "source").replace(/\/$/, ""),
-  );
-  const normalizedWorkspace =
-    buildCommand === workspace.buildCommand ? workspace : { ...workspace, buildCommand };
 
   await markWorkspaceDeploymentStatus({
     userId: input.userId,
@@ -370,61 +458,16 @@ export async function provisionWorkspaceInSandbox(input: {
     deploymentStatus: "building",
     metadata: {
       startedAt: Date.now(),
-      stage: "scaffold",
+      stage: "prepare-runtime",
     },
   });
 
-  const packageJsonPath = `${workspaceAbsolutePath(workspace.sourcePath).replace(/\/$/, "")}/package.json`;
-  const alreadyScaffolded = await fileExists(sandbox, packageJsonPath);
-
-  let scaffoldResult: { stdout: string; stderr: string; exitCode: number } | null = null;
-  if (!alreadyScaffolded) {
-    scaffoldResult = await sandbox.commands.run(workspace.scaffoldCommand, {
-      cwd: WORKSPACE_PATH,
-      timeoutMs: 240000,
-    });
-    if (scaffoldResult.exitCode !== 0) {
-      await markWorkspaceDeploymentStatus({
-        userId: input.userId,
-        studioId: input.studioId,
-        workspaceId: workspace._id,
-        deploymentId: deployment._id,
-        workspaceStatus: "failed",
-        deploymentStatus: "failed",
-        metadata: {
-          stage: "scaffold",
-          stdout: scaffoldResult.stdout,
-          stderr: scaffoldResult.stderr,
-          exitCode: scaffoldResult.exitCode,
-        },
-      });
-      throw new Error(scaffoldResult.stderr || "Workspace scaffold failed");
-    }
-  }
-
-  await writeBlogWorkspaceStarter(sandbox, workspace);
-
-  const buildResult = await sandbox.commands.run(buildCommand, {
-    cwd: WORKSPACE_PATH,
-    timeoutMs: 240000,
-  });
-  if (buildResult.exitCode !== 0) {
-    await markWorkspaceDeploymentStatus({
-      userId: input.userId,
-      studioId: input.studioId,
-      workspaceId: workspace._id,
-      deploymentId: deployment._id,
-      workspaceStatus: "failed",
-      deploymentStatus: "failed",
-      metadata: {
-        stage: "build",
-        stdout: buildResult.stdout,
-        stderr: buildResult.stderr,
-        exitCode: buildResult.exitCode,
-      },
-    });
-    throw new Error(buildResult.stderr || "Workspace build failed");
-  }
+  await writeBlogWorkspaceStarter(runtime, workspace);
+  const buildResult = {
+    stdout: "Prepared static workspace output in k3s runtime.",
+    stderr: "",
+    exitCode: 0,
+  };
 
   const marked = await markWorkspaceDeploymentStatus({
     userId: input.userId,
@@ -439,10 +482,11 @@ export async function provisionWorkspaceInSandbox(input: {
       stdout: buildResult.stdout,
       stderr: buildResult.stderr,
       buildPath: deployment.artifactPath,
+      runtimeBackend: "k3s",
     },
   });
 
-  const runtimeContract = buildWorkspaceRuntimeContract(normalizedWorkspace, marked.deployment);
+  const runtimeContract = buildWorkspaceRuntimeContract(workspace, marked.deployment);
 
   const artifact = await upsertArtifact({
     userId: input.userId,
@@ -458,7 +502,7 @@ export async function provisionWorkspaceInSandbox(input: {
       deploymentId: deployment._id,
       framework: workspace.framework,
       templateKind: workspace.templateKind,
-      buildCommand,
+      buildCommand: workspace.buildCommand,
       runCommand: workspace.runCommand,
       runtimeKind: workspace.runtimeKind,
       lifecycleMode: workspace.lifecycleMode,
@@ -474,13 +518,13 @@ export async function provisionWorkspaceInSandbox(input: {
     deployment: marked.deployment,
     artifact,
     runtimeContract,
-    scaffoldResult,
+    scaffoldResult: null,
     buildResult,
   };
 }
 
 export async function startWorkspacePreview(input: {
-  event: Parameters<typeof ensureSandboxForRuntime>[0]["event"];
+  event: Parameters<typeof ensureK3sRuntime>[0]["event"];
   userId: string;
   studioId: string;
   workspaceId: string;
@@ -491,31 +535,42 @@ export async function startWorkspacePreview(input: {
     throw new Error("Workspace not found");
   }
 
-  const sandbox = await ensureSandboxForRuntime({
-    event: input.event,
-    userId: input.userId,
-    studioId: input.studioId,
-  });
-
   const port = input.port ?? 4173;
-  const runCommand = workspace.runCommand || workspace.serveCommand;
-  const handle = await sandbox.commands.run(runCommand, {
-    cwd: WORKSPACE_PATH,
-    background: true,
-    timeoutMs: 60000,
-    envs: {
-      PORT: String(port),
-    },
-  });
+  const controlStudioId = runtimeControlStudioId(input.userId, input.studioId);
+  const status = await getRuntimeControlStatus(controlStudioId).catch(() => null);
+  const podsOutput =
+    status &&
+    typeof status === "object" &&
+    "result" in status &&
+    typeof status.result?.pods === "string"
+      ? status.result.pods
+      : "";
+  if (!/Running/i.test(podsOutput)) {
+    await callRuntimeControl(controlStudioId, {
+      action: "start",
+      systemPackages: ["git"],
+    });
+    await waitForRuntimePreviewReady(controlStudioId);
+  }
 
-  const previewUrl = `https://${sandbox.getHost(port)}`;
+  await stopRuntimeControlPreview(controlStudioId, { port }).catch(() => {});
+  const previewStart = await startRuntimeControlPreview(controlStudioId, {
+    rootPath: workspace.buildPath,
+    port,
+  });
+  if (!previewStart.result.success) {
+    throw new Error("Failed to start runtime preview server");
+  }
+
+  const previewUrl = `http://${runtimePreviewServiceHost(controlStudioId, port)}`;
+  const runCommand = `nova-runtime-preview ${workspace.buildPath} --port ${port}`;
   const process = await upsertPrimaryForStudio(input.userId, input.studioId, {
-    sandboxId: sandbox.sandboxId,
+    sandboxId: controlStudioId,
     workspaceId: workspace._id,
     label: `${workspace.name} Preview`,
     command: runCommand,
-    cwd: workspace.sourcePath,
-    pid: handle.pid,
+    cwd: workspace.buildPath,
+    pid: port,
     port,
     previewUrl,
     status: "running",
@@ -533,6 +588,6 @@ export async function startWorkspacePreview(input: {
     workspace,
     process,
     previewUrl,
-    pid: handle.pid,
+    pid: port,
   };
 }

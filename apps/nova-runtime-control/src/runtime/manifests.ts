@@ -175,6 +175,8 @@ spec:
       ports:
         - name: agent
           containerPort: 8788
+        - name: preview
+          containerPort: 4173
       resources:
         requests:
           cpu: 50m
@@ -206,6 +208,24 @@ spec:
     - name: apk-root
       persistentVolumeClaim:
         claimName: apk-root
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: runtime-preview
+  namespace: ${namespace}
+  labels:
+    app.kubernetes.io/name: nova-runtime
+    nova.dlxstudios.com/studio-id: ${safeStudioId}
+spec:
+  selector:
+    app.kubernetes.io/name: nova-runtime
+    nova.dlxstudios.com/studio-id: ${safeStudioId}
+  ports:
+    - name: preview
+      port: 4173
+      targetPort: 4173
+      protocol: TCP
 `;
 }
 

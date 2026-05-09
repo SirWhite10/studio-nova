@@ -31,6 +31,14 @@ export type ProxyDomain = {
   updatedAt: number;
 };
 
+export type DomainVerificationDetails = {
+  host: string;
+  recordName: string;
+  expectedValue: string;
+  foundValues: string[];
+  verified: boolean;
+};
+
 export type DomainResolution = {
   proxy: WorkspaceProxy;
   domain: ProxyDomain;
@@ -56,4 +64,9 @@ export type FrpPluginResponse = {
   rejectReason?: string;
   unchange?: boolean;
   content?: unknown;
+};
+
+export type CaddyRouteSpec = {
+  host: string;
+  upstream: string;
 };

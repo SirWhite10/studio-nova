@@ -1,11 +1,11 @@
-import { StringRecordId, Table } from "surrealdb";
+import { Table } from "surrealdb";
 import { getSurreal } from "./surreal";
 import { createStudioEvent } from "./surreal-studio-events";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
   queryRows,
-  recordIdToString,
+  tableRecordId,
   withRecordIds,
 } from "./surreal-records";
 
@@ -105,7 +105,7 @@ export async function upsertArtifact(input: {
 
   if (existing) {
     const updated = await db
-      .update<ArtifactRow>(new StringRecordId(recordIdToString(existing.id)))
+      .update<ArtifactRow>(tableRecordId("artifact", existing.id))
       .merge(payload);
     const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as ArtifactRow);
     await createStudioEvent({
@@ -161,13 +161,11 @@ export async function markArtifactStatus(input: {
   if (!existing) return null;
 
   const db = await ensureArtifactTable();
-  const updated = await db
-    .update<ArtifactRow>(new StringRecordId(recordIdToString(existing.id)))
-    .merge({
-      status: input.status,
-      metadata: input.metadata ?? existing.metadata ?? null,
-      updatedAt: Date.now(),
-    });
+  const updated = await db.update<ArtifactRow>(tableRecordId("artifact", existing.id)).merge({
+    status: input.status,
+    metadata: input.metadata ?? existing.metadata ?? null,
+    updatedAt: Date.now(),
+  });
   const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as ArtifactRow);
   await createStudioEvent({
     userId: input.userId,

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frpc
+  namespace: nova-frp
+  labels:
+    app.kubernetes.io/name: nova-frpc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nova-frpc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-frpc
+    spec:
+      terminationGracePeriodSeconds: 10
+      initContainers:
+        - name: render-config
+          image: alpine:3.22
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -eu
+              TOKEN="$(cat /etc/frp/token)"
+              TOKEN_ESCAPED="$(printf '%s' "$TOKEN" | sed 's/[\/&]/\\&/g')"
+              sed "s/REPLACE_WITH_FRPS_SHARED_TOKEN/${TOKEN_ESCAPED}/g" /etc/frp-template/frpc.toml.tpl > /etc/frp/frpc.toml
+          volumeMounts:
+            - name: config-template
+              mountPath: /etc/frp-template
+              readOnly: true
+            - name: token
+              mountPath: /etc/frp/token
+              subPath: token
+              readOnly: true
+            - name: rendered-config
+              mountPath: /etc/frp
+      containers:
+        - name: frpc
+          image: ghcr.io/fatedier/frpc:v0.65.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - -c
+            - /etc/frp/frpc.toml
+          env:
+            - name: FRP_LOG_LEVEL
+              value: info
+          volumeMounts:
+            - name: rendered-config
+              mountPath: /etc/frp
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+      volumes:
+        - name: config-template
+          configMap:
+            name: frpc-config
+            items:
+              - key: frpc.toml.tpl
+                path: frpc.toml.tpl
+        - name: rendered-config
+          emptyDir: {}
+        - name: token
+          secret:
+            secretName: frpc-token
+            items:
+              - key: token
+                path: token

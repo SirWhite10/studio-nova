@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caddy
+  namespace: nova-edge
+  labels:
+    app.kubernetes.io/name: caddy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: caddy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: caddy
+    spec:
+      containers:
+        - name: caddy
+          image: caddy:2.10.2-alpine
+          command:
+            - caddy
+          args:
+            - run
+            - --config
+            - /etc/caddy/caddy.json
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 2019
+              name: admin
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: admin
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/caddy
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: caddy-config

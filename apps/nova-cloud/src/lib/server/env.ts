@@ -26,12 +26,13 @@ export const surrealConfig = {
   SURREALDB_CONNECT_TIMEOUT_MS: getPrivateEnv("SURREALDB_CONNECT_TIMEOUT_MS"),
   BETTER_AUTH_SECRET: getPrivateEnv("BETTER_AUTH_SECRET"),
   PUBLIC_SITE_URL: getPrivateEnv("PUBLIC_SITE_URL"),
+  RESEND_API_KEY: getPrivateEnv("RESEND_API_KEY"),
+  RESEND_FROM_EMAIL: getPrivateEnv("RESEND_FROM_EMAIL"),
   NOVA_CRON_SECRET: getPrivateEnv("NOVA_CRON_SECRET"),
 };
 
 export const config = {
   ...surrealConfig,
-  E2B_API_KEY: getPrivateEnv("E2B_API_KEY"),
   OPENROUTER_API_KEY: getPrivateEnv("OPENROUTER_API_KEY"),
 };
 
@@ -41,6 +42,6 @@ export function logEnvStatus() {
   console.log("[ENV] SurrealDB URL present:", !!surrealConfig.SURREALDB_URL);
   console.log("[ENV] SURREALDB_USERNAME present:", !!surrealConfig.SURREALDB_USERNAME);
   console.log("[ENV] BETTER_AUTH_SECRET present:", !!surrealConfig.BETTER_AUTH_SECRET);
-  console.log("[ENV] E2B_API_KEY present:", !!config.E2B_API_KEY);
+  console.log("[ENV] RESEND_API_KEY present:", !!surrealConfig.RESEND_API_KEY);
   console.log("[ENV] OPENROUTER_API_KEY present:", !!config.OPENROUTER_API_KEY);
 }

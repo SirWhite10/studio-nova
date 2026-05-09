@@ -181,4 +181,12 @@ if (!response.ok) process.exit(1);
   async deleteRuntimeFile(studioId: string, input: unknown) {
     return this.callAgent(studioId, "/files/delete", input);
   }
+
+  async startRuntimePreview(studioId: string, input: unknown) {
+    return this.callAgent(studioId, "/preview/start", input);
+  }
+
+  async stopRuntimePreview(studioId: string, input: unknown) {
+    return this.callAgent(studioId, "/preview/stop", input);
+  }
 }

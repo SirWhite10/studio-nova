@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-domain-control
+  namespace: nova-domain
+  labels:
+    app.kubernetes.io/name: nova-domain-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nova-domain-control
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-domain-control
+    spec:
+      containers:
+        - name: nova-domain-control
+          image: node:24-alpine
+          workingDir: /workspace/apps/nova-domain-control
+          command:
+            - node
+          args:
+            - --experimental-strip-types
+            - src/index.ts
+          envFrom:
+            - secretRef:
+                name: nova-domain-control-env
+          ports:
+            - containerPort: 8790
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+              readOnly: true
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /home/nova/studio-nova
+            type: Directory

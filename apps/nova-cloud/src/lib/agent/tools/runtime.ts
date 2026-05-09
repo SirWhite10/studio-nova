@@ -1,13 +1,15 @@
 import type { Tool } from "ai";
 import { z } from "zod";
 import type { RequestEvent } from "@sveltejs/kit";
+import { ensureK3sRuntime, K3S_WORKSPACE_PATH } from "$lib/server/k3s-runtime";
 import {
-  WORKSPACE_PATH,
-  ensureSandboxForRuntime,
-  getConnectedSandbox,
-  type SandboxRuntimeContext,
-  disconnectSandbox,
-} from "$lib/server/sandbox";
+  callRuntimeControl,
+  getRuntimeControlStatus,
+  runtimeControlStudioId,
+  runtimePreviewServiceHost,
+  startRuntimeControlPreview,
+  stopRuntimeControlPreview,
+} from "$lib/server/nova-runtime-control";
 import { updateChatRunStatus } from "$lib/server/surreal-chat-runs";
 import {
   getPrimaryForStudio,
@@ -16,7 +18,12 @@ import {
 } from "$lib/server/surreal-runtime-processes";
 import { publishRunChunkByRunId } from "$lib/server/chat-run-registry";
 
-type RuntimeContext = Omit<SandboxRuntimeContext, "event"> & { event: RequestEvent };
+type RuntimeContext = {
+  event: RequestEvent;
+  userId: string;
+  studioId?: string;
+  runId?: string;
+};
 
 const MAX_RUNTIME_TOOL_TIMEOUT_MS = 60 * 60 * 1000;
 const MIN_RUNTIME_TOOL_TIMEOUT_MS = 1000;
@@ -34,14 +41,14 @@ function normalizeRuntimeTimeoutMs(timeout: number | undefined, fallback: number
 }
 
 function normalizeCwd(cwd?: string): string {
-  if (!cwd) return WORKSPACE_PATH;
+  if (!cwd) return K3S_WORKSPACE_PATH;
   if (cwd.startsWith("/")) return cwd;
-  return `${WORKSPACE_PATH}/${cwd}`.replace(/\/+/g, "/");
+  return `${K3S_WORKSPACE_PATH}/${cwd}`.replace(/\/+/g, "/");
 }
 
 function normalizePath(path: string): string {
   if (path.startsWith("/")) return path;
-  return `${WORKSPACE_PATH}/${path}`.replace(/\/+/g, "/");
+  return `${K3S_WORKSPACE_PATH}/${path}`.replace(/\/+/g, "/");
 }
 
 async function recordRuntimeEvent(
@@ -138,17 +145,30 @@ async function doMarkPrimaryProcessStopped(context: RuntimeContext) {
 }
 
 async function getRuntimeSandbox(context: RuntimeContext) {
-  const existing = await getConnectedSandbox(context);
-  if (existing) {
+  if (!context.studioId) {
+    throw new Error("This runtime tool requires a Studio-scoped chat.");
+  }
+
+  const controlStudioId = runtimeControlStudioId(context.userId, context.studioId);
+  const existing = await getRuntimeControlStatus(controlStudioId).catch(() => null);
+  if (runtimeIsReady(existing)) {
     await recordRuntimeEvent(context, {
       runId: context.runId,
       action: "reused",
-      sandboxId: existing.sandboxId,
+      sandboxId: controlStudioId,
     });
-    return existing;
+    return ensureK3sRuntime({
+      event: context.event,
+      userId: context.userId,
+      studioId: context.studioId,
+    });
   }
 
-  const sandbox = await ensureSandboxForRuntime(context);
+  const sandbox = await ensureK3sRuntime({
+    event: context.event,
+    userId: context.userId,
+    studioId: context.studioId,
+  });
   await recordRuntimeEvent(context, {
     runId: context.runId,
     action: "started",
@@ -162,7 +182,21 @@ async function resolveSandbox(context: RuntimeContext, createIfMissing: boolean)
     return getRuntimeSandbox(context);
   }
 
-  return getConnectedSandbox(context);
+  if (!context.studioId) return null;
+  const controlStudioId = runtimeControlStudioId(context.userId, context.studioId);
+  const status = await getRuntimeControlStatus(controlStudioId).catch(() => null);
+  if (!runtimeIsReady(status)) return null;
+  return ensureK3sRuntime({
+    event: context.event,
+    userId: context.userId,
+    studioId: context.studioId,
+  });
+}
+
+function runtimeIsReady(status: unknown) {
+  if (!status || typeof status !== "object" || !("result" in status)) return false;
+  const result = (status as { result?: { pods?: unknown } }).result;
+  return typeof result?.pods === "string" && /Running/i.test(result.pods);
 }
 
 const RuntimeStatusInputSchema = z.object({
@@ -189,7 +223,7 @@ export function createRuntimeStatusTool(context: RuntimeContext): Tool {
             available: !!sandbox,
             autoStarted: !!(autoStart && sandbox),
             sandboxId: sandbox?.sandboxId ?? null,
-            workspacePath: WORKSPACE_PATH,
+            workspacePath: K3S_WORKSPACE_PATH,
           },
         };
       } catch (error: unknown) {
@@ -216,7 +250,7 @@ export function createRuntimeStartTool(context: RuntimeContext): Tool {
             available: true,
             action: "started",
             sandboxId: sandbox.sandboxId,
-            workspacePath: WORKSPACE_PATH,
+            workspacePath: K3S_WORKSPACE_PATH,
           },
         };
       } catch (error: unknown) {
@@ -236,10 +270,16 @@ export function createRuntimeStopTool(context: RuntimeContext): Tool {
     inputSchema: RuntimeLifecycleInputSchema,
     execute: async () => {
       try {
-        await disconnectSandbox(context.userId, context.event.locals.token, context.studioId);
+        if (!context.studioId) {
+          return { success: false, error: "This runtime tool requires a Studio-scoped chat." };
+        }
+        const controlStudioId = runtimeControlStudioId(context.userId, context.studioId);
+        await callRuntimeControl(controlStudioId, { action: "delete" });
+        await doMarkPrimaryProcessStopped(context);
         await recordRuntimeEvent(context, {
           runId: context.runId,
           action: "stopped",
+          sandboxId: controlStudioId,
         });
         return {
           success: true,
@@ -526,7 +566,7 @@ const RuntimeDevStartInputSchema = z.object({
 export function createRuntimeDevStartTool(context: RuntimeContext): Tool {
   return {
     description:
-      "Start one primary Studio dev server in the background, capture its process metadata, and expose a preview URL.",
+      "Expose one primary Studio preview through the k3s runtime preview service. The cwd should point at the built/static directory to serve.",
     inputSchema: RuntimeDevStartInputSchema,
     execute: async ({ command, cwd, port, label }) => {
       try {
@@ -538,31 +578,37 @@ export function createRuntimeDevStartTool(context: RuntimeContext): Tool {
           toolName: "runtime_dev_start",
         });
 
-        const handle = await sandbox.commands.run(command, {
-          cwd: normalizeCwd(cwd),
-          background: true,
-          timeoutMs: 60_000,
+        const rootPath = normalizePath(cwd);
+        const normalizedPort = port || 4173;
+        await stopRuntimeControlPreview(sandbox.controlStudioId, { port: normalizedPort }).catch(
+          () => {},
+        );
+        const preview = await startRuntimeControlPreview(sandbox.controlStudioId, {
+          rootPath,
+          port: normalizedPort,
         });
-
-        const previewUrl = `https://${sandbox.getHost(port)}`;
+        if (!preview.result.success) {
+          throw new Error("Failed to start runtime preview service");
+        }
+        const previewUrl = `http://${runtimePreviewServiceHost(sandbox.controlStudioId, normalizedPort)}`;
         await doUpsertPrimaryProcess(context, {
           sandboxId: sandbox.sandboxId,
           label,
           command,
-          cwd,
-          pid: handle.pid,
-          port,
+          cwd: rootPath,
+          pid: normalizedPort,
+          port: normalizedPort,
           previewUrl,
           status: "running",
-          logSummary: `Started ${label} on port ${port}`,
+          logSummary: `Serving ${label} from ${rootPath} on port ${normalizedPort}`,
         });
 
         return {
           success: true,
           result: {
             sandboxId: sandbox.sandboxId,
-            pid: handle.pid,
-            port,
+            pid: normalizedPort,
+            port: normalizedPort,
             previewUrl,
             label,
           },
@@ -595,7 +641,7 @@ export function createRuntimeDevStopTool(context: RuntimeContext): Tool {
         if (!processId) {
           return { success: false, error: "No primary dev server is registered for this Studio." };
         }
-        await sandbox.commands.kill(processId);
+        await stopRuntimeControlPreview(sandbox.controlStudioId, { port: processId });
         await doMarkPrimaryProcessStopped(context);
         return {
           success: true,
@@ -636,23 +682,12 @@ export function createRuntimeDevLogsTool(context: RuntimeContext): Tool {
           return { success: false, error: "No primary dev server is registered for this Studio." };
         }
 
-        let stdout = "";
-        let stderr = "";
         const timeoutMs = normalizeRuntimeTimeoutMs(timeout, 5000);
-        const handle = await sandbox.commands.connect(processId, {
+        const result = await sandbox.commands.run("tail -n 200 /workspace/.tmp/nova-preview.log", {
           timeoutMs,
-          onStdout: (data) => {
-            stdout += data;
-          },
-          onStderr: (data) => {
-            stderr += data;
-          },
         });
-
-        await Promise.race([
-          handle.wait(),
-          new Promise((resolve) => setTimeout(resolve, timeoutMs)),
-        ]);
+        const stdout = result.stdout;
+        const stderr = result.stderr;
 
         await doUpsertPrimaryProcess(context, {
           sandboxId: sandbox.sandboxId,

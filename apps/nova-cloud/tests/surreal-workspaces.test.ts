@@ -26,9 +26,7 @@ describe("surreal-workspaces helpers", () => {
   });
 
   it("builds the default workspace host from the workspace id", () => {
-    expect(buildWorkspaceDefaultHost("workspace-123")).toBe(
-      "ws-workspace-123.workspace.dlxstudios.com",
-    );
+    expect(buildWorkspaceDefaultHost("workspace-123")).toBe("ws-workspace-123.dlx.studio");
   });
 
   it("records the runtime contract for on-demand workspaces", () => {
@@ -57,7 +55,7 @@ describe("surreal-workspaces helpers", () => {
       runCommand:
         'cd "workspace/workspace-123/source" && vp preview --host 0.0.0.0 --outDir "../build"',
       healthCheckPath: "/",
-      publicHost: "ws-workspace-123.workspace.dlxstudios.com",
+      publicHost: "ws-workspace-123.dlx.studio",
       statePath: "workspace/workspace-123/",
       runtimeImage: null,
       rootPath: "workspace/workspace-123/",
@@ -69,7 +67,7 @@ describe("surreal-workspaces helpers", () => {
       installCommand: "install",
       buildCommand: "build",
       serveCommand: "serve",
-      defaultHost: "ws-workspace-123.workspace.dlxstudios.com",
+      defaultHost: "ws-workspace-123.dlx.studio",
       activeDeploymentId: null,
       createdAt: 0,
       updatedAt: 0,

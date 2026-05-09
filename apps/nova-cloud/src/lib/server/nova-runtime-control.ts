@@ -4,6 +4,8 @@ type RuntimeControlAction =
   | { action: "exec"; command: string; timeoutMs?: number };
 
 const DEFAULT_RUNTIME_CONTROL_URL = "http://127.0.0.1:8787";
+const DEFAULT_RUNTIME_NAMESPACE_PREFIX = "nova-runtime";
+const DEFAULT_RUNTIME_PREVIEW_SERVICE = "runtime-preview";
 
 export function runtimeControlConfigured() {
   return Boolean(process.env.NOVA_RUNTIME_CONTROL_URL || process.env.NOVA_RUNTIME_CONTROL_TOKEN);
@@ -42,6 +44,25 @@ async function parseRuntimeControlResponse(response: Response) {
 
 export function runtimeControlStudioId(userId: string, studioId: string) {
   return `nova-cloud-${userId}-${studioId}`;
+}
+
+export function sanitizeRuntimeName(input: string) {
+  const normalized = input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized.slice(0, 48) || "studio";
+}
+
+export function runtimeControlNamespace(controlStudioId: string) {
+  const prefix = process.env.NOVA_RUNTIME_NAMESPACE_PREFIX || DEFAULT_RUNTIME_NAMESPACE_PREFIX;
+  return `${prefix}-${sanitizeRuntimeName(controlStudioId)}`.slice(0, 63);
+}
+
+export function runtimePreviewServiceHost(controlStudioId: string, port = 4173) {
+  const namespace = runtimeControlNamespace(controlStudioId);
+  return `${DEFAULT_RUNTIME_PREVIEW_SERVICE}.${namespace}.svc.cluster.local:${port}`;
 }
 
 export async function getRuntimeControlHealth() {
@@ -98,4 +119,68 @@ export async function callRuntimeControl(controlStudioId: string, input: Runtime
   }
 
   throw new Error(`Unsupported runtime control action: ${(input as { action: string }).action}`);
+}
+
+async function postRuntimeControl<T>(controlStudioId: string, path: string, input: unknown) {
+  const response = await fetch(
+    runtimeControlUrl(`/runtimes/${encodeURIComponent(controlStudioId)}${path}`),
+    {
+      method: "POST",
+      headers: runtimeControlHeaders(),
+      body: JSON.stringify(input ?? {}),
+    },
+  );
+  return (await parseRuntimeControlResponse(response)) as T;
+}
+
+export async function execRuntimeControl(
+  controlStudioId: string,
+  input: { command: string; timeoutMs?: number; cwd?: string },
+) {
+  return postRuntimeControl<{
+    ok: true;
+    result: { success: boolean; result?: any; error?: string };
+  }>(controlStudioId, "/exec", input);
+}
+
+export async function readRuntimeControlFile(controlStudioId: string, path: string) {
+  return postRuntimeControl<{
+    ok: true;
+    result: { success: boolean; result?: { content: string } };
+  }>(controlStudioId, "/files/read", { path });
+}
+
+export async function writeRuntimeControlFile(
+  controlStudioId: string,
+  input: { path: string; content: string },
+) {
+  return postRuntimeControl(controlStudioId, "/files/write", input);
+}
+
+export async function listRuntimeControlFiles(controlStudioId: string, path: string) {
+  return postRuntimeControl<{
+    ok: true;
+    result: { success: boolean; result?: { entries: Array<{ name: string; type: string }> } };
+  }>(controlStudioId, "/files/list", { path });
+}
+
+export async function deleteRuntimeControlFile(controlStudioId: string, path: string) {
+  return postRuntimeControl(controlStudioId, "/files/delete", { path });
+}
+
+export async function startRuntimeControlPreview(
+  controlStudioId: string,
+  input: { rootPath: string; port?: number },
+) {
+  return postRuntimeControl<{
+    ok: true;
+    result: { success: boolean; result?: { port: number; rootPath: string } };
+  }>(controlStudioId, "/preview/start", input);
+}
+
+export async function stopRuntimeControlPreview(controlStudioId: string, input: { port?: number }) {
+  return postRuntimeControl<{
+    ok: true;
+    result: { success: boolean; result?: { port: number; stopped: boolean } };
+  }>(controlStudioId, "/preview/stop", input);
 }

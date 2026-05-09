@@ -10,14 +10,14 @@ import {
 
 describe("domain helpers", () => {
   test("normalizes host casing, trailing dots, and ports", () => {
-    expect(normalizeHost(" WS-Abc.Workspaces.Example.Com. ")).toBe("ws-abc.workspaces.example.com");
+    expect(normalizeHost(" WS-Abc.Dlx.Studio. ")).toBe("ws-abc.dlx.studio");
     expect(normalizeHost("example.com:443")).toBe("example.com");
   });
 
   test("validates dns hosts", () => {
-    expect(validateHost("ws-abc.workspaces.example.com")).toEqual({
+    expect(validateHost("ws-abc.dlx.studio")).toEqual({
       ok: true,
-      host: "ws-abc.workspaces.example.com",
+      host: "ws-abc.dlx.studio",
     });
     expect(validateHost("bad_host.example.com").ok).toBe(false);
     expect(validateHost("localhost").ok).toBe(false);
@@ -30,16 +30,14 @@ describe("domain helpers", () => {
   });
 
   test("generates and classifies workspace hosts", () => {
-    const host = generatedHost("ws-abc123", "workspaces.example.com");
-    expect(host).toBe("ws-abc123.workspaces.example.com");
-    expect(classifyHost(host, "workspaces.example.com")).toBe("subdomain");
-    expect(classifyHost("customer.example.com", "workspaces.example.com")).toBe("custom");
+    const host = generatedHost("ws-abc123", "dlx.studio");
+    expect(host).toBe("ws-abc123.dlx.studio");
+    expect(classifyHost(host, "dlx.studio")).toBe("subdomain");
+    expect(classifyHost("customer.example.com", "dlx.studio")).toBe("custom");
   });
 
   test("blocks custom domains under the generated workspace base", () => {
-    expect(isReservedCustomDomain("ws-abc.workspaces.example.com", "workspaces.example.com")).toBe(
-      true,
-    );
-    expect(isReservedCustomDomain("customer.example.com", "workspaces.example.com")).toBe(false);
+    expect(isReservedCustomDomain("ws-abc.dlx.studio", "dlx.studio")).toBe(true);
+    expect(isReservedCustomDomain("customer.example.com", "dlx.studio")).toBe(false);
   });
 });

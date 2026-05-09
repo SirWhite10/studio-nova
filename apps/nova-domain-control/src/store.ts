@@ -7,13 +7,19 @@ import type {
   ProxyUpsertInput,
   WorkspaceProxy,
 } from "./types.ts";
+import { generateVerificationToken } from "./verification.ts";
 
 export interface DomainStore {
   ensureSchema(): Promise<void>;
   health(): Promise<{ ok: boolean; status: string }>;
   resolveHost(host: string): Promise<DomainResolution | null>;
+  getDomainByHost(host: string): Promise<DomainResolution | null>;
+  listDomainsForStudio(studioId: string): Promise<DomainResolution[]>;
   getProxyByName(proxyName: string): Promise<WorkspaceProxy | null>;
+  listProxyDomains(proxyName: string): Promise<DomainResolution[]>;
   upsertProxy(input: ProxyUpsertInput, subdomainHost: string): Promise<DomainResolution[]>;
+  setDomainStatus(host: string, status: DomainStatus): Promise<DomainResolution | null>;
+  removeDomain(host: string, studioId?: string): Promise<boolean>;
   disableProxy(proxyName: string): Promise<void>;
 }
 
@@ -183,6 +189,29 @@ export class SurrealDomainStore implements DomainStore {
     };
   }
 
+  async getDomainByHost(host: string) {
+    const safeHost = validateHost(host);
+    if (!safeHost.ok) return null;
+
+    const db = await this.getDb();
+    const rows = await queryRows<ProxyDomain>(
+      db,
+      "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+      { host: safeHost.host },
+    );
+    const domain = rows[0];
+    if (!domain) return null;
+
+    const selected = await db.select<WorkspaceProxy>(new StringRecordId(domain.proxyId));
+    const proxy = Array.isArray(selected) ? selected[0] : selected;
+    if (!proxy) return null;
+
+    return {
+      proxy: withRecordId(proxy),
+      domain: withRecordId(domain),
+    };
+  }
+
   async getProxyByName(proxyName: string) {
     const db = await this.getDb();
     const rows = await queryRows<WorkspaceProxy>(
@@ -191,6 +220,53 @@ export class SurrealDomainStore implements DomainStore {
       { proxyName },
     );
     return rows[0] ? withRecordId(rows[0]) : null;
+  }
+
+  async listProxyDomains(proxyName: string) {
+    const db = await this.getDb();
+    const proxies = await queryRows<WorkspaceProxy>(
+      db,
+      "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName LIMIT 1",
+      { proxyName },
+    );
+    const proxy = proxies[0];
+    if (!proxy) return [];
+
+    const proxyRow = withRecordId(proxy);
+    const rows = await queryRows<ProxyDomain>(
+      db,
+      "SELECT * FROM proxy_domain WHERE proxyId = $proxyId",
+      { proxyId: proxyRow._id },
+    );
+    return rows.map((domain) => ({
+      proxy: proxyRow,
+      domain: withRecordId(domain),
+    }));
+  }
+
+  async listDomainsForStudio(studioId: string) {
+    const db = await this.getDb();
+    const proxies = await queryRows<WorkspaceProxy>(
+      db,
+      "SELECT * FROM workspace_proxy WHERE studioId = $studioId ORDER BY updatedAt DESC",
+      { studioId },
+    );
+    const resolutions: DomainResolution[] = [];
+    for (const proxy of proxies) {
+      const proxyRow = withRecordId(proxy);
+      const domains = await queryRows<ProxyDomain>(
+        db,
+        "SELECT * FROM proxy_domain WHERE proxyId = $proxyId ORDER BY updatedAt DESC",
+        { proxyId: proxyRow._id },
+      );
+      for (const domain of domains) {
+        resolutions.push({
+          proxy: proxyRow,
+          domain: withRecordId(domain),
+        });
+      }
+    }
+    return resolutions;
   }
 
   async upsertProxy(input: ProxyUpsertInput, subdomainHost: string) {
@@ -244,17 +320,30 @@ export class SurrealDomainStore implements DomainStore {
         "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
         { host: domain.host },
       );
-      const status: DomainStatus = domain.kind === "subdomain" ? "active" : "pending";
-      const domainContent = {
+      const existingDomain = domainRows[0];
+      const status: DomainStatus =
+        domain.kind === "subdomain" ? "active" : (existingDomain?.status ?? "pending");
+      const domainContent: {
+        host: string;
+        proxyId: string;
+        kind: "subdomain" | "custom";
+        status: DomainStatus;
+        verificationToken?: string;
+        updatedAt: number;
+      } = {
         host: domain.host,
         proxyId: proxyRow._id,
         kind: domain.kind,
         status,
         updatedAt: now,
       };
-      const savedDomain = domainRows[0]
+      if (domain.kind === "custom") {
+        domainContent.verificationToken =
+          existingDomain?.verificationToken ?? generateVerificationToken();
+      }
+      const savedDomain = existingDomain
         ? await db
-            .update<ProxyDomain>(new StringRecordId(recordIdToString(domainRows[0].id)))
+            .update<ProxyDomain>(new StringRecordId(recordIdToString(existingDomain.id)))
             .merge(domainContent)
         : await db.create(new Table("proxy_domain")).content({ ...domainContent, createdAt: now });
       resolutions.push({
@@ -266,6 +355,46 @@ export class SurrealDomainStore implements DomainStore {
     }
 
     return resolutions;
+  }
+
+  async setDomainStatus(host: string, status: DomainStatus) {
+    const db = await this.getDb();
+    const safeHost = validateHost(host);
+    if (!safeHost.ok) return null;
+    const rows = await queryRows<ProxyDomain>(
+      db,
+      "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+      { host: safeHost.host },
+    );
+    const domain = rows[0];
+    if (!domain) return null;
+
+    await db
+      .update<ProxyDomain>(new StringRecordId(recordIdToString(domain.id)))
+      .merge({ status, updatedAt: Date.now() });
+    return this.getDomainByHost(safeHost.host);
+  }
+
+  async removeDomain(host: string, studioId?: string) {
+    const db = await this.getDb();
+    const safeHost = validateHost(host);
+    if (!safeHost.ok) return false;
+    const rows = await queryRows<ProxyDomain>(
+      db,
+      "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+      { host: safeHost.host },
+    );
+    const domain = rows[0];
+    if (!domain) return false;
+
+    if (studioId) {
+      const selected = await db.select<WorkspaceProxy>(new StringRecordId(domain.proxyId));
+      const proxy = Array.isArray(selected) ? selected[0] : selected;
+      if (!proxy || proxy.studioId !== studioId) return false;
+    }
+
+    await db.delete(new StringRecordId(recordIdToString(domain.id)));
+    return true;
   }
 
   async disableProxy(proxyName: string) {
@@ -296,8 +425,38 @@ export class MemoryDomainStore implements DomainStore {
     return { proxy, domain };
   }
 
+  async getDomainByHost(host: string) {
+    const safeHost = normalizeHost(host);
+    const domain = this.domains.get(safeHost);
+    if (!domain) return null;
+    const proxy = [...this.proxies.values()].find((candidate) => candidate._id === domain.proxyId);
+    if (!proxy) return null;
+    return { proxy, domain };
+  }
+
   async getProxyByName(proxyName: string) {
     return this.proxies.get(proxyName) ?? null;
+  }
+
+  async listDomainsForStudio(studioId: string): Promise<DomainResolution[]> {
+    const resolutions: DomainResolution[] = [];
+    for (const domain of this.domains.values()) {
+      const proxy = [...this.proxies.values()].find(
+        (candidate) => candidate._id === domain.proxyId,
+      );
+      if (proxy?.studioId === studioId) {
+        resolutions.push({ proxy, domain });
+      }
+    }
+    return resolutions;
+  }
+
+  async listProxyDomains(proxyName: string) {
+    const proxy = this.proxies.get(proxyName);
+    if (!proxy) return [];
+    return [...this.domains.values()]
+      .filter((domain) => domain.proxyId === proxy._id)
+      .map((domain) => ({ proxy, domain }));
   }
 
   async upsertProxy(input: ProxyUpsertInput, subdomainHost: string) {
@@ -342,14 +501,39 @@ export class MemoryDomainStore implements DomainStore {
         host: value.host,
         proxyId: proxy._id,
         kind: value.kind,
-        status: value.kind === "subdomain" ? "active" : "pending",
+        status: value.kind === "subdomain" ? "active" : (existingDomain?.status ?? "pending"),
         createdAt: existingDomain?.createdAt ?? now,
         updatedAt: now,
       };
+      if (value.kind === "custom") {
+        domain.verificationToken = existingDomain?.verificationToken ?? generateVerificationToken();
+      }
       this.domains.set(domain.host, domain);
       resolutions.push({ proxy, domain });
     }
     return resolutions;
+  }
+
+  async setDomainStatus(host: string, status: DomainStatus) {
+    const domain = this.domains.get(normalizeHost(host));
+    if (!domain) return null;
+    domain.status = status;
+    domain.updatedAt = Date.now();
+    return this.getDomainByHost(domain.host);
+  }
+
+  async removeDomain(host: string, studioId?: string) {
+    const safeHost = normalizeHost(host);
+    const domain = this.domains.get(safeHost);
+    if (!domain) return false;
+    if (studioId) {
+      const proxy = [...this.proxies.values()].find(
+        (candidate) => candidate._id === domain.proxyId,
+      );
+      if (!proxy || proxy.studioId !== studioId) return false;
+    }
+    this.domains.delete(safeHost);
+    return true;
   }
 
   async disableProxy(proxyName: string) {

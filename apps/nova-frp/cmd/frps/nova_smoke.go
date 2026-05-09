@@ -30,7 +30,7 @@ var novaSmokeCleanup bool
 var novaSmokeInsecureTLS bool
 
 func init() {
-	novaSmokeCmd.Flags().StringVar(&novaSmokeHost, "host", "test.workspace.dlxstudios.com", "public hostname to test")
+	novaSmokeCmd.Flags().StringVar(&novaSmokeHost, "host", "test.dlx.studio", "public hostname to test")
 	novaSmokeCmd.Flags().StringVar(&novaSmokeFRPCBinary, "frpc-binary", "frpc", "frpc binary path")
 	novaSmokeCmd.Flags().StringVar(&novaSmokeProxyName, "proxy-name", "nova-smoke-workspace", "temporary proxy name")
 	novaSmokeCmd.Flags().DurationVar(&novaSmokeTimeout, "timeout", 2*time.Minute, "maximum time to wait for HTTPS to work")
@@ -41,7 +41,7 @@ func init() {
 
 var novaSmokeCmd = &cobra.Command{
 	Use:   "nova-smoke",
-	Short: "Run a VPS end-to-end Nova domain smoke test",
+	Short: "Run an end-to-end Nova domain smoke test",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfgFile == "" {
 			return fmt.Errorf("frps nova-smoke: the configuration file is not specified")

@@ -9,7 +9,7 @@ import { createDomainControlServer } from "../server.ts";
 import { MemoryDomainStore } from "../store.ts";
 import type { DomainControlConfig } from "../config.ts";
 
-const SUBDOMAIN_HOST = "workspaces.test";
+const SUBDOMAIN_HOST = "dlx.studio";
 const WORKSPACE_HOST = `ws-smoke.${SUBDOMAIN_HOST}`;
 const PROXY_NAME = "studio-smoke-primary";
 const FRP_AUTH_TOKEN = "frp-smoke-auth-token";
@@ -143,11 +143,14 @@ async function main() {
   const domainStore = new MemoryDomainStore();
   const domainServer = createDomainControlServer(
     {
+      storeMode: "memory",
       host: "127.0.0.1",
       port: 0,
       token: null,
       frpToken: FRP_PLUGIN_TOKEN,
+      caddyAdminUrl: null,
       subdomainHost: SUBDOMAIN_HOST,
+      verificationPrefix: "_nova-domain",
       surreal: {
         url: "memory",
         namespace: "main",

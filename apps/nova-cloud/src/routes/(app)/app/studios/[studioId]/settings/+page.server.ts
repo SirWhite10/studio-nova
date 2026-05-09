@@ -3,21 +3,22 @@ import { requireUserId } from "$lib/server/surreal-query";
 import { getStudioForUser } from "$lib/server/surreal-studios";
 import { getUserPlan } from "$lib/server/surreal-plans";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
-import { createWorkspaceDomainSettings } from "$lib/domains/workspace-domains";
+import { loadStudioDomainSettings } from "$lib/server/studio-domains";
 
 export const load: PageServerLoad = async (event) => {
   const userId = requireUserId(event.locals);
   const rawStudioId = normalizeRouteParam(event.params.studioId);
 
-  const [studioPlan, studio] = await Promise.all([
+  const [studioPlan, studio, domains] = await Promise.all([
     getUserPlan(userId),
     getStudioForUser(userId, rawStudioId),
+    loadStudioDomainSettings(rawStudioId),
   ]);
 
   return {
     studioPlan,
     userId,
-    domains: createWorkspaceDomainSettings(rawStudioId),
+    domains,
     studio: studio
       ? {
           id: studio._id,

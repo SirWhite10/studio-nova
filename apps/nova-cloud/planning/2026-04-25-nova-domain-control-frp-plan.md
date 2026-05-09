@@ -4,7 +4,7 @@
 **Version:** 2.0
 **Date:** April 25, 2026
 **Last Updated:** 2026-04-28 02:20:00 UTC
-**Scope:** `apps/nova-cloud`, `apps/nova-runtime-control`, `apps/nova-domain-control`, `apps/nova-frp`, VPS/frp deployment
+**Scope:** `apps/nova-cloud`, `apps/nova-runtime-control`, `apps/nova-domain-control`, `apps/nova-frp`, public-edge frp deployment
 
 ## 1. Purpose
 
@@ -19,19 +19,19 @@ This document now records the finalized direction: a custom standalone `frps` bi
 Finalized runtime direction:
 
 - `apps/nova-frp` vendors and customizes upstream `fatedier/frp`.
-- custom `frps` is the production edge service on the VPS.
+- custom `frps` is the production edge service.
 - `frps` talks directly to SurrealDB through the SQL endpoint.
 - `frps` uses SurrealDB `proxy_domain` + `workspace_proxy` rows as the certificate host policy.
 - public HTTP is used only for ACME HTTP-01 and redirecting users to HTTPS.
 - public HTTPS terminates in `frps`; workspace services can remain plain HTTP behind the encrypted frp tunnel.
 - `frpc` runs near the runtime/workspace and exposes each workspace preview as an HTTP proxy with `customDomains` or `subdomain`.
 
-`apps/nova-domain-control` remains useful as a local/admin API prototype and test harness, but it is no longer required on the VPS for the production edge path. The production deployment should be able to run with only:
+`apps/nova-domain-control` remains useful as a local/admin API prototype and test harness, but it is no longer required on the public edge for the production edge path. The production deployment should be able to run with only:
 
 - custom `frps`
 - `frpc`
-- SurrealDB reachable from the VPS
-- DNS records pointing workspace/custom domains at the VPS
+- SurrealDB reachable from the edge
+- DNS records pointing workspace/custom domains at the edge
 
 ## 3. Source Notes
 
@@ -58,7 +58,7 @@ Important interpretation:
 ```txt
 Internet users
   -> DNS-only workspace/custom domain A/CNAME
-    -> VPS public 80/443
+    -> public edge 80/443
       -> custom frps
         -> HTTP-01 ACME challenge handling on 80
         -> HTTP to HTTPS redirect for non-challenge traffic
@@ -76,7 +76,7 @@ Runtime ownership should stay split:
 - `nova-runtime-control` owns k3s runtime creation, pod/service lifecycle, and runtime agent access.
 - SurrealDB owns domain/proxy desired state.
 - custom `frps` owns tunnel transport, public TLS, ACME, host authorization, and vhost routing.
-- `nova-domain-control` can remain as an admin/control API layer, but it is not required in the minimal VPS runtime.
+- `nova-domain-control` can remain as an admin/control API layer, but it is not required in the minimal edge runtime.
 
 ## 5. App Boundary
 
@@ -125,7 +125,7 @@ Returns service name, SurrealDB status, frpc reconciliation status, and current 
 ### Host Resolver
 
 ```txt
-GET /resolve?host=ws-abc.workspaces.example.com
+GET /resolve?host=ws-abc.dlx.studio
 ```
 
 Returns the active proxy/domain row for a host.
@@ -230,7 +230,7 @@ Final standalone `frps.toml` shape:
 bindPort = 7000
 vhostHTTPPort = 80
 vhostHTTPSPort = 443
-subDomainHost = "workspace.dlxstudios.com"
+subDomainHost = "dlx.studio"
 
 [auth]
 method = "token"
@@ -265,26 +265,26 @@ name = "nova-smoke-workspace"
 type = "http"
 localIP = "127.0.0.1"
 localPort = "<temporary-workspace-port>"
-customDomains = ["test.workspace.dlxstudios.com"]
+customDomains = ["test.dlx.studio"]
 ```
 
 Production frpc can run on the runtime host/k3s side and should publish HTTP proxies for workspace services. The public browser path remains HTTPS because `frps` terminates TLS before forwarding through the tunnel.
 
 ## 9. Cloudflared Transition
 
-The early plan assumed the current local machine and Cloudflared would remain in the path during transition. The finalized workspace/custom-domain path requires the VPS to become the public edge for workspace domains.
+The early plan assumed the current local machine and Cloudflared would remain in the path during transition. The current direction is a public frps edge fronted by your owned domain, without hardwiring a VPS into the architecture.
 
 Production DNS model:
 
-- `*.workspace.dlxstudios.com` should point to the VPS as DNS-only traffic.
-- customer custom domains can point to the VPS by A record or CNAME.
+- `*.dlx.studio` should point to the public edge that fronts `frps`.
+- customer custom domains can point to that same public edge by A record or CNAME.
 - `frps` must be reachable on public `80` and `443` for HTTP-01 and HTTPS.
-- Cloudflare can still host DNS, but Cloudflare Tunnel should not be the public wildcard/custom-domain data plane for this feature.
+- Cloudflare can still host DNS, and any tunnel layer must preserve public reachability for the `frps` HTTP-01 and HTTPS path.
 
 Custom domain constraint:
 
 - If users point arbitrary domains at this machine, public `80/443` or DNS-01 automation is needed for Nova-controlled certificates.
-- the current custom `frps` implementation uses HTTP-01, so the hostname must resolve to the VPS before certificate issuance.
+- the current custom `frps` implementation uses HTTP-01, so the hostname must resolve to the public edge before certificate issuance.
 
 ## 10. Runtime Integration
 
@@ -415,12 +415,12 @@ Current implemented state:
 - [x] Added ACME/autocert certificate issuance inside `frps`.
 - [x] Changed public HTTP behavior to ACME challenge handling plus HTTPS redirect.
 - [x] Routed public HTTPS through the existing HTTP vhost path after TLS termination.
-- [x] Added `frps nova-check --host <host>` to validate SurrealDB host authorization from the VPS.
-- [x] Added `frps nova-smoke --host test.workspace.dlxstudios.com --frpc-binary ./frpc` for VPS end-to-end testing.
-- [x] Built a VPS smoke bundle containing `frps` and `frpc`.
+- [x] Added `frps nova-check --host <host>` to validate SurrealDB host authorization from the public edge.
+- [x] Added `frps nova-smoke --host test.dlx.studio --frpc-binary ./frpc` for end-to-end edge testing.
+- [x] Built an edge smoke bundle containing `frps` and `frpc`.
 - [x] Kept `apps/nova-domain-control` as a local/admin API prototype and compatibility test harness.
 
-VPS smoke command behavior:
+Edge smoke command behavior:
 
 1. Load `/etc/frp/frps.toml`.
 2. Connect directly to SurrealDB from the config.
@@ -433,10 +433,10 @@ VPS smoke command behavior:
 9. Request `https://<host>/` and require the workspace response.
 10. Leave records in SurrealDB by default; delete them only when `--cleanup` is passed.
 
-Required VPS preconditions:
+Required edge preconditions:
 
-- `test.workspace.dlxstudios.com` resolves publicly to the VPS.
-- VPS firewall permits `80`, `443`, and the frp control port.
+- `test.dlx.studio` resolves publicly to the chosen edge.
+- The edge firewall permits `80`, `443`, and the frp control port.
 - no other process owns `80` or `443` when `frps` starts.
 - SurrealDB is reachable from the VPS.
 - `proxy_domain.host` and `workspace_proxy.proxyName` are unique and usable by the smoke records.
@@ -468,7 +468,7 @@ Remaining production work:
 - What is the production base domain for generated workspace subdomains?
 - Will this machine eventually accept direct public `80/443`, or will Cloudflared remain permanently?
 - Should the first k3s integration use shared frpc or per-workspace sidecars?
-- Where should frpc run: on the k3s node, inside the cluster, or on the same VPS as a bridge?
+- Where should frpc run: on the k3s node, inside the cluster, or on a separate bridge host?
 - Should custom domain certificates be solved by DNS-01 first, HTTP-01 first, or delayed until the frps fork?
 - Does Nova need custom domains for all users, only paid plans, or only admin-created workspaces at first?
 
@@ -488,4 +488,4 @@ Final implementation status:
 - public browser route is HTTPS-first.
 - HTTP is only for ACME and redirect.
 - SurrealDB is read directly by `frps`.
-- `nova-domain-control` is not required for the minimal VPS runtime, though it remains in the repo for local/admin API work.
+- `nova-domain-control` is not required for the minimal edge runtime, though it remains in the repo for local/admin API work.

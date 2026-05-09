@@ -22,6 +22,7 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { toast } from 'svelte-sonner';
 	import { COLOR_PRESETS } from '$lib/studios/constants';
+	import type { WorkspaceDomain, WorkspaceDomainSettings } from '$lib/domains/workspace-domains';
 
 	let { data }: { data: any } = $props();
 
@@ -30,9 +31,10 @@
 	let deleteConfirmOpen = $state(false);
 	let isSaving = $state(false);
 	let isAddingDomain = $state(false);
+	let activeDomainHost = $state<string | null>(null);
 	let currentPlan = $state(data?.studioPlan?.plan ?? 'free');
 	let customDomain = $state('');
-	let pendingCustomDomains = $state<any[]>([]);
+	let domainSettings = $state<WorkspaceDomainSettings | undefined>(data?.domains);
 
 	let studioName = $state(data?.studio?.name ?? '');
 	let studioDescription = $state(data?.studio?.description ?? '');
@@ -42,8 +44,7 @@
 	const isPro = $derived(currentPlan === 'pro');
 	const planLabel = $derived(isPro ? 'Pro' : 'Free');
 	const planDesc = $derived(isPro ? '24hr persistent sandbox runtime per session' : '1hr sandbox runtime per session');
-	const domainSettings = $derived(data?.domains);
-	const displayedCustomDomains = $derived([...(domainSettings?.customDomains ?? []), ...pendingCustomDomains]);
+	const displayedCustomDomains = $derived<WorkspaceDomain[]>(domainSettings?.customDomains ?? []);
 	const endpointRows = $derived([
 		['Create workspace', domainSettings?.endpoints?.createWorkspace],
 		['List domains', domainSettings?.endpoints?.listDomains],
@@ -57,10 +58,15 @@
 		...(domainSettings?.defaultDomain?.records ?? []),
 		...displayedCustomDomains.flatMap((domain) => domain.records ?? []),
 	]);
+	const domainRoutingHints = $derived(
+		displayedCustomDomains
+			.map((domain) => domain.routingHint)
+			.filter((hint): hint is string => Boolean(hint))
+	);
 
 	function statusClass(status: string) {
 		if (status === 'active' || status === 'available') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-		if (status === 'pending' || status === 'verifying') return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+		if (status === 'pending' || status === 'verifying' || status === 'verified') return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
 		return 'border-border bg-muted text-muted-foreground';
 	}
 
@@ -81,6 +87,17 @@
 		studioDescription = studio.description ?? '';
 		selectedHue = studio.themeHue ?? selectedHue;
 		if (showToast) toast.success('Studio refreshed');
+	}
+
+	async function refreshDomains(showToast = false) {
+		const res = await fetch(`/api/studios/${studioId}/domains`);
+		if (!res.ok) {
+			if (showToast) toast.error('Failed to refresh domains');
+			return;
+		}
+		const body = await res.json();
+		domainSettings = body.domains ?? domainSettings;
+		if (showToast) toast.success('Domains refreshed');
 	}
 
 	async function saveGeneral() {
@@ -149,13 +166,47 @@
 			});
 			const body = await res.json();
 			if (!res.ok) throw new Error(body.error || 'Failed to add domain');
-			pendingCustomDomains = [body.domain, ...pendingCustomDomains.filter((domain) => domain.host !== body.domain.host)];
 			customDomain = '';
 			toast.success('Domain queued for verification');
+			await refreshDomains(false);
 		} catch (e: any) {
 			toast.error(e.message || 'Failed to add domain');
 		} finally {
 			isAddingDomain = false;
+		}
+	}
+
+	async function verifyCustomDomain(host: string) {
+		activeDomainHost = host;
+		try {
+			const res = await fetch(`/api/studios/${studioId}/domains/${encodeURIComponent(host)}/verify`, {
+				method: 'POST',
+			});
+			const body = await res.json();
+			if (!res.ok) throw new Error(body.error || 'Failed to verify domain');
+			toast.success(body.activated ? 'Domain activated' : 'Verification checked');
+			await refreshDomains(false);
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to verify domain');
+		} finally {
+			activeDomainHost = null;
+		}
+	}
+
+	async function removeCustomDomain(host: string) {
+		activeDomainHost = host;
+		try {
+			const res = await fetch(`/api/studios/${studioId}/domains/${encodeURIComponent(host)}`, {
+				method: 'DELETE',
+			});
+			const body = await res.json();
+			if (!res.ok) throw new Error(body.error || 'Failed to remove domain');
+			toast.success('Domain removed');
+			await refreshDomains(false);
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to remove domain');
+		} finally {
+			activeDomainHost = null;
 		}
 	}
 
@@ -411,10 +462,34 @@
 									<div class="min-w-0">
 										<p class="break-all font-mono text-sm font-semibold">{domain.host}</p>
 										<p class="mt-1 break-all text-sm text-muted-foreground">Target: {domain.target}</p>
+										{#if domain.routingHint}
+											<p class="mt-2 text-sm leading-6 text-muted-foreground">{domain.routingHint}</p>
+										{/if}
 									</div>
 									<div class="flex shrink-0 flex-wrap gap-2">
 										<Badge variant="outline" class="rounded-full {statusClass(domain.status)}">{domain.status}</Badge>
 										<Badge variant="outline" class="rounded-full {statusClass(domain.https)}">HTTPS {domain.https}</Badge>
+										{#if domain.status !== 'active'}
+											<Button
+												variant="outline"
+												size="sm"
+												class="rounded-full"
+												disabled={activeDomainHost === domain.host}
+												onclick={() => verifyCustomDomain(domain.host)}
+											>
+												{activeDomainHost === domain.host ? 'Checking...' : 'Verify'}
+											</Button>
+										{/if}
+										<Button
+											variant="outline"
+											size="icon"
+											class="rounded-full"
+											disabled={activeDomainHost === domain.host}
+											aria-label="Remove custom domain"
+											onclick={() => removeCustomDomain(domain.host)}
+										>
+											<Trash2Icon class="size-4" />
+										</Button>
 									</div>
 								</div>
 							</div>
@@ -422,6 +497,35 @@
 					{:else}
 						<div class="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
 							No custom domains are attached to this workspace yet.
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<div class="mt-4 grid gap-4 lg:grid-cols-2">
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<h3 class="font-semibold">Subdomain routing</h3>
+					<p class="mt-1 text-sm text-muted-foreground">
+						Use a standard CNAME when the customer is routing a subdomain like <span class="font-mono">app.customer.com</span>.
+					</p>
+					<div class="mt-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+						<p class="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</p>
+						<p class="mt-2 break-all font-mono text-sm font-semibold">domain.dlx.studio</p>
+					</div>
+				</div>
+
+				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
+					<h3 class="font-semibold">Apex routing</h3>
+					<p class="mt-1 text-sm text-muted-foreground">
+						Root domains like <span class="font-mono">customer.com</span> need ALIAS, ANAME, or CNAME flattening support from the DNS provider. If the zone already uses Cloudflare DNS, attach the apex directly in the tunnel instead of adding a manual CNAME.
+					</p>
+					{#if domainRoutingHints.length}
+						<div class="mt-4 space-y-3">
+							{#each domainRoutingHints as hint}
+								<div class="rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+									{hint}
+								</div>
+							{/each}
 						</div>
 					{/if}
 				</div>
@@ -454,7 +558,7 @@
 
 				<div class="rounded-[1.75rem] border border-border/60 bg-background/80 p-5">
 					<h3 class="font-semibold">Workspace API Endpoints</h3>
-					<p class="mt-1 text-sm text-muted-foreground">Placeholders for the FRP-backed domain workflow</p>
+					<p class="mt-1 text-sm text-muted-foreground">Local Studio endpoints backed by Nova domain-control and runtime-control</p>
 					<div class="mt-4 space-y-3">
 						{#each visibleEndpointRows as row (row[0])}
 							<div class="rounded-2xl border border-border/60 bg-muted/20 p-4">

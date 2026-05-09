@@ -21,7 +21,7 @@ function routeStudio(pathname: string) {
 
 function routeStudioAction(pathname: string) {
   const match = pathname.match(
-    /^\/runtimes\/([^/]+)\/(exec|files\/read|files\/write|files\/list|files\/delete)$/,
+    /^\/runtimes\/([^/]+)\/(exec|files\/read|files\/write|files\/list|files\/delete|preview\/start|preview\/stop)$/,
   );
   if (!match) return null;
   return {
@@ -93,7 +93,11 @@ const server = createServer(async (request, response) => {
               ? await service.writeRuntimeFile(runtimeAction.studioId, input)
               : runtimeAction.action === "files/list"
                 ? await service.listRuntimeFiles(runtimeAction.studioId, input)
-                : await service.deleteRuntimeFile(runtimeAction.studioId, input);
+                : runtimeAction.action === "preview/start"
+                  ? await service.startRuntimePreview(runtimeAction.studioId, input)
+                  : runtimeAction.action === "preview/stop"
+                    ? await service.stopRuntimePreview(runtimeAction.studioId, input)
+                    : await service.deleteRuntimeFile(runtimeAction.studioId, input);
       sendJson(response, 200, {
         ok: true,
         result,

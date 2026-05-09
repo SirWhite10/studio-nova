@@ -1,7 +1,16 @@
 import { type Tool } from "ai";
 import { z } from "zod";
-import type { Sandbox } from "e2b";
-import { WORKSPACE_PATH } from "$lib/server/sandbox";
+import { K3S_WORKSPACE_PATH } from "$lib/server/k3s-runtime";
+
+type RuntimeFilesystem = {
+  files: {
+    read(path: string): Promise<string>;
+    write(path: string, content: string): Promise<void>;
+    list(path: string): Promise<Array<{ name: string; type: string }>>;
+    makeDir(path: string): Promise<void>;
+    remove(path: string): Promise<void>;
+  };
+};
 
 const FilesystemInputSchema = z.object({
   operation: z.enum(["read", "write", "list", "mkdir", "delete"]),
@@ -10,7 +19,7 @@ const FilesystemInputSchema = z.object({
   encoding: z.enum(["utf-8", "base64"]).default("utf-8"),
 });
 
-export function createFilesystemTool(sandbox: Sandbox | null, _userId?: string): Tool {
+export function createFilesystemTool(sandbox: RuntimeFilesystem | null, _userId?: string): Tool {
   return {
     description:
       "Read, write, and manipulate files in the active Studio runtime workspace. Supports reading files, writing content, listing directories, creating directories, and deleting files.",
@@ -21,7 +30,7 @@ export function createFilesystemTool(sandbox: Sandbox | null, _userId?: string):
       }
 
       try {
-        const workspacePath = `${WORKSPACE_PATH}/${path.replace(/^\//, "")}`;
+        const workspacePath = `${K3S_WORKSPACE_PATH}/${path.replace(/^\//, "")}`;
 
         switch (operation) {
           case "read": {

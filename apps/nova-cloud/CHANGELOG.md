@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-07
 
+### Changed - K3s Runtime and Domain Edge
+
+- Replaced the active Nova Cloud sandbox/runtime path with the self-hosted k3s `nova-runtime-control` API, including runtime file operations, shell execution, preview serving, and `/api/sandbox` compatibility backed by runtime-control status instead of E2B
+- Added runtime-control preview support so workspace builds can be served through a `runtime-preview` Kubernetes service and routed by Caddy/Cloudflared to `*.dlx.studio` or verified custom domains
+- Added Nova Cloud domain-control integration for listing, adding, verifying, syncing, and removing Studio custom domains through `nova-domain-control`, with TXT ownership verification and Caddy sync support
+- Added k3s deployment assets for Caddy, Cloudflared, domain-control, frpc, smoke workspaces, and runtime-control RBAC/bootstrap so the local Debian host can restart the remaining edge/runtime layers without a VPS
+- Removed the active E2B dependency, template build script, and E2B runtime imports from Nova Cloud while keeping a k3s-backed compatibility shim for older sandbox call sites
+- Fixed SurrealDB record-id handling for runtime process and artifact updates so existing preview rows update cleanly when a k3s workspace preview is restarted
+
 ### Added - Workspace Runtime Agent Surface
 
 - Added a first-class workspace runtime contract API at `/api/studios/[studioId]/workspaces/[workspaceId]/runtime` so clients and the Nova agent can read the workspace commands, storage paths, hostnames, and deployment metadata from one source of truth
@@ -46,13 +55,13 @@ All notable changes to this project will be documented in this file.
 ### Added - Standalone Nova frps
 
 - Added custom `apps/nova-frp` support for standalone `frps` domain control with direct SurrealDB host authorization, built-in ACME certificate issuance, HTTPS termination, and HTTP-to-HTTPS redirect behavior
-- Added `frps nova-check` for validating whether a host is active/enabled in SurrealDB from the VPS
-- Added `frps nova-smoke` plus a bundled `frpc` smoke binary to create/update a test workspace domain, start a temporary workspace page, verify HTTP redirect, obtain/reuse HTTPS certificates, and validate the frp tunnel path on the VPS
-- Updated [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to record the finalized standalone custom `frps` deployment model and VPS smoke-test flow
+- Added `frps nova-check` for validating whether a host is active/enabled in SurrealDB from the public frps edge
+- Added `frps nova-smoke` plus a bundled `frpc` smoke binary to create/update a test workspace domain, start a temporary workspace page, verify HTTP redirect, obtain/reuse HTTPS certificates, and validate the frp tunnel path through the public edge
+- Updated [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to record the finalized standalone custom `frps` deployment model and edge smoke-test flow
 
 ### Added - Workspace Domain Settings
 
-- Added Studio settings UI for each workspace's Nova-managed `*.workspace.dlxstudios.com` URL, custom domain requests, expected DNS records, and FRP domain-control endpoint placeholders at `https://domains.dlxstudios.com`
+- Added Studio settings UI for each workspace's Nova-managed `*.dlx.studio` URL, custom domain requests, expected DNS records, and FRP domain-control endpoint placeholders at `https://domains.dlxstudios.com`
 - Added authenticated placeholder Studio domain API routes for listing, adding, verifying, and removing workspace domains while the custom `frps` API is finalized
 
 ### Fixed - Workspace Checks

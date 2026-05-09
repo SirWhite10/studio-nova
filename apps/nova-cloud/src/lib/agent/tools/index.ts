@@ -1,5 +1,4 @@
 import type { RequestEvent } from "@sveltejs/kit";
-import type { Sandbox } from "e2b";
 import { createConfiguredIntegrationTools, createStudioIntegrationsTool } from "./integrations";
 import { createShellTool } from "./shell";
 import { createFilesystemTool } from "./filesystem";
@@ -31,6 +30,9 @@ import {
 } from "./runtime";
 import type { ToolSet } from "ai";
 import { listResolvedStudioIntegrations } from "$lib/server/surreal-integrations";
+import type { ensureK3sRuntime } from "$lib/server/k3s-runtime";
+
+type RuntimeAdapter = Awaited<ReturnType<typeof ensureK3sRuntime>>;
 
 // Legacy orchestrator compatibility. The current app path builds tools per request.
 export const tools: ToolSet = {};
@@ -100,7 +102,7 @@ export async function createAgentTools(
 }
 
 // New: Create tools with Sandbox instance and token for use in streaming endpoint
-export function createToolsWithSandbox(sandbox: Sandbox, userId: string, token?: string) {
+export function createToolsWithSandbox(sandbox: RuntimeAdapter, userId: string, token?: string) {
   return {
     shell: createShellTool(sandbox, userId),
     filesystem: createFilesystemTool(sandbox, userId),

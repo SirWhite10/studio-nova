@@ -1,4 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
+import { removeStudioCustomDomain } from "$lib/server/studio-domains";
 import { requireUserId } from "$lib/server/surreal-query";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
 import { getStudioForUser } from "$lib/server/surreal-studios";
@@ -11,11 +12,11 @@ export const DELETE: RequestHandler = async (event) => {
     return json({ error: "Studio not found" }, { status: 404 });
   }
 
-  return json({
-    ok: true,
-    host: decodeURIComponent(event.params.host ?? ""),
-    status: "remove-requested",
-    endpoint: "https://domains.dlxstudios.com/v1/workspaces/{workspaceId}/domains/{host}",
-    placeholder: true,
-  });
+  const host = decodeURIComponent(event.params.host ?? "");
+  try {
+    return json(await removeStudioCustomDomain(studioId, host));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: message }, { status: 400 });
+  }
 };

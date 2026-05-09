@@ -13,12 +13,12 @@ describe("MemoryDomainStore", () => {
         localPort: 5173,
         subdomain: "ws-studio-1",
       },
-      "workspaces.example.com",
+      "dlx.studio",
     );
 
-    const result = await store.resolveHost("WS-Studio-1.Workspaces.Example.Com");
+    const result = await store.resolveHost("WS-Studio-1.Dlx.Studio");
     expect(result?.proxy.proxyName).toBe("studio-1-primary");
-    expect(result?.domain.host).toBe("ws-studio-1.workspaces.example.com");
+    expect(result?.domain.host).toBe("ws-studio-1.dlx.studio");
     expect(result?.domain.status).toBe("active");
   });
 
@@ -33,7 +33,7 @@ describe("MemoryDomainStore", () => {
         localPort: 5173,
         customDomains: ["preview.customer.com"],
       },
-      "workspaces.example.com",
+      "dlx.studio",
     );
 
     await expect(store.resolveHost("preview.customer.com")).resolves.toBeNull();
@@ -50,10 +50,10 @@ describe("MemoryDomainStore", () => {
         localPort: 5173,
         subdomain: "ws-studio-1",
       },
-      "workspaces.example.com",
+      "dlx.studio",
     );
 
     await store.disableProxy("studio-1-primary");
-    await expect(store.resolveHost("ws-studio-1.workspaces.example.com")).resolves.toBeNull();
+    await expect(store.resolveHost("ws-studio-1.dlx.studio")).resolves.toBeNull();
   });
 });

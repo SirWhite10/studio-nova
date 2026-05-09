@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caddy-config
+  namespace: nova-edge
+  labels:
+    app.kubernetes.io/name: caddy
+data:
+  caddy.json: |
+    {
+      "admin": {
+        "listen": "0.0.0.0:2019"
+      },
+      "apps": {
+        "http": {
+          "servers": {
+            "workspace-edge": {
+              "listen": [":8080"],
+              "automatic_https": {
+                "disable": true
+              },
+              "routes": [
+                {
+                  "@id": "nova-fallback",
+                  "handle": [
+                    {
+                      "handler": "static_response",
+                      "status_code": 404,
+                      "body": "Nova edge route not found\n"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }

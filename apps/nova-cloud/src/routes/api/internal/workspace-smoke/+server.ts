@@ -110,8 +110,8 @@ export const POST: RequestHandler = async (event) => {
     artifact: provisioned.artifact,
     preview,
     build: {
-      scaffoldStdout: provisioned.scaffoldResult?.stdout ?? null,
-      scaffoldStderr: provisioned.scaffoldResult?.stderr ?? null,
+      scaffoldStdout: null,
+      scaffoldStderr: null,
       buildStdout: provisioned.buildResult.stdout,
       buildStderr: provisioned.buildResult.stderr,
     },

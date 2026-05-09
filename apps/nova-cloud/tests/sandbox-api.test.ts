@@ -8,10 +8,6 @@ vi.mock("$lib/server/surreal-records", () => ({
   normalizeRouteParam: vi.fn((id: string) => id),
 }));
 
-vi.mock("$lib/server/surreal-sandbox", () => ({
-  getSandboxForStudio: vi.fn(),
-}));
-
 vi.mock("$lib/server/surreal-runtime-processes", () => ({
   getPrimaryForStudio: vi.fn(),
   upsertPrimaryForStudio: vi.fn(),
@@ -36,14 +32,17 @@ vi.mock("$lib/server/runtime-limits", () => ({
   },
 }));
 
-vi.mock("$lib/server/sandbox", () => ({
-  getConnectedSandbox: vi.fn(),
-  ensureSandboxForRuntime: vi.fn(),
-  disconnectSandbox: vi.fn(),
+vi.mock("$lib/server/nova-runtime-control", () => ({
+  callRuntimeControl: vi.fn().mockResolvedValue({ ok: true }),
+  runtimeControlConfigured: vi.fn().mockReturnValue(true),
+  runtimeControlStudioId: vi.fn(
+    (userId: string, studioId: string) => `control-${userId}-${studioId}`,
+  ),
+  stopRuntimeControlPreview: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-vi.mock("$env/static/private", () => ({
-  E2B_API_KEY: "test-key",
+vi.mock("$lib/server/runtime-control-state", () => ({
+  getStudioRuntimeSnapshot: vi.fn(),
 }));
 
 function mockEvent(body: Record<string, unknown>, query: Record<string, string> = {}) {
@@ -69,6 +68,7 @@ describe("GET /api/sandbox", () => {
 
   beforeEach(async () => {
     vi.resetModules();
+    vi.clearAllMocks();
     const mod = await import("../src/routes/api/sandbox/+server");
     GET = mod.GET;
   });
@@ -81,11 +81,16 @@ describe("GET /api/sandbox", () => {
     expect(body.status).toBe("idle");
   });
 
-  it("returns idle when no sandbox record exists", async () => {
-    const { getSandboxForStudio } = await import("$lib/server/surreal-sandbox");
-    const { getPrimaryForStudio } = await import("$lib/server/surreal-runtime-processes");
-    (getSandboxForStudio as any).mockResolvedValue(null);
-    (getPrimaryForStudio as any).mockResolvedValue(null);
+  it("returns idle when no runtime exists", async () => {
+    const { getStudioRuntimeSnapshot } = await import("$lib/server/runtime-control-state");
+    (getStudioRuntimeSnapshot as any).mockResolvedValue({
+      runtime: { hasSandbox: false, status: "idle" },
+      sandboxLike: null,
+      primaryProcess: null,
+      artifacts: [],
+      controlStudioId: "control-user-123-studio-abc",
+      configured: true,
+    });
 
     const event = mockEvent({}, { studioId: "studio-abc" });
     const res = await GET(event);
@@ -94,23 +99,27 @@ describe("GET /api/sandbox", () => {
     expect(body.status).toBe("idle");
   });
 
-  it("returns active sandbox details", async () => {
-    const { getSandboxForStudio } = await import("$lib/server/surreal-sandbox");
-    const { getPrimaryForStudio } = await import("$lib/server/surreal-runtime-processes");
-    (getSandboxForStudio as any).mockResolvedValue({
-      status: "active",
-      sandboxId: "sb-001",
-      expiresAt: 9999999999999,
-      lastUsedAt: 1000,
+  it("returns active runtime details", async () => {
+    const { getStudioRuntimeSnapshot } = await import("$lib/server/runtime-control-state");
+    (getStudioRuntimeSnapshot as any).mockResolvedValue({
+      runtime: { hasSandbox: true, status: "active" },
+      sandboxLike: {
+        status: "active",
+        sandboxId: "control-user-123-studio-abc",
+        lastUsedAt: 1000,
+      },
+      primaryProcess: null,
+      artifacts: [],
+      controlStudioId: "control-user-123-studio-abc",
+      configured: true,
     });
-    (getPrimaryForStudio as any).mockResolvedValue(null);
 
     const event = mockEvent({}, { studioId: "studio-abc" });
     const res = await GET(event);
     const body = await parseResponse(res);
     expect(body.hasSandbox).toBe(true);
     expect(body.status).toBe("active");
-    expect(body.sandboxId).toBe("sb-001");
+    expect(body.sandboxId).toBe("control-user-123-studio-abc");
   });
 });
 
@@ -119,6 +128,7 @@ describe("POST /api/sandbox", () => {
 
   beforeEach(async () => {
     vi.resetModules();
+    vi.clearAllMocks();
     const mod = await import("../src/routes/api/sandbox/+server");
     POST = mod.POST;
   });
@@ -140,8 +150,7 @@ describe("POST /api/sandbox", () => {
   });
 
   it("handles start action", async () => {
-    const { ensureSandboxForRuntime } = await import("$lib/server/sandbox");
-    (ensureSandboxForRuntime as any).mockResolvedValue({ sandboxId: "sb-new" });
+    const { callRuntimeControl } = await import("$lib/server/nova-runtime-control");
 
     const event = mockEvent({ action: "start", studioId: "studio-abc" });
     const res = await POST(event);
@@ -149,12 +158,16 @@ describe("POST /api/sandbox", () => {
     const body = await parseResponse(res);
     expect(body.success).toBe(true);
     expect(body.action).toBe("start");
-    expect(ensureSandboxForRuntime).toHaveBeenCalled();
+    expect(callRuntimeControl).toHaveBeenCalledWith("control-user-123-studio-abc", {
+      action: "start",
+      systemPackages: ["git"],
+    });
   });
 
   it("handles stop action", async () => {
-    const { disconnectSandbox } = await import("$lib/server/sandbox");
-    (disconnectSandbox as any).mockResolvedValue(undefined);
+    const { callRuntimeControl } = await import("$lib/server/nova-runtime-control");
+    const { markPrimaryStopped } = await import("$lib/server/surreal-runtime-processes");
+    (markPrimaryStopped as any).mockResolvedValue(undefined);
 
     const event = mockEvent({ action: "stop", studioId: "studio-abc" });
     const res = await POST(event);
@@ -162,29 +175,23 @@ describe("POST /api/sandbox", () => {
     const body = await parseResponse(res);
     expect(body.success).toBe(true);
     expect(body.action).toBe("stop");
-    expect(disconnectSandbox).toHaveBeenCalledWith("user-123", undefined, "studio-abc");
+    expect(callRuntimeControl).toHaveBeenCalledWith("control-user-123-studio-abc", {
+      action: "delete",
+    });
+    expect(markPrimaryStopped).toHaveBeenCalledWith("user-123", "studio-abc");
   });
 
-  it("handles refresh action with no active sandbox", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
-    (getConnectedSandbox as any).mockResolvedValue(null);
-
-    const event = mockEvent({ action: "refresh", studioId: "studio-abc" });
-    const res = await POST(event);
-    expect(res.status).toBe(404);
-    const body = await parseResponse(res);
-    expect(body.error).toContain("No active sandbox");
-  });
-
-  it("handles refresh action with active sandbox", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
-    (getConnectedSandbox as any).mockResolvedValue({ sandboxId: "sb-001" });
+  it("handles refresh action", async () => {
+    const { callRuntimeControl } = await import("$lib/server/nova-runtime-control");
 
     const event = mockEvent({ action: "refresh", studioId: "studio-abc" });
     const res = await POST(event);
     expect(res.status).toBe(200);
     const body = await parseResponse(res);
     expect(body.success).toBe(true);
+    expect(callRuntimeControl).toHaveBeenCalledWith("control-user-123-studio-abc", {
+      action: "status",
+    });
   });
 });
 
@@ -193,6 +200,7 @@ describe("POST /api/internal/runtime-tools", () => {
 
   beforeEach(async () => {
     vi.resetModules();
+    vi.clearAllMocks();
     const mod = await import("../src/routes/api/internal/runtime-tools/+server");
     POST = mod.POST;
   });
@@ -205,25 +213,26 @@ describe("POST /api/internal/runtime-tools", () => {
     expect(body.error).toContain("Missing");
   });
 
-  it("returns 404 when no active sandbox", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
-    (getConnectedSandbox as any).mockResolvedValue(null);
-
+  it("handles runtime_dev_logs without a registered primary process when pid is provided", async () => {
+    const { getPrimaryForStudio } = await import("$lib/server/surreal-runtime-processes");
+    const { getStudioRuntimeSnapshot } = await import("$lib/server/runtime-control-state");
+    (getPrimaryForStudio as any).mockResolvedValue(null);
+    (getStudioRuntimeSnapshot as any).mockResolvedValue({
+      runtime: { status: "active" },
+    });
     const event = mockEvent({
       studioId: "studio-abc",
       toolName: "runtime_dev_logs",
       input: { pid: 1 },
     });
     const res = await POST(event);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
     const body = await parseResponse(res);
-    expect(body.error).toContain("No active sandbox");
+    expect(body.success).toBe(true);
+    expect(body.result.pid).toBe(1);
   });
 
   it("returns 400 for unknown tool name", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
-    (getConnectedSandbox as any).mockResolvedValue({ sandboxId: "sb-001" });
-
     const event = mockEvent({
       studioId: "studio-abc",
       toolName: "runtime_nonexistent",
@@ -236,19 +245,9 @@ describe("POST /api/internal/runtime-tools", () => {
   });
 
   it("handles runtime_dev_logs", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
-    const { getPrimaryForStudio, upsertPrimaryForStudio } =
-      await import("$lib/server/surreal-runtime-processes");
+    const { getPrimaryForStudio } = await import("$lib/server/surreal-runtime-processes");
+    const { getStudioRuntimeSnapshot } = await import("$lib/server/runtime-control-state");
 
-    const mockHandle = {
-      wait: vi.fn().mockResolvedValue(undefined),
-    };
-    (getConnectedSandbox as any).mockResolvedValue({
-      sandboxId: "sb-001",
-      commands: {
-        connect: vi.fn().mockResolvedValue(mockHandle),
-      },
-    });
     (getPrimaryForStudio as any).mockResolvedValue({
       label: "Dev Server",
       command: "bun run dev",
@@ -257,8 +256,11 @@ describe("POST /api/internal/runtime-tools", () => {
       port: 3000,
       previewUrl: "https://example.com",
       status: "running",
+      logSummary: "server ready",
     });
-    (upsertPrimaryForStudio as any).mockResolvedValue({});
+    (getStudioRuntimeSnapshot as any).mockResolvedValue({
+      runtime: { status: "active" },
+    });
 
     const event = mockEvent({
       studioId: "studio-abc",
@@ -270,22 +272,17 @@ describe("POST /api/internal/runtime-tools", () => {
     const body = await parseResponse(res);
     expect(body.success).toBe(true);
     expect(body.result.pid).toBe(42);
-    expect(upsertPrimaryForStudio).toHaveBeenCalled();
+    expect(body.result.stdout).toBe("server ready");
   });
 
   it("handles runtime_dev_stop", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
     const { getPrimaryForStudio, markPrimaryStopped } =
       await import("$lib/server/surreal-runtime-processes");
+    const { stopRuntimeControlPreview } = await import("$lib/server/nova-runtime-control");
 
-    (getConnectedSandbox as any).mockResolvedValue({
-      sandboxId: "sb-001",
-      commands: {
-        kill: vi.fn().mockResolvedValue(undefined),
-      },
-    });
     (getPrimaryForStudio as any).mockResolvedValue({
       pid: 42,
+      port: 3000,
       label: "Dev Server",
     });
     (markPrimaryStopped as any).mockResolvedValue(undefined);
@@ -300,19 +297,15 @@ describe("POST /api/internal/runtime-tools", () => {
     const body = await parseResponse(res);
     expect(body.success).toBe(true);
     expect(body.result.stopped).toBe(true);
+    expect(stopRuntimeControlPreview).toHaveBeenCalledWith("control-user-123-studio-abc", {
+      port: 3000,
+    });
     expect(markPrimaryStopped).toHaveBeenCalledWith("user-123", "studio-abc");
   });
 
   it("returns 404 when no primary process for dev_stop", async () => {
-    const { getConnectedSandbox } = await import("$lib/server/sandbox");
     const { getPrimaryForStudio } = await import("$lib/server/surreal-runtime-processes");
 
-    (getConnectedSandbox as any).mockResolvedValue({
-      sandboxId: "sb-001",
-      commands: {
-        kill: vi.fn().mockResolvedValue(undefined),
-      },
-    });
     (getPrimaryForStudio as any).mockResolvedValue(null);
 
     const event = mockEvent({

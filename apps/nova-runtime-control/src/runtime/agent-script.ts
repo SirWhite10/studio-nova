@@ -1,12 +1,14 @@
 export const runtimeAgentScript = String.raw`
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 
 const workspace = process.env.NOVA_WORKSPACE || "/workspace";
 const token = process.env.NOVA_RUNTIME_AGENT_TOKEN || "";
 const port = Number.parseInt(process.env.NOVA_RUNTIME_AGENT_PORT || "8788", 10);
+const previewServers = new Map();
 
 function sendJson(response, status, body) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -84,6 +86,91 @@ function runCommand(input) {
   });
 }
 
+function contentTypeFor(filePath) {
+  switch (extname(filePath)) {
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".md":
+      return "text/markdown; charset=utf-8";
+    case ".txt":
+      return "text/plain; charset=utf-8";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+function resolvePreviewPath(root, urlPath) {
+  const pathname = decodeURIComponent((urlPath || "/").split("?")[0]);
+  const candidate = normalize(join(root, pathname));
+  if (!candidate.startsWith(root)) return null;
+
+  if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+
+  const indexCandidate =
+    existsSync(candidate) && statSync(candidate).isDirectory()
+      ? join(candidate, "index.html")
+      : join(root, pathname.replace(/^\//, ""), "index.html");
+  if (existsSync(indexCandidate) && statSync(indexCandidate).isFile()) return indexCandidate;
+
+  const fallback = join(root, "index.html");
+  if (existsSync(fallback) && statSync(fallback).isFile()) return fallback;
+  return null;
+}
+
+async function stopPreviewServer(port) {
+  const existing = previewServers.get(port);
+  if (!existing) return false;
+  await new Promise((resolveClose, rejectClose) => {
+    existing.close((error) => {
+      if (error) rejectClose(error);
+      else resolveClose(undefined);
+    });
+  });
+  previewServers.delete(port);
+  return true;
+}
+
+async function startPreviewServer(input) {
+  const previewPort = Math.max(1, Math.min(Number(input.port || 4173), 65535));
+  const root = workspacePath(input.rootPath || ".");
+  await stopPreviewServer(previewPort).catch(() => {});
+
+  const previewServer = createServer((request, response) => {
+    const filePath = resolvePreviewPath(root, request.url || "/");
+    if (!filePath) {
+      response.statusCode = 404;
+      response.end("Not found");
+      return;
+    }
+
+    response.setHeader("content-type", contentTypeFor(filePath));
+    createReadStream(filePath).pipe(response);
+  });
+
+  await new Promise((resolveListen, rejectListen) => {
+    previewServer.once("error", rejectListen);
+    previewServer.listen(previewPort, "0.0.0.0", () => {
+      previewServer.removeListener("error", rejectListen);
+      resolveListen(undefined);
+    });
+  });
+
+  previewServers.set(previewPort, previewServer);
+  return {
+    success: true,
+    result: {
+      port: previewPort,
+      rootPath: input.rootPath || ".",
+    },
+  };
+}
+
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url || "/", "http://runtime-agent.local");
@@ -140,6 +227,18 @@ const server = createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/files/delete") {
       await rm(workspacePath(input.path), { recursive: true, force: true });
       sendJson(response, 200, { success: true, result: { path: input.path } });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/preview/start") {
+      sendJson(response, 200, await startPreviewServer(input));
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/preview/stop") {
+      const previewPort = Math.max(1, Math.min(Number(input.port || 4173), 65535));
+      const stopped = await stopPreviewServer(previewPort);
+      sendJson(response, 200, { success: true, result: { port: previewPort, stopped } });
       return;
     }
 

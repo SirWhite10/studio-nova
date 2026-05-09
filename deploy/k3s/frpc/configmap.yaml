@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frpc-config
+  namespace: nova-frp
+  labels:
+    app.kubernetes.io/name: nova-frpc
+data:
+  frpc.toml.tpl: |
+    serverAddr = "frps.dlx.studio"
+    serverPort = 7000
+    loginFailExit = false
+
+    [auth]
+    method = "token"
+    token = "REPLACE_WITH_FRPS_SHARED_TOKEN"
+
+    [transport]
+    tls.enable = true
+
+    # Shared K3s frpc deployment scaffold.
+    # Proxy entries are expected to be managed by Nova's domain/runtime control layer
+    # once the reconciliation path is wired in.

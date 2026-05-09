@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export type DomainControlConfig = {
+  storeMode: "surreal" | "memory";
   host: string;
   port: number;
   token: string | null;
   frpToken: string | null;
+  caddyAdminUrl: string | null;
   subdomainHost: string;
+  verificationPrefix: string;
   surreal: {
     url: string;
     namespace: string;
@@ -48,25 +51,23 @@ function readInt(name: string, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function requireEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env var: ${name}`);
-  return value;
-}
-
 export function loadConfig(): DomainControlConfig {
+  const storeMode = process.env.NOVA_DOMAIN_CONTROL_STORE === "memory" ? "memory" : "surreal";
   return {
+    storeMode,
     host: process.env.NOVA_DOMAIN_CONTROL_HOST || "127.0.0.1",
     port: readInt("NOVA_DOMAIN_CONTROL_PORT", 8790),
     token: process.env.NOVA_DOMAIN_CONTROL_TOKEN || null,
     frpToken: process.env.NOVA_DOMAIN_CONTROL_FRP_TOKEN || null,
-    subdomainHost: process.env.NOVA_DOMAIN_CONTROL_SUBDOMAIN_HOST || "workspaces.example.com",
+    caddyAdminUrl: process.env.NOVA_CADDY_ADMIN_URL || null,
+    subdomainHost: process.env.NOVA_DOMAIN_CONTROL_SUBDOMAIN_HOST || "dlx.studio",
+    verificationPrefix: process.env.NOVA_DOMAIN_CONTROL_VERIFICATION_PREFIX || "_nova-domain",
     surreal: {
-      url: requireEnv("SURREALDB_URL"),
+      url: process.env.SURREALDB_URL || "memory",
       namespace: process.env.SURREALDB_NAMESPACE || "main",
       database: process.env.SURREALDB_DATABASE || "main",
-      username: requireEnv("SURREALDB_USERNAME"),
-      password: requireEnv("SURREALDB_PASSWORD"),
+      username: process.env.SURREALDB_USERNAME || "root",
+      password: process.env.SURREALDB_PASSWORD || "root",
       connectTimeoutMs: readInt("SURREALDB_CONNECT_TIMEOUT_MS", 5000),
     },
   };

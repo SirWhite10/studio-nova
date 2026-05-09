@@ -25,7 +25,7 @@ Example:
 bindPort = 7000
 vhostHTTPPort = 80
 vhostHTTPSPort = 443
-subDomainHost = "workspace.dlxstudios.com"
+subDomainHost = "dlx.studio"
 
 [auth]
 method = "token"
@@ -47,15 +47,15 @@ connectTimeoutMs = 5000
 
 With this mode enabled, use `http` frpc proxies for workspace web apps. That means the public browser connection is HTTPS, while the tunnel carries normal HTTP to the workspace service after `frps` terminates TLS. Stock frp `https` proxies are TLS passthrough and do not participate in Nova's built-in certificate handling.
 
-Before starting the VPS service, test a hostname against SurrealDB:
+Before starting the public frps service, test a hostname against SurrealDB:
 
 ```sh
-frps -c /etc/frp/frps.toml nova-check --host test.workspace.dlxstudios.com
+frps -c /etc/frp/frps.toml nova-check --host test.dlx.studio
 ```
 
-## Debian VPS Build
+## Debian Edge Build
 
-To build only the Nova `frps` and `frpc` binaries on a Debian VPS after cloning
+To build only the Nova `frps` and `frpc` binaries on a Debian host after cloning
 this repository, run:
 
 ```sh

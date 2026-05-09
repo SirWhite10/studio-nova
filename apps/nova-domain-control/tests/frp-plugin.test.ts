@@ -31,7 +31,7 @@ describe("frp plugin handler", () => {
         localPort: 5173,
         subdomain: "ws-studio-1",
       },
-      "workspaces.example.com",
+      "dlx.studio",
     );
 
     const response = await handleFrpPluginRequest({

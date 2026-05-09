@@ -1,46 +1,55 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "@sveltejs/kit";
 import { requireUserId } from "$lib/server/surreal-query";
-import { getSandboxForStudio } from "$lib/server/surreal-sandbox";
-import { getPrimaryForStudio } from "$lib/server/surreal-runtime-processes";
-import { listArtifactsForStudio } from "$lib/server/surreal-artifacts";
-import {
-  getConnectedSandbox,
-  ensureSandboxForRuntime,
-  disconnectSandbox,
-} from "$lib/server/sandbox";
-
+import { markPrimaryStopped } from "$lib/server/surreal-runtime-processes";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
-import { resolveRuntimeState } from "$lib/studios/runtime-state";
 import { RuntimeLimitError } from "$lib/server/runtime-limits";
+import {
+  callRuntimeControl,
+  runtimeControlConfigured,
+  runtimeControlStudioId,
+} from "$lib/server/nova-runtime-control";
+import { getStudioRuntimeSnapshot } from "$lib/server/runtime-control-state";
 
 export const GET: RequestHandler = async (event) => {
   const userId = requireUserId(event.locals);
   const studioId = event.url.searchParams.get("studioId");
 
   if (!studioId) {
-    const runtime = resolveRuntimeState({});
+    const runtime = {
+      status: "idle",
+      badgeLabel: "idle",
+      label: "Runtime idle",
+      summary:
+        "No runtime is attached to this Studio yet. Nova can wake one on demand when a task needs execution.",
+      tone: "muted",
+      canStart: true,
+      canStop: false,
+      hasSandbox: false,
+      sandboxId: null,
+      expiresAt: null,
+      lastUsedAt: null,
+      previewStatus: null,
+      previewUrl: null,
+    };
     return json({ hasSandbox: false, status: runtime.status, runtime });
   }
 
   const normalizedStudioId = normalizeRouteParam(studioId);
-  const [sandboxRecord, primaryProcess, artifacts] = await Promise.all([
-    getSandboxForStudio(userId, normalizedStudioId).catch(() => null),
-    getPrimaryForStudio(userId, normalizedStudioId).catch(() => null),
-    listArtifactsForStudio(userId, normalizedStudioId, ["preview"]).catch(() => []),
-  ]);
-
-  const runtime = resolveRuntimeState({ sandbox: sandboxRecord, primaryProcess });
+  const snapshot = await getStudioRuntimeSnapshot(userId, normalizedStudioId);
+  const runtime = snapshot.runtime;
 
   return json({
     hasSandbox: runtime.hasSandbox,
     status: runtime.status,
     runtime,
-    sandboxId: sandboxRecord?.sandboxId ?? null,
-    expiresAt: sandboxRecord?.expiresAt ?? null,
-    lastUsedAt: sandboxRecord?.lastUsedAt ?? null,
-    primaryProcess: primaryProcess ? { ...primaryProcess, _id: undefined } : null,
-    artifacts,
+    sandboxId: snapshot.sandboxLike?.sandboxId ?? null,
+    expiresAt: null,
+    lastUsedAt: snapshot.sandboxLike?.lastUsedAt ?? null,
+    primaryProcess: snapshot.primaryProcess ? { ...snapshot.primaryProcess, _id: undefined } : null,
+    artifacts: snapshot.artifacts,
+    controlStudioId: snapshot.controlStudioId,
+    configured: snapshot.configured,
   });
 };
 
@@ -56,22 +65,21 @@ export const POST: RequestHandler = async (event) => {
 
   const normalizedStudioId = normalizeRouteParam(studioId);
 
-  const context = {
-    event,
-    userId,
-    studioId: normalizedStudioId,
-  };
-
   try {
+    if (!runtimeControlConfigured()) {
+      return json({ error: "Runtime control is not configured" }, { status: 500 });
+    }
+    const controlStudioId = runtimeControlStudioId(userId, normalizedStudioId);
     if (body.action === "start") {
-      await ensureSandboxForRuntime(context);
+      await callRuntimeControl(controlStudioId, {
+        action: "start",
+        systemPackages: ["git"],
+      });
     } else if (body.action === "stop") {
-      await disconnectSandbox(userId, undefined, normalizedStudioId);
+      await callRuntimeControl(controlStudioId, { action: "delete" });
+      await markPrimaryStopped(userId, normalizedStudioId).catch(() => {});
     } else if (body.action === "refresh") {
-      const sandbox = await getConnectedSandbox(context);
-      if (!sandbox) {
-        return json({ error: "No active sandbox found" }, { status: 404 });
-      }
+      await callRuntimeControl(controlStudioId, { action: "status" });
     } else {
       return json({ error: `Unknown action: ${String(body.action)}` }, { status: 400 });
     }

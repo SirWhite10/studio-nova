@@ -18,8 +18,7 @@
     "test:e2e:skills:search": "bun --cwd ../nova-sveltekit-test playwright test skills-search",
     "test:e2e:skills:chat": "bun --cwd ../nova-sveltekit-test playwright test skills-chat",
     "serve:test": "bun --cwd ../nova-sveltekit-test dev",
-    "deploy": "vp run build",
-    "e2b:build": "bun ./e2b/build.ts"
+    "deploy": "vp run build"
   },
   "dependencies": {
     "@ai-sdk/svelte": "^4.0.97",
@@ -32,9 +31,9 @@
     "better-auth": "1.5.3",
     "dompurify": "^3.3.1",
     "dotenv": "^17.3.1",
-    "e2b": "^2.14.1",
     "isomorphic-dompurify": "^2.36.0",
     "marked": "^17.0.3",
+    "resend": "^6.12.3",
     "runed": "^0.31.1",
     "shiki": "^3.22.0",
     "surrealdb-better-auth": "^0.0.18",
@@ -43,7 +42,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@e2b/cli": "^2.8.1",
     "@fontsource/fira-mono": "^5.2.7",
     "@internationalized/date": "^3.10.0",
     "@lucide/svelte": "^0.561.0",

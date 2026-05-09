@@ -165,7 +165,7 @@ build_frp() {
   echo "Next:"
   echo "  sudo mkdir -p /opt/nova-frp"
   echo "  sudo tar -xzf ${tarball} -C /opt/nova-frp --strip-components=1"
-  echo "  /opt/nova-frp/frps -c /etc/nova-frp/frps.toml nova-smoke --frpc-binary /opt/nova-frp/frpc --host test.workspace.dlxstudios.com --timeout 5m"
+  echo "  /opt/nova-frp/frps -c /etc/nova-frp/frps.toml nova-smoke --frpc-binary /opt/nova-frp/frpc --host test.dlx.studio --timeout 5m"
 }
 
 install_debian_deps

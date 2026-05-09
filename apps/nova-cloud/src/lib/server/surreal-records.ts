@@ -1,3 +1,5 @@
+import { StringRecordId } from "surrealdb";
+
 export function recordIdToString(id: unknown): string {
   if (!id) return "";
   if (typeof id === "string") return id;
@@ -41,6 +43,10 @@ export function ensureRecordPrefix(table: string, id: string): string {
   return `${prefix}${cleaned}`;
 }
 
+export function tableRecordId(table: string, id: unknown) {
+  return new StringRecordId(ensureRecordPrefix(table, recordIdToString(id)));
+}
+
 function normalizeStringValue(value: unknown): unknown {
   if (typeof value === "string") {
     return stripRecordPrefix(stripWrappingQuotes(value));
@@ -59,7 +65,7 @@ export function withRecordIds<T extends { id?: unknown }>(row: T) {
   const normalized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
     if (key === "id") continue;
-    if (typeof key === "string" && key.endsWith("Id") && key !== "userId") {
+    if (typeof key === "string" && key.endsWith("Id") && key !== "userId" && key !== "sandboxId") {
       normalized[key] = normalizeStringValue(value);
     }
   }

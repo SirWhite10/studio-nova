@@ -1,4 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
+import { verifyStudioCustomDomain } from "$lib/server/studio-domains";
 import { requireUserId } from "$lib/server/surreal-query";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
 import { getStudioForUser } from "$lib/server/surreal-studios";
@@ -11,14 +12,11 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: "Studio not found" }, { status: 404 });
   }
 
-  return json(
-    {
-      ok: true,
-      host: decodeURIComponent(event.params.host ?? ""),
-      status: "verifying",
-      endpoint: "https://domains.dlxstudios.com/v1/workspaces/{workspaceId}/domains/{host}/verify",
-      placeholder: true,
-    },
-    { status: 202 },
-  );
+  const host = decodeURIComponent(event.params.host ?? "");
+  try {
+    return json(await verifyStudioCustomDomain(studioId, host), { status: 202 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: message }, { status: 400 });
+  }
 };

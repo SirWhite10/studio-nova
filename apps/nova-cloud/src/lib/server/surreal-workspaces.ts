@@ -117,7 +117,7 @@ type WorkspaceStoragePaths = {
   contentPath: string;
 };
 
-const WORKSPACE_ROOT_DOMAIN = "workspace.dlxstudios.com";
+const WORKSPACE_ROOT_DOMAIN = "dlx.studio";
 const DEFAULT_OUTPUT_DIR = "dist";
 
 async function ensureWorkspaceTables() {

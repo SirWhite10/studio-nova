@@ -1,9 +1,11 @@
-const WORKSPACE_ROOT_DOMAIN = "workspace.dlxstudios.com";
+const WORKSPACE_ROOT_DOMAIN = "dlx.studio";
 const DOMAIN_CONTROL_API_ORIGIN = "https://domains.dlxstudios.com";
+const DOMAIN_CNAME_TARGET = "domain.dlx.studio";
 
 export type WorkspaceDomainStatus =
   | "active"
   | "pending"
+  | "verified"
   | "verifying"
   | "available"
   | "not-configured";
@@ -23,6 +25,7 @@ export type WorkspaceDomain = {
   target: string;
   https: WorkspaceDomainStatus;
   records: WorkspaceDomainRecord[];
+  routingHint?: string;
 };
 
 export type WorkspaceDomainSettings = {
@@ -54,7 +57,7 @@ function stableWorkspaceSlug(studioId: string) {
 export function createWorkspaceDomainSettings(studioId: string): WorkspaceDomainSettings {
   const workspaceId = stableWorkspaceSlug(studioId);
   const workspaceHost = `${workspaceId}.${WORKSPACE_ROOT_DOMAIN}`;
-  const workspaceApiBase = `${DOMAIN_CONTROL_API_ORIGIN}/v1/workspaces/${workspaceId}`;
+  const workspaceApiBase = `/api/studios/${studioId}/domains`;
 
   return {
     apiOrigin: DOMAIN_CONTROL_API_ORIGIN,
@@ -78,40 +81,70 @@ export function createWorkspaceDomainSettings(studioId: string): WorkspaceDomain
     },
     customDomains: [],
     endpoints: {
-      createWorkspace: workspaceApiBase,
-      listDomains: `${workspaceApiBase}/domains`,
-      addDomain: `${workspaceApiBase}/domains`,
-      verifyDomain: `${workspaceApiBase}/domains/{host}/verify`,
-      removeDomain: `${workspaceApiBase}/domains/{host}`,
-      smokeTest: `${DOMAIN_CONTROL_API_ORIGIN}/v1/smoke/workspace-domain`,
+      createWorkspace: `/api/studios/${studioId}/workspaces`,
+      listDomains: workspaceApiBase,
+      addDomain: workspaceApiBase,
+      verifyDomain: `${workspaceApiBase}/{host}/verify`,
+      removeDomain: `${workspaceApiBase}/{host}`,
+      smokeTest: `/api/internal/workspace-smoke`,
     },
   };
 }
 
-export function createPendingCustomDomain(studioId: string, host: string): WorkspaceDomain {
+export function createPendingCustomDomain(
+  studioId: string,
+  host: string,
+  input: {
+    status?: WorkspaceDomainStatus;
+    verificationToken?: string;
+    https?: WorkspaceDomainStatus;
+  } = {},
+): WorkspaceDomain {
   const settings = createWorkspaceDomainSettings(studioId);
   const cleanHost = host.trim().toLowerCase();
+  const labels = cleanHost.split(".");
+  const looksLikeApex = labels.length === 2;
+  const status = input.status ?? "pending";
+  const verificationToken = input.verificationToken ?? settings.workspaceId;
+  const httpsStatus = input.https ?? (status === "active" ? "active" : "pending");
   return {
     host: cleanHost,
     kind: "custom",
-    status: "pending",
-    target: settings.workspaceHost,
-    https: "pending",
+    status,
+    target: DOMAIN_CNAME_TARGET,
+    https: httpsStatus,
     records: [
       {
         type: "CNAME",
-        name: cleanHost,
-        value: settings.workspaceHost,
-        status: "pending",
-        purpose: "Routes the custom domain to the Nova workspace edge",
+        name: looksLikeApex ? "@" : cleanHost,
+        value: DOMAIN_CNAME_TARGET,
+        status,
+        purpose: looksLikeApex
+          ? "Use your DNS provider's ALIAS/ANAME/CNAME flattening support for the apex, or attach the apex in Cloudflare Tunnel when the zone is on Cloudflare."
+          : "Routes the custom domain to the Nova workspace edge.",
       },
       {
         type: "TXT",
         name: `_nova-domain.${cleanHost}`,
-        value: `nova-domain=${settings.workspaceId}`,
-        status: "pending",
+        value: `nova-domain=${verificationToken}`,
+        status,
         purpose: "Proves domain ownership before activation",
       },
     ],
+    routingHint: looksLikeApex
+      ? "Apex domains require ALIAS/ANAME/CNAME flattening support from the DNS provider, or a direct Cloudflare Tunnel hostname if the zone is already on Cloudflare."
+      : "Subdomains can point to domain.dlx.studio with a standard CNAME record.",
   };
+}
+
+export function createConfiguredCustomDomain(
+  studioId: string,
+  host: string,
+  input: { status: WorkspaceDomainStatus; verificationToken?: string },
+) {
+  return createPendingCustomDomain(studioId, host, {
+    status: input.status,
+    verificationToken: input.verificationToken,
+    https: input.status === "active" ? "active" : "pending",
+  });
 }

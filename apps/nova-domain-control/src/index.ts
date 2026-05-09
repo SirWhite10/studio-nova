@@ -1,9 +1,10 @@
 import { loadConfig } from "./config.ts";
 import { createDomainControlServer } from "./server.ts";
-import { SurrealDomainStore } from "./store.ts";
+import { MemoryDomainStore, SurrealDomainStore } from "./store.ts";
 
 const config = loadConfig();
-const store = new SurrealDomainStore(config.surreal);
+const store =
+  config.storeMode === "memory" ? new MemoryDomainStore() : new SurrealDomainStore(config.surreal);
 
 await store.ensureSchema();
 

@@ -1,8 +1,8 @@
-import { StringRecordId, Table } from "surrealdb";
+import { Table } from "surrealdb";
 import { markArtifactStatus, upsertArtifact } from "./surreal-artifacts";
 import { createStudioEvent } from "./surreal-studio-events";
 import { getSurreal } from "./surreal";
-import { ensureRecordPrefix, queryRows, recordIdToString, withRecordIds } from "./surreal-records";
+import { ensureRecordPrefix, queryRows, tableRecordId, withRecordIds } from "./surreal-records";
 import { ensureTables } from "./surreal-tables";
 
 export type RuntimeProcessRow = {
@@ -83,13 +83,25 @@ export async function upsertPrimaryForStudio(
   const db = await ensureRuntimeProcessTable();
   const fullId = ensureRecordPrefix("studio", studioId);
   const now = Date.now();
+  const normalizedProcess = {
+    ...process,
+    workspaceId: process.workspaceId ?? undefined,
+    previewUrl: process.previewUrl ?? undefined,
+    runtimeKind: process.runtimeKind ?? undefined,
+    lifecycleMode: process.lifecycleMode ?? undefined,
+    runCommand: process.runCommand ?? undefined,
+    healthCheckPath: process.healthCheckPath ?? undefined,
+    publicHost: process.publicHost ?? undefined,
+    statePath: process.statePath ?? undefined,
+    runtimeImage: process.runtimeImage ?? undefined,
+    logSummary: process.logSummary ?? undefined,
+  };
 
   const existing = await getPrimaryForStudio(userId, studioId);
   if (existing) {
-    const rid = recordIdToString(existing.id);
     const updated = await db
-      .update<RuntimeProcessRow>(new StringRecordId(rid))
-      .merge({ ...process, updatedAt: now });
+      .update<RuntimeProcessRow>(tableRecordId("runtime_process", existing.id))
+      .merge({ ...normalizedProcess, updatedAt: now });
     const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as RuntimeProcessRow);
     await syncPreviewArtifact(userId, studioId, row);
     await createStudioEvent({
@@ -121,7 +133,7 @@ export async function upsertPrimaryForStudio(
   const created = await db.create(new Table("runtime_process")).content({
     userId,
     studioId: fullId,
-    ...process,
+    ...normalizedProcess,
     createdAt: now,
     updatedAt: now,
   });
