@@ -27,15 +27,28 @@
 
 <Sidebar.Root variant="inset" collapsible="icon" {...restProps}>
 	<Sidebar.Header class="gap-4 px-2 py-3">
-		<a
-			href="/app"
-			class="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-		>
-			<div class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary/12 font-semibold text-sidebar-primary">
-				N
-			</div>
-			<NovaLogo href={undefined} size="md" class="group-data-[collapsible=icon]:hidden" />
-		</a>
+		<Sidebar.Menu>
+			<Sidebar.MenuItem>
+				<Sidebar.MenuButton
+					size="lg"
+					class="data-[slot=sidebar-menu-button]:!p-1.5 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+					tooltipContent="Nova Cloud"
+				>
+					{#snippet child({ props })}
+						<a href="/app" {...props}>
+							<div class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary/12 font-semibold text-sidebar-primary">
+								N
+							</div>
+							<NovaLogo
+								href={undefined}
+								size="md"
+								class="group-data-[collapsible=icon]:hidden"
+							/>
+						</a>
+					{/snippet}
+				</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+		</Sidebar.Menu>
 
 		{#if searchConfig.enabled}
 			<StudioGlobalSearch
