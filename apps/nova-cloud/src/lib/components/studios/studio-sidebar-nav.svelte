@@ -1,178 +1,161 @@
 <script lang="ts">
-	import MessageSquareIcon from "@lucide/svelte/icons/message-square";
-	import PlusIcon from "@lucide/svelte/icons/plus";
-	import CalendarClockIcon from "@lucide/svelte/icons/calendar-clock";
-	import BeakerIcon from "@lucide/svelte/icons/beaker";
-	import Settings2Icon from "@lucide/svelte/icons/settings-2";
-	import SparklesIcon from "@lucide/svelte/icons/sparkles";
-	import WaypointsIcon from "@lucide/svelte/icons/waypoints";
-	import WrenchIcon from "@lucide/svelte/icons/wrench";
-	import FolderIcon from "@lucide/svelte/icons/folder";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { useSidebar } from "$lib/components/ui/sidebar/index.js";
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
-	import { chatStore } from "$lib/nova/chat";
 	import StudioIcon from "$lib/components/studios/studio-icon.svelte";
-	import type { StudioIntegration, StudioSummary } from "$lib/studios/types";
+	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
+	import { useSidebar } from "$lib/components/ui/sidebar/index.js";
+	import type {
+		StudioSidebarLink,
+		StudioSidebarNavigation,
+		StudioSummary,
+	} from "$lib/studios/types";
 
 	interface Props {
 		studio?: StudioSummary | null;
-		integrations?: StudioIntegration[];
+		navigation?: StudioSidebarNavigation | null;
+		footerLinks?: StudioSidebarLink[];
 	}
 
-	let { studio = null, integrations = [] }: Props = $props();
+	let {
+		studio = null,
+		navigation = null,
+		footerLinks = [],
+	}: Props = $props();
 
 	const sidebar = useSidebar();
-	let loadedSidebarChats = $state(false);
 
-	const recentChats = $derived.by(() => {
-		if (!studio) return [];
-		const liveChats = chatStore.chats
-			.filter((chat) => chat.studioId === studio.id)
-			.slice(0, 3)
-			.map((chat) => ({
-				id: chat.id,
-				title: chat.title,
-				url: chat.url
-			}));
-		if (liveChats.length > 0) return liveChats;
-		return studio.chatPreview ?? [];
-	});
-	const enabledIntegrations = $derived(integrations.filter((integration) => integration.enabled));
-	let isCreatingChat = $state(false);
+	const sections = $derived(navigation?.sections ?? []);
 
-	const mainLinks = $derived(
-		studio
-			? [
-				{ title: "Overview", url: studio.url, icon: WaypointsIcon },
-				{ title: "Skills", url: `${studio.url}/skills`, icon: SparklesIcon },
-				{ title: "Files", url: `${studio.url}/files`, icon: FolderIcon },
-				{ title: "Runtime", url: `${studio.url}/runtime`, icon: WrenchIcon },
-				{ title: "Runtime Lab", url: `${studio.url}/runtime-lab`, icon: BeakerIcon },
-				{ title: "Jobs", url: `${studio.url}/jobs`, icon: CalendarClockIcon },
-				{ title: "Settings", url: `${studio.url}/settings`, icon: Settings2Icon },
-			]
-			: [],
-	);
-
-	async function navigate(url: string) {
-		if (sidebar.isMobile) sidebar.setOpenMobile(false);
-		await goto(url);
+	function isExternal(href: string) {
+		return href.startsWith("mailto:") || href.startsWith("http://") || href.startsWith("https://");
 	}
 
-	async function createChat() {
-		if (!studio || isCreatingChat) return;
-		isCreatingChat = true;
-		try {
-			if (sidebar.isMobile) sidebar.setOpenMobile(false);
-			await chatStore.createChatForStudio(studio.id);
-		} finally {
-			isCreatingChat = false;
+	function closeSidebarOnMobile() {
+		if (sidebar.isMobile) {
+			sidebar.setOpenMobile(false);
 		}
 	}
 
-	function isActive(url: string) {
-		return page.url.pathname === url || page.url.pathname.startsWith(`${url}/`);
+	async function navigate(href: string) {
+		closeSidebarOnMobile();
+		if (isExternal(href)) {
+			window.location.href = href;
+			return;
+		}
+		await goto(href);
 	}
 
-	$effect(() => {
-		if (!studio?.id || loadedSidebarChats) return;
-		loadedSidebarChats = true;
-		void chatStore.loadChats({ silent: true });
-	});
+	function hrefMatches(href: string) {
+		if (!href || isExternal(href)) return false;
+
+		const currentPath = page.url.pathname;
+		const currentQuery = page.url.searchParams.toString();
+		const [targetPath, targetQuery = ""] = href.split("?");
+
+		if (currentPath === targetPath && (targetQuery === "" || currentQuery === targetQuery)) {
+			return true;
+		}
+
+		return targetQuery === "" && currentPath.startsWith(`${targetPath}/`);
+	}
 </script>
 
-<Sidebar.Group>
-	<Sidebar.GroupLabel>{studio ? "Studio" : "Welcome"}</Sidebar.GroupLabel>
-	<Sidebar.GroupContent>
-		<Sidebar.Menu>
-			{#if studio}
-				{#each mainLinks as item (item.title)}
-					<Sidebar.MenuItem>
-						<Sidebar.MenuButton isActive={isActive(item.url)}>
-							{#snippet child({ props })}
-								<a href={item.url} onclick={() => sidebar.isMobile && sidebar.setOpenMobile(false)} {...props}>
-									<item.icon />
-									<span>{item.title}</span>
-								</a>
-							{/snippet}
-						</Sidebar.MenuButton>
-					</Sidebar.MenuItem>
-				{/each}
-			{:else}
-				<Sidebar.MenuItem>
-					<Sidebar.MenuButton isActive={page.url.pathname === '/app'}>
-						{#snippet child({ props })}
-							<a href="/app" {...props}>
-								<WaypointsIcon />
-								<span>Get Started</span>
-							</a>
-						{/snippet}
-					</Sidebar.MenuButton>
-				</Sidebar.MenuItem>
+{#if sections.length > 0}
+	{#each sections as section (section.id)}
+		<Sidebar.Group class="relative">
+			<Sidebar.GroupLabel>{section.title}</Sidebar.GroupLabel>
+			{#if section.action}
+				{@const sectionAction = section.action}
+				<Sidebar.GroupAction
+					type="button"
+					aria-label={sectionAction.title}
+					title={sectionAction.title}
+					onclick={() => navigate(sectionAction.href)}
+				>
+					<StudioIcon name={sectionAction.icon ?? "plus"} class="size-4" />
+				</Sidebar.GroupAction>
 			{/if}
-		</Sidebar.Menu>
-	</Sidebar.GroupContent>
-</Sidebar.Group>
 
-<Sidebar.Group>
-	<Sidebar.GroupLabel>Chats</Sidebar.GroupLabel>
-	<Sidebar.GroupContent>
-		<Sidebar.Menu>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton isActive={false}>
-					{#snippet child({ props })}
-						<button {...props} type="button" disabled={!studio || isCreatingChat} onclick={createChat}>
-							<PlusIcon />
-							<span>{studio ? (isCreatingChat ? 'Creating chat...' : 'New Chat') : 'Create a Studio first'}</span>
-						</button>
-					{/snippet}
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
-
-			{#if recentChats.length > 0}
-				{#each recentChats as chat (chat.id)}
-					<Sidebar.MenuItem>
-						<Sidebar.MenuButton isActive={isActive(chat.url)} tooltipContent={chat.title}>
-							{#snippet child({ props })}
-								<a href={chat.url} onclick={() => sidebar.isMobile && sidebar.setOpenMobile(false)} {...props}>
-									<MessageSquareIcon />
-									<span>{chat.title}</span>
-								</a>
-							{/snippet}
-						</Sidebar.MenuButton>
-					</Sidebar.MenuItem>
-				{/each}
-			{:else}
-				<Sidebar.MenuItem>
+			<Sidebar.GroupContent>
+				{#if section.items.length > 0}
+					<Sidebar.Menu>
+						{#each section.items as item (item.id)}
+							<Sidebar.MenuItem>
+								<Sidebar.MenuButton isActive={hrefMatches(item.href)} tooltipContent={item.title}>
+									{#snippet child({ props })}
+										<a href={item.href} onclick={closeSidebarOnMobile} {...props}>
+											<StudioIcon name={item.icon ?? section.icon ?? "blocks"} class="size-4" />
+											<span>{item.title}</span>
+										</a>
+									{/snippet}
+								</Sidebar.MenuButton>
+								{#if item.badge}
+									<Sidebar.MenuBadge>{item.badge}</Sidebar.MenuBadge>
+								{/if}
+								{#if item.children && item.children.length > 0}
+									<Sidebar.MenuSub>
+										{#each item.children as child (child.id)}
+											<Sidebar.MenuSubItem>
+												<Sidebar.MenuSubButton
+													href={child.href}
+													isActive={hrefMatches(child.href)}
+													onclick={closeSidebarOnMobile}
+												>
+													<StudioIcon
+														name={child.icon ?? item.icon ?? "message-square"}
+														class="size-3.5"
+													/>
+													<span>{child.title}</span>
+												</Sidebar.MenuSubButton>
+											</Sidebar.MenuSubItem>
+										{/each}
+									</Sidebar.MenuSub>
+								{/if}
+							</Sidebar.MenuItem>
+						{/each}
+					</Sidebar.Menu>
+				{:else if section.emptyLabel}
 					<div class="rounded-xl border border-dashed border-sidebar-border/70 px-3 py-3 text-xs leading-relaxed text-sidebar-foreground/70">
-						{studio ? 'No conversations yet for this Studio.' : 'Select or create a Studio to start a conversation.'}
+						{section.emptyLabel}
 					</div>
-				</Sidebar.MenuItem>
-			{/if}
-		</Sidebar.Menu>
-	</Sidebar.GroupContent>
-</Sidebar.Group>
+				{/if}
+			</Sidebar.GroupContent>
+		</Sidebar.Group>
+	{/each}
+{/if}
 
-{#if enabledIntegrations.length > 0}
-	<Sidebar.Group>
-		<Sidebar.GroupLabel>Integrations</Sidebar.GroupLabel>
+{#if footerLinks.length > 0}
+	<Sidebar.Group class="mt-auto pt-2">
 		<Sidebar.GroupContent>
 			<Sidebar.Menu>
-				{#each enabledIntegrations as integration (integration.id)}
+				{#each footerLinks as item (item.id)}
 					<Sidebar.MenuItem>
-						<Sidebar.MenuButton isActive={isActive(integration.route)}>
+						<Sidebar.MenuButton isActive={hrefMatches(item.href)} tooltipContent={item.title}>
 							{#snippet child({ props })}
-								<a href={integration.route} onclick={() => sidebar.isMobile && sidebar.setOpenMobile(false)} {...props}>
-									<StudioIcon name={integration.icon ?? 'blocks'} class="size-4" />
-									<span>{integration.title}</span>
-								</a>
+								{#if isExternal(item.href)}
+									<a href={item.href} {...props}>
+										<StudioIcon name={item.icon ?? "blocks"} class="size-4" />
+										<span>{item.title}</span>
+									</a>
+								{:else}
+									<a href={item.href} onclick={closeSidebarOnMobile} {...props}>
+										<StudioIcon name={item.icon ?? "blocks"} class="size-4" />
+										<span>{item.title}</span>
+									</a>
+								{/if}
 							{/snippet}
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
 				{/each}
 			</Sidebar.Menu>
+		</Sidebar.GroupContent>
+	</Sidebar.Group>
+{:else if !studio}
+	<Sidebar.Group class="mt-auto">
+		<Sidebar.GroupContent>
+			<div class="rounded-xl border border-dashed border-sidebar-border/70 px-3 py-3 text-xs leading-relaxed text-sidebar-foreground/70">
+				Create a Studio to unlock chats, runtime, integrations, and files.
+			</div>
 		</Sidebar.GroupContent>
 	</Sidebar.Group>
 {/if}

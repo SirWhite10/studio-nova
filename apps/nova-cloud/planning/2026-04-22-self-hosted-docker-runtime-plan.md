@@ -163,7 +163,7 @@ Initial tools:
 - `ctx7`
 - `agent-browser`
 - `playwright` browsers if browser automation is required
-- `wrangler`
+- deployment CLI
 - `s3fs` only if direct R2 mount remains desirable
 
 Image goals:

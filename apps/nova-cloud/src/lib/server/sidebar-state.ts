@@ -4,15 +4,282 @@ import { listChatsForUser } from "$lib/server/surreal-chats";
 import { listSandboxesForUser } from "$lib/server/surreal-sandbox";
 import { listPrimaryProcessesForUser } from "$lib/server/surreal-runtime-processes";
 import { resolveRuntimeState } from "$lib/studios/runtime-state";
+import {
+  STUDIO_SIDEBAR_SECTION_IDS,
+  defaultStudioAppearanceSettings,
+  defaultStudioNavigationProfile,
+  type StudioNavigationProfile,
+  type StudioSidebarItem,
+  type StudioSidebarNavigation,
+  type StudioSidebarSection,
+  type StudioSidebarSectionId,
+  type StudioSidebarState,
+} from "$lib/studios/types";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
+
+const CONTENT_FREE_STORAGE_BADGE = "2 GB free";
+
+type SidebarStateOptions = {
+  requestedStudioId?: string | null;
+  persistedStudioId?: string | null;
+  userProfile?: {
+    name?: string | null;
+    email?: string | null;
+    avatar?: string | null;
+  };
+};
+
+function uniqueStrings(values: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
+}
+
+function normalizeNavigationProfile(
+  profile?: StudioNavigationProfile | null,
+): StudioNavigationProfile {
+  const defaults = defaultStudioNavigationProfile();
+  const sectionOrder = uniqueStrings(
+    [...(profile?.sectionOrder ?? []), ...defaults.sectionOrder].filter(
+      (id): id is StudioSidebarSectionId =>
+        STUDIO_SIDEBAR_SECTION_IDS.includes(id as StudioSidebarSectionId),
+    ),
+  ) as StudioSidebarSectionId[];
+
+  const sectionConfigs = {
+    ...defaults.sectionConfigs,
+  } as StudioNavigationProfile["sectionConfigs"];
+  for (const sectionId of STUDIO_SIDEBAR_SECTION_IDS) {
+    const candidate = profile?.sectionConfigs?.[sectionId];
+    if (!candidate) continue;
+    sectionConfigs[sectionId] = {
+      itemOrder: uniqueStrings(candidate.itemOrder ?? []),
+      collapsed: candidate.collapsed ?? false,
+    };
+  }
+
+  return {
+    version: profile?.version ?? defaults.version,
+    sectionOrder,
+    sectionConfigs,
+  };
+}
+
+function orderItems(
+  items: StudioSidebarItem[],
+  itemOrder: string[] | undefined,
+): StudioSidebarItem[] {
+  if (!itemOrder?.length) return items;
+  const itemMap = new Map(items.map((item) => [item.id, item]));
+  const ordered: StudioSidebarItem[] = [];
+
+  for (const itemId of itemOrder) {
+    const item = itemMap.get(itemId);
+    if (!item) continue;
+    ordered.push(item);
+    itemMap.delete(itemId);
+  }
+
+  for (const item of items) {
+    if (itemMap.has(item.id)) ordered.push(item);
+  }
+
+  return ordered;
+}
+
+function buildNavigation(
+  currentStudio: StudioSidebarState["currentStudio"],
+  integrations: StudioSidebarState["currentStudio"] extends never ? never : any[],
+): StudioSidebarNavigation {
+  const profile = normalizeNavigationProfile(currentStudio?.navigationProfile);
+
+  if (!currentStudio) {
+    return {
+      version: profile.version,
+      sectionOrder: profile.sectionOrder,
+      sections: [
+        {
+          id: "agent",
+          title: "Agent",
+          icon: "sparkles",
+          reorderable: true,
+          items: [
+            {
+              id: "get-started",
+              title: "Create your first Studio",
+              href: "/app",
+              icon: "sparkles",
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  const studioBase = currentStudio.url;
+  const agentItems = orderItems(
+    [
+      { id: "overview", title: "Overview", href: studioBase, icon: "waypoints", reorderable: true },
+      {
+        id: "chats",
+        title: "Chats",
+        href: `/app/chats?studio=${currentStudio.id}`,
+        icon: "message-square",
+        reorderable: true,
+        children: currentStudio.chatPreview.map((chat) => ({
+          id: `chat-${chat.id}`,
+          title: chat.title,
+          href: chat.url,
+          icon: "message-square",
+        })),
+      },
+      {
+        id: "skills",
+        title: "Skills",
+        href: `${studioBase}/skills`,
+        icon: "sparkles",
+        reorderable: true,
+      },
+      {
+        id: "agents",
+        title: "Agents",
+        href: `${studioBase}/agents`,
+        icon: "bot",
+        reorderable: true,
+      },
+      {
+        id: "memory",
+        title: "Memory",
+        href: `${studioBase}/memory`,
+        icon: "brain",
+        reorderable: true,
+      },
+      {
+        id: "jobs",
+        title: "Jobs",
+        href: `${studioBase}/jobs`,
+        icon: "calendar-clock",
+        reorderable: true,
+      },
+    ],
+    profile.sectionConfigs.agent?.itemOrder,
+  );
+
+  const workspaceItems = orderItems(
+    [
+      {
+        id: "deployments",
+        title: "Deployments",
+        href: `${studioBase}/deployments`,
+        icon: "blocks",
+        reorderable: true,
+      },
+      {
+        id: "sandbox",
+        title: "Sandbox",
+        href: `${studioBase}/sandbox`,
+        icon: "wrench",
+        reorderable: true,
+      },
+    ],
+    profile.sectionConfigs["workspace-sandbox"]?.itemOrder,
+  );
+
+  const integrationItems = orderItems(
+    integrations
+      .filter((integration) => integration.enabled)
+      .map((integration) => ({
+        id: integration.key,
+        title: integration.title,
+        href: integration.route,
+        icon: integration.icon ?? "blocks",
+        reorderable: true,
+      })),
+    profile.sectionConfigs.integrations?.itemOrder,
+  );
+
+  const contentItems = orderItems(
+    [
+      {
+        id: "files",
+        title: "Files",
+        href: `${studioBase}/files`,
+        icon: "folder",
+        badge: CONTENT_FREE_STORAGE_BADGE,
+        reorderable: true,
+      },
+      {
+        id: "collections",
+        title: "Collections",
+        href: `${studioBase}/collections`,
+        icon: "layers",
+        reorderable: true,
+      },
+      {
+        id: "media",
+        title: "Media",
+        href: `${studioBase}/media`,
+        icon: "image",
+        reorderable: true,
+      },
+    ],
+    profile.sectionConfigs.content?.itemOrder,
+  );
+
+  const sectionsById: Record<StudioSidebarSectionId, StudioSidebarSection> = {
+    agent: {
+      id: "agent",
+      title: "Agent",
+      icon: "sparkles",
+      reorderable: true,
+      items: agentItems,
+    },
+    "workspace-sandbox": {
+      id: "workspace-sandbox",
+      title: "Workspace & Sandbox",
+      icon: "blocks",
+      reorderable: true,
+      items: workspaceItems,
+    },
+    integrations: {
+      id: "integrations",
+      title: "Integrations",
+      icon: "plug-zap",
+      reorderable: true,
+      items: integrationItems,
+      action: {
+        id: "marketplace",
+        title: "Open Marketplace",
+        href: `${studioBase}/marketplace`,
+        icon: "plus",
+      },
+      emptyLabel: "No integrations installed yet.",
+    },
+    content: {
+      id: "content",
+      title: "Content",
+      icon: "folder",
+      reorderable: true,
+      items: contentItems,
+    },
+  };
+
+  return {
+    version: profile.version,
+    sectionOrder: profile.sectionOrder,
+    sections: profile.sectionOrder.map((sectionId) => sectionsById[sectionId]).filter(Boolean),
+  };
+}
 
 export async function getSidebarState(
   userId: string,
-  options?: {
-    requestedStudioId?: string | null;
-    persistedStudioId?: string | null;
-  },
-) {
+  options?: SidebarStateOptions,
+): Promise<StudioSidebarState> {
   const [studios, chats, sandboxes, primaryProcesses] = await Promise.all([
     listStudiosForUser(userId),
     listChatsForUser(userId),
@@ -53,6 +320,8 @@ export async function getSidebarState(
       title: chat.title,
       url: `/app/studios/${studio._id}/chat/${chat.id}`,
     }));
+    const appearanceSettings =
+      studio.appearanceSettings ?? defaultStudioAppearanceSettings(studio.themeHue ?? 25);
 
     return {
       id: studio._id,
@@ -61,7 +330,9 @@ export async function getSidebarState(
       icon: studio.icon || "sparkles",
       color: studio.color,
       purpose: studio.purpose || "general",
-      themeHue: studio.themeHue ?? 25,
+      themeHue: studio.themeHue ?? appearanceSettings.themeHue ?? 25,
+      appearanceSettings,
+      navigationProfile: normalizeNavigationProfile(studio.navigationProfile),
       isDefault: studio.isDefault ?? index === 0,
       chatCount: studioChats.length,
       lastOpenedAt: studio.lastOpenedAt ?? studio.updatedAt ?? Date.now(),
@@ -82,27 +353,40 @@ export async function getSidebarState(
     ? await listResolvedStudioIntegrations(userId, currentStudio._id)
     : [];
 
+  const userName =
+    options?.userProfile?.name?.trim() || options?.userProfile?.email?.split("@")[0] || "Nova User";
+  const userEmail = options?.userProfile?.email?.trim() || "studio@nova.app";
+
   return {
     user: {
-      name: "Nova User",
-      email: "studio@nova.app",
-      avatar: "/avatars/shadcn.jpg",
+      name: userName,
+      email: userEmail,
+      avatar: options?.userProfile?.avatar?.trim() || "",
     },
     studios: studioSummaries,
     currentStudio: currentStudioSummary,
-    integrations: integrations
-      .filter((integration: any) => integration.enabled)
-      .map((integration: any) => ({
-        id: integration._id,
-        key: integration.key,
-        title: integration.title,
-        route: integration.route,
-        icon: integration.icon,
-        enabled: integration.enabled,
-      })),
-    navSecondary: [
-      { title: "Support", url: "#", icon: null },
-      { title: "Feedback", url: "#", icon: null },
-    ],
+    navigation: buildNavigation(currentStudioSummary, integrations),
+    footerLinks: currentStudioSummary
+      ? [
+          {
+            id: "settings",
+            title: "Settings",
+            href: `${currentStudioSummary.url}/settings`,
+            icon: "settings-2",
+          },
+          {
+            id: "support",
+            title: "Support",
+            href: "mailto:support@nova.app",
+            icon: "life-buoy",
+          },
+        ]
+      : [],
+    search: {
+      enabled: true,
+      placeholder: "Search Nova",
+    },
   };
 }
+
+export { normalizeNavigationProfile };

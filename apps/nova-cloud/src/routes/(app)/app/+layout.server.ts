@@ -17,6 +17,11 @@ export const load: LayoutServerLoad = async (event) => {
   const sidebarState = await getSidebarState(userId, {
     requestedStudioId,
     persistedStudioId,
+    userProfile: {
+      name: event.locals.session?.user?.name ?? null,
+      email: event.locals.session?.user?.email ?? null,
+      avatar: null,
+    },
   });
 
   if (sidebarState.currentStudio?.id) {

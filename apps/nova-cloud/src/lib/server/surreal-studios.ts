@@ -1,10 +1,17 @@
 import { StringRecordId, Table } from "surrealdb";
+import {
+  defaultStudioAppearanceSettings,
+  defaultStudioNavigationProfile,
+  type StudioAppearanceSettings,
+  type StudioNavigationProfile,
+} from "$lib/studios/types";
 import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 
 export type StudioRow = {
@@ -16,6 +23,8 @@ export type StudioRow = {
   icon?: string;
   color?: string;
   themeHue?: number;
+  appearanceSettings?: StudioAppearanceSettings;
+  navigationProfile?: StudioNavigationProfile;
   isDefault?: boolean;
   prefix?: string;
   createdAt: number;
@@ -39,23 +48,22 @@ const PURPOSE_COLOR: Record<string, string> = {
 
 export async function listStudiosForUser(userId: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS");
   const rows = await queryRows<StudioRow>(
     db,
     "SELECT * FROM studio WHERE userId = $userId ORDER BY lastOpenedAt DESC, createdAt DESC",
     { userId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<StudioRow>(rows);
 }
 
 export async function getStudioForUser(userId: string, studioId: string) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
   try {
-    const selected = await db.select<StudioRow>(new StringRecordId(fullId));
-    const row = Array.isArray(selected) ? selected[0] : selected;
+    const row = await db.select<StudioRow>(new StringRecordId(fullId));
     if (!row || row.userId !== userId) return null;
-    return withRecordIds(row);
+    return normalizeSurrealRow<StudioRow>(row);
   } catch {
     return null;
   }
@@ -69,18 +77,20 @@ export async function createStudioForUser(input: {
   themeHue?: number;
 }) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS");
 
   const existing = await listStudiosForUser(input.userId);
   const now = Date.now();
   const purpose = input.purpose || "general";
 
-  const created = await db.create(new Table("studio")).content({
+  const [created] = await db.create(new Table("studio"), {
     userId: input.userId,
     name: input.name,
     description: input.description || null,
     purpose,
     themeHue: input.themeHue ?? 25,
+    appearanceSettings: defaultStudioAppearanceSettings(input.themeHue ?? 25),
+    navigationProfile: defaultStudioNavigationProfile(),
     icon: PURPOSE_ICON[purpose] || "sparkles",
     color: PURPOSE_COLOR[purpose] || PURPOSE_COLOR.general,
     isDefault: existing.length === 0,
@@ -89,13 +99,12 @@ export async function createStudioForUser(input: {
     lastOpenedAt: now,
   });
 
-  const row = Array.isArray(created) ? created[0] : created;
-  const record = withRecordIds(row as StudioRow);
+  const record = normalizeSurrealRow<StudioRow>(created);
 
   const studioId = record._id;
   const prefix = `user-${input.userId}-studio-${studioId}/`;
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
-  await db.update(new StringRecordId(fullId)).merge({ prefix });
+  await db.merge(new StringRecordId(fullId), { prefix });
 
   return { ...record, prefix };
 }
@@ -104,24 +113,33 @@ export async function updateStudio(
   userId: string,
   studioId: string,
   updates: Partial<
-    Pick<StudioRow, "name" | "description" | "themeHue" | "purpose" | "icon" | "color">
+    Pick<
+      StudioRow,
+      | "name"
+      | "description"
+      | "themeHue"
+      | "purpose"
+      | "icon"
+      | "color"
+      | "appearanceSettings"
+      | "navigationProfile"
+    >
   >,
 ) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
   const now = Date.now();
-  const updated = await db.update<StudioRow>(new StringRecordId(fullId)).merge({
+  const updated = await db.merge(new StringRecordId(fullId), {
     ...updates,
     updatedAt: now,
   });
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  return withRecordIds(row as StudioRow);
+  return normalizeSurrealRow<StudioRow>(updated);
 }
 
 export async function touchStudio(studioId: string) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
-  await db.update(new StringRecordId(fullId)).merge({
+  await db.merge(new StringRecordId(fullId), {
     lastOpenedAt: Date.now(),
     updatedAt: Date.now(),
   });

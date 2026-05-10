@@ -3,9 +3,10 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
   recordIdToString,
-  withRecordIds,
 } from "./surreal-records";
 
 export type SurrealSkill = {
@@ -55,25 +56,24 @@ function skillScore(
 
 export async function listSkillsByUser(userId: string, enabledOnly = false) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS");
 
   const rows = await queryRows<SurrealSkill>(
     db,
     `SELECT * FROM skills WHERE userId = $userId ${enabledOnly ? "AND enabled = true" : ""} ORDER BY updatedAt DESC`,
     { userId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<SurrealSkill>(rows);
 }
 
 export async function getSkillByIdForUser(userId: string, skillId: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS");
 
   const fullId = ensureRecordPrefix("skills", normalizeRouteParam(skillId));
-  const selected = await db.select<SurrealSkill>(new StringRecordId(fullId));
-  const row = Array.isArray(selected) ? selected[0] : selected;
+  const row = await db.select<SurrealSkill>(new StringRecordId(fullId));
   if (!row || row.userId !== userId) return null;
-  return withRecordIds(row);
+  return normalizeSurrealRow<SurrealSkill>(row);
 }
 
 export async function upsertSkillForUser(userId: string, input: UpsertSkillInput) {
@@ -92,9 +92,8 @@ export async function upsertSkillForUser(userId: string, input: UpsertSkillInput
   if (input.id) {
     const existing = await getSkillByIdForUser(userId, input.id);
     if (!existing) throw new Error("Skill not found");
-    const updated = await db.update(new StringRecordId(existing.id)).merge(payload);
-    const row = Array.isArray(updated) ? updated[0] : updated;
-    return withRecordIds(row as SurrealSkill);
+    const updated = await db.merge(new StringRecordId(existing.id), payload);
+    return normalizeSurrealRow<SurrealSkill>(updated);
   }
 
   const byName = await queryRows<SurrealSkill>(
@@ -105,20 +104,18 @@ export async function upsertSkillForUser(userId: string, input: UpsertSkillInput
 
   if (byName[0]) {
     const existingId = recordIdToString(byName[0].id);
-    const updated = await db.update(new StringRecordId(existingId)).merge(payload);
-    const row = Array.isArray(updated) ? updated[0] : updated;
-    return withRecordIds(row as SurrealSkill);
+    const updated = await db.merge(new StringRecordId(existingId), payload);
+    return normalizeSurrealRow<SurrealSkill>(updated);
   }
 
-  const created = await db.create(new Table("skills")).content({
+  const [created] = await db.create(new Table("skills"), {
     userId,
     ...payload,
     usageCount: 0,
     currentVersion: 1,
     createdAt: now,
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as SurrealSkill);
+  return normalizeSurrealRow<SurrealSkill>(created);
 }
 
 export async function deleteSkillForUser(userId: string, skillId: string) {

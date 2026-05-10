@@ -94,7 +94,7 @@
     },
     {
       q: 'Is my sandbox isolated from other users?',
-      a: 'Completely. Every user gets a dedicated container with scoped R2 storage. No shared filesystems, no cross-user data access. Audit logging records every command and file operation.',
+      a: 'Completely. Every user gets a dedicated container with scoped object storage. No shared filesystems, no cross-user data access. Audit logging records every command and file operation.',
     },
     {
       q: 'Can I use my own AI API key?',
@@ -249,7 +249,7 @@
         </Card.Header>
         <Card.Content class="space-y-2 text-sm text-muted-foreground">
           <p>🐧 Full Linux sandbox</p>
-          <p>📁 Persistent R2 filesystem</p>
+          <p>📁 Persistent object filesystem</p>
           <p>🔗 Live preview URLs</p>
           <p>🧠 Semantic memory</p>
           <p>🔑 BYOK at no extra cost</p>

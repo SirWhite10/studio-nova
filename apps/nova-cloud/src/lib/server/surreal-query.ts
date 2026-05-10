@@ -12,7 +12,7 @@ export async function surrealQueryAsUser<T = unknown>(
 ): Promise<T[]> {
   if (!userId) throw new Error("surrealQueryAsUser: missing userId");
   const db = await getSurreal();
-  const result = await db.query<[T[]]>(query, { ...params, userId }).collect();
+  const result = await db.query<[T[]]>(query, { ...params, userId });
   return result[0] ?? [];
 }
 

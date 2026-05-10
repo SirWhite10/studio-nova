@@ -7,8 +7,9 @@ import { getSandboxForStudio } from "./surreal-sandbox";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 
 export type WorkspaceTemplateKind = "blog-react-vp";
@@ -240,7 +241,7 @@ export async function listWorkspacesForStudio(userId: string, studioId: string) 
     "SELECT * FROM workspace WHERE userId = $userId AND studioId = $studioId ORDER BY updatedAt DESC",
     { userId, studioId: fullStudioId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<WorkspaceRow>(rows);
 }
 
 export async function getWorkspaceForStudio(userId: string, studioId: string, workspaceId: string) {
@@ -251,7 +252,7 @@ export async function getWorkspaceForStudio(userId: string, studioId: string, wo
     const row = Array.isArray(selected) ? selected[0] : selected;
     if (!row || row.userId !== userId) return null;
     if (normalizeRouteParam(row.studioId) !== normalizeRouteParam(studioId)) return null;
-    return withRecordIds(row);
+    return normalizeSurrealRow<WorkspaceRow>(row);
   } catch {
     return null;
   }
@@ -270,7 +271,7 @@ export async function listDeploymentsForWorkspace(
     "SELECT * FROM workspace_deployment WHERE userId = $userId AND studioId = $studioId AND workspaceId = $workspaceId ORDER BY createdAt DESC",
     { userId, studioId: fullStudioId, workspaceId: fullWorkspaceId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<WorkspaceDeploymentRow>(rows);
 }
 
 export async function createWorkspaceForStudio(input: {
@@ -319,15 +320,14 @@ export async function createWorkspaceForStudio(input: {
     updatedAt: now,
   };
 
-  const created = await db.create(new Table("workspace")).content(workspaceContent);
-
-  const row = withRecordIds((Array.isArray(created) ? created[0] : created) as WorkspaceRow);
+  const [created] = await db.create(new Table("workspace"), workspaceContent);
+  const row = normalizeSurrealRow<WorkspaceRow>(created);
   const paths = buildWorkspaceStoragePaths(row._id);
   const projectRoot = `/home/user/workspace/${paths.sourcePath}`.replace(/\/+$/g, "");
   const projectDirName = paths.sourcePath.replace(/\/$/g, "");
   const fullWorkspaceId = ensureRecordPrefix("workspace", row._id);
 
-  const updated = await db.update<WorkspaceRow>(new StringRecordId(fullWorkspaceId)).merge({
+  const updated = await db.merge(new StringRecordId(fullWorkspaceId), {
     rootPath: paths.rootPath,
     sourcePath: paths.sourcePath,
     buildPath: paths.buildPath,
@@ -346,7 +346,7 @@ export async function createWorkspaceForStudio(input: {
     updatedAt: Date.now(),
   });
 
-  const workspace = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as WorkspaceRow);
+  const workspace = normalizeSurrealRow<WorkspaceRow>(updated);
 
   const deploymentContent: Record<string, unknown> = {
     userId: input.userId,
@@ -377,25 +377,17 @@ export async function createWorkspaceForStudio(input: {
     deploymentContent.runtimeImage = workspace.runtimeImage;
   }
 
-  const deployment = await db.create(new Table("workspace_deployment")).content(deploymentContent);
+  const [deployment] = await db.create(new Table("workspace_deployment"), deploymentContent);
 
-  const deploymentRow = withRecordIds(
-    (Array.isArray(deployment) ? deployment[0] : deployment) as WorkspaceDeploymentRow,
-  );
+  const deploymentRow = normalizeSurrealRow<WorkspaceDeploymentRow>(deployment);
 
-  const activatedWorkspace = await db
-    .update<WorkspaceRow>(new StringRecordId(fullWorkspaceId))
-    .merge({
-      status: "ready",
-      activeDeploymentId: deploymentRow._id,
-      updatedAt: Date.now(),
-    });
+  const activatedWorkspace = await db.merge(new StringRecordId(fullWorkspaceId), {
+    status: "ready",
+    activeDeploymentId: deploymentRow._id,
+    updatedAt: Date.now(),
+  });
 
-  const finalWorkspace = withRecordIds(
-    (Array.isArray(activatedWorkspace)
-      ? activatedWorkspace[0]
-      : activatedWorkspace) as WorkspaceRow,
-  );
+  const finalWorkspace = normalizeSurrealRow<WorkspaceRow>(activatedWorkspace);
 
   await createStudioEvent({
     userId: input.userId,
@@ -446,33 +438,23 @@ export async function markWorkspaceDeploymentStatus(input: {
   const fullWorkspaceId = ensureRecordPrefix("workspace", normalizeRouteParam(input.workspaceId));
   const now = Date.now();
 
-  const updatedDeployment = await db
-    .update<WorkspaceDeploymentRow>(new StringRecordId(fullDeploymentId))
-    .merge({
-      status: input.deploymentStatus,
-      updatedAt: now,
-      ...(input.activated ? { activatedAt: now } : {}),
-      ...(input.metadata ? { metadata: input.metadata } : {}),
-    });
+  const updatedDeployment = await db.merge(new StringRecordId(fullDeploymentId), {
+    status: input.deploymentStatus,
+    updatedAt: now,
+    ...(input.activated ? { activatedAt: now } : {}),
+    ...(input.metadata ? { metadata: input.metadata } : {}),
+  });
 
-  const deployment = withRecordIds(
-    (Array.isArray(updatedDeployment)
-      ? updatedDeployment[0]
-      : updatedDeployment) as WorkspaceDeploymentRow,
-  );
+  const deployment = normalizeSurrealRow<WorkspaceDeploymentRow>(updatedDeployment);
 
   const workspacePatch: Record<string, unknown> = {
     updatedAt: now,
   };
   if (input.workspaceStatus) workspacePatch.status = input.workspaceStatus;
   if (input.activated) workspacePatch.activeDeploymentId = deployment._id;
-  const updatedWorkspace = await db
-    .update<WorkspaceRow>(new StringRecordId(fullWorkspaceId))
-    .merge(workspacePatch);
+  const updatedWorkspace = await db.merge(new StringRecordId(fullWorkspaceId), workspacePatch);
 
-  const workspace = withRecordIds(
-    (Array.isArray(updatedWorkspace) ? updatedWorkspace[0] : updatedWorkspace) as WorkspaceRow,
-  );
+  const workspace = normalizeSurrealRow<WorkspaceRow>(updatedWorkspace);
 
   await createStudioEvent({
     userId: input.userId,

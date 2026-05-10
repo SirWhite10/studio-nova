@@ -13,6 +13,7 @@
 	import * as Item from '$lib/components/ui/item';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import StudioPageShell from '$lib/components/studios/studio-page-shell.svelte';
 	import {
 		normalizeIntervalMinutes,
 		normalizeTimeOfDay,
@@ -234,8 +235,11 @@
 	});
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.12),transparent_28%)] px-6 py-8 sm:px-10">
-	<div class="mx-auto flex max-w-6xl flex-col gap-6">
+<StudioPageShell
+	class="bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.12),transparent_28%)]"
+	containerClass="max-w-6xl"
+>
+	<div class="flex flex-col gap-6">
 		<section class="rounded-[2.25rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur sm:p-8">
 			<div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 				<div class="space-y-3">
@@ -347,7 +351,7 @@
 			{/if}
 		</section>
 	</div>
-</div>
+</StudioPageShell>
 
 <Dialog.Root bind:open={editorOpen}>
 	<Dialog.Content class="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">

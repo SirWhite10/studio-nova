@@ -2,7 +2,13 @@ import { Table } from "surrealdb";
 import { markArtifactStatus, upsertArtifact } from "./surreal-artifacts";
 import { createStudioEvent } from "./surreal-studio-events";
 import { getSurreal } from "./surreal";
-import { ensureRecordPrefix, queryRows, tableRecordId, withRecordIds } from "./surreal-records";
+import {
+  ensureRecordPrefix,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
+  queryRows,
+  tableRecordId,
+} from "./surreal-records";
 import { ensureTables } from "./surreal-tables";
 
 export type RuntimeProcessRow = {
@@ -44,7 +50,7 @@ export async function getPrimaryForStudio(userId: string, studioId: string) {
     "SELECT * FROM runtime_process WHERE userId = $userId AND studioId = $studioId ORDER BY updatedAt DESC LIMIT 1",
     { userId, studioId: fullId },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<RuntimeProcessRow>(rows[0]) : null;
 }
 
 export async function listPrimaryProcessesForUser(userId: string) {
@@ -54,7 +60,7 @@ export async function listPrimaryProcessesForUser(userId: string) {
     "SELECT * FROM runtime_process WHERE userId = $userId ORDER BY updatedAt DESC",
     { userId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<RuntimeProcessRow>(rows);
 }
 
 export async function upsertPrimaryForStudio(
@@ -99,10 +105,11 @@ export async function upsertPrimaryForStudio(
 
   const existing = await getPrimaryForStudio(userId, studioId);
   if (existing) {
-    const updated = await db
-      .update<RuntimeProcessRow>(tableRecordId("runtime_process", existing.id))
-      .merge({ ...normalizedProcess, updatedAt: now });
-    const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as RuntimeProcessRow);
+    const updated = await db.update(tableRecordId("runtime_process", existing.id)).merge({
+      ...normalizedProcess,
+      updatedAt: now,
+    });
+    const row = normalizeSurrealRow<RuntimeProcessRow>(updated);
     await syncPreviewArtifact(userId, studioId, row);
     await createStudioEvent({
       userId,
@@ -130,14 +137,14 @@ export async function upsertPrimaryForStudio(
     return row;
   }
 
-  const created = await db.create(new Table("runtime_process")).content({
+  const [created] = await db.create(new Table("runtime_process")).content({
     userId,
     studioId: fullId,
     ...normalizedProcess,
     createdAt: now,
     updatedAt: now,
   });
-  const row = withRecordIds((Array.isArray(created) ? created[0] : created) as RuntimeProcessRow);
+  const row = normalizeSurrealRow<RuntimeProcessRow>(created);
   await syncPreviewArtifact(userId, studioId, row);
   await createStudioEvent({
     userId,

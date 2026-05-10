@@ -11,7 +11,7 @@ This file provides detailed integration instructions and code examples for using
 
 E2B was selected because:
 
-- It offers a clean, modern **JavaScript/TypeScript SDK** that works natively in Vercel API routes and Convex actions
+- It offers a clean, modern **JavaScript/TypeScript SDK** that works natively in Vercel API routes and backend actions
 - Purpose-built for AI agents (code execution, filesystem ops, process management)
 - Fast cold starts (~150–300ms)
 - Strong microVM isolation (Firecracker)
@@ -71,7 +71,7 @@ export async function executeAgentTask(options: ExecuteOptions) {
       cmd: 'bun run /home/user/workspace/task.ts',
       cwd: '/home/user/workspace/project',
       onStdout: (data) => {
-        // Stream to Convex or Vercel SSE for realtime UI
+        // Stream to the app backend or Vercel SSE for realtime UI
         console.log('[STDOUT]', data.line);
       },
       onStderr: (data) => console.error('[STDERR]', data.line)
@@ -129,7 +129,7 @@ async function readAgentMemory(sandbox: Sandbox) {
     return testProcess.stdout;
   }
 
-  4.3 – Streaming Logs to UI (Convex or SSE)
+  4.3 – Streaming Logs to UI (backend or SSE)
   TypeScript
 
   // In Vercel API route
@@ -137,8 +137,8 @@ async function readAgentMemory(sandbox: Sandbox) {
   sandbox.process.start({
     cmd: 'npm run dev',
     onStdout: (data) => {
-      // Send to Convex mutation or SSE stream
-      convexMutation('streamLog', { agentId, log: data.line });
+      // Send to a backend mutation or SSE stream
+      backendMutation('streamLog', { agentId, log: data.line });
     }
   });
 
@@ -146,12 +146,12 @@ async function readAgentMemory(sandbox: Sandbox) {
 
   Always wrap in try/finally to handle sandbox cleanup.
   Use sandbox.close() only when explicitly terminating an agent.
-  Monitor usage via E2B dashboard or custom Convex logging.
+  Monitor usage via the E2B dashboard or custom backend logging.
   For long-running dev servers: Use keepAlive option or periodic heartbeats.
   Rate-limit sandbox creations per user to prevent abuse.
 
   6. Cost Monitoring
-  Track per-agent sandbox runtime in Convex (via E2B usage events or your own timers).
+  Track per-agent sandbox runtime in the backend (via E2B usage events or your own timers).
   Typical Pro user (~50 active hours/mo): $1–$4 — keeps infra <10% of COGS.
 
   Cross-reference: See NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md for full pricing, architecture, and revenue projections.
@@ -194,7 +194,7 @@ Nova Cloud supports **multiple independent agents** and **workspaces** as a core
 
 **Technical implementation:**
 - Each agent has its own:
-  - Convex record (`agents` table)
+  - backend record (`agents` table)
   - E2B sandbox instance (identified by `nova-agent-${userId}-${agentId}`)
   - Isolated filesystem/bucket mount
   - Independent memory thread and conversation history
@@ -204,7 +204,7 @@ Nova Cloud supports **multiple independent agents** and **workspaces** as a core
 
 1. User creates/selects an agent.
 2. Prompt sent → Grok generates PTC script.
-3. Convex action → calls E2B SDK → creates/uses sandbox.
+3. Backend action → calls E2B SDK → creates/uses sandbox.
 4. Sandbox spins up on-demand (cold start ~150–300ms).
 5. Executes task (clone repo, run `npm run dev`, etc.).
 6. Exposes live preview URL via E2B proxy.

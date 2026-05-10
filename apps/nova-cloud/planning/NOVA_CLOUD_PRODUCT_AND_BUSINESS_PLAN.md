@@ -1,5 +1,5 @@
 Here's the updated version of NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md with E2B as the chosen sandbox/execution provider.
-All Cloudflare Sandbox references have been replaced with E2B. I've included:
+All previous sandbox provider references have been replaced with E2B. I've included:
 
 realistic E2B pricing & cost impact
 pros/cons alignment
@@ -50,7 +50,7 @@ From a product UX standpoint, Nova should be described as a Studio-first platfor
 ## 3. Technical Architecture (Fully Managed Cloud)
 
 - **Frontend**: Svelte 5 + SvelteKit hosted on Vercel (all components use **Svelte 5 runes mode exclusively** — no legacy Svelte 4 syntax, no options API, no $: reactivity).
-- **Backend & State**: Fully managed Convex (reactive queries, crons, auth, Stripe billing, Studio state, agent memory, usage tracking).
+- **Backend & State**: Fully managed SurrealDB (reactive live queries, scheduled jobs, auth integration, Stripe billing, Studio state, agent memory, usage tracking).
 - **Execution Engine**: **E2B** (agent-first sandbox platform using Firecracker microVMs)
 - **Persistent Storage**: E2B Filesystem + integrated bucket storage (persistent across sessions)
 - **LLM**: xAI Grok API (Grok 4.2 beta with PTC “one-lump-sum script” pattern for efficiency).
@@ -60,9 +60,9 @@ From a product UX standpoint, Nova should be described as a Studio-first platfor
 
 ## 4. Why E2B as Execution Provider
 
-**E2B** was chosen over Cloudflare Sandbox because:
+**E2B** was chosen over the previous sandbox provider because:
 
-- Official JavaScript/TypeScript SDK is clean and works natively in Vercel API routes / Convex actions
+- Official JavaScript/TypeScript SDK is clean and works natively in Vercel API routes / backend actions
 - Built specifically for AI agents (PTC scripts, code execution, filesystem ops)
 - Fast cold starts (~150–300ms)
 - Strong isolation (Firecracker microVMs)
@@ -84,14 +84,14 @@ This keeps sandbox cost **<10% of total COGS** — LLM remains dominant.
 
 A typical user request (“Clone my GitHub repo and run the dev server with live preview”):
 
-1. User prompt → SvelteKit route → Convex action.
+1. User prompt → SvelteKit route → backend action.
 2. Grok generates one complete PTC script via the API.
-3. Convex action → calls E2B SDK to create/run sandbox.
+3. Backend action → calls E2B SDK to create/run sandbox.
 
 **Example TypeScript code** (using latest E2B JS SDK):
 
 ```ts
-// src/lib/e2b-agent.ts (used in Vercel API route or Convex action)
+// src/lib/e2b-agent.ts (used in Vercel API route or backend action)
 import { Sandbox } from 'e2b';
 
 export async function runPtcInE2BSandbox(
@@ -119,7 +119,7 @@ export async function runPtcInE2BSandbox(
     const execution = await sandbox.process.start({
       cmd: 'bun run /workspace/task.ts',
       cwd: '/workspace/project',
-      onStdout: (data) => console.log(data) // stream to UI via Convex
+      onStdout: (data) => console.log(data) // stream to UI via the app backend
     });
 
     await execution.wait();
@@ -145,7 +145,7 @@ export async function runPtcInE2BSandbox(
   }
 }
 
-This integration is clean, native to Node.js/Vercel, and avoids all Cloudflare Worker compatibility issues.
+This integration is clean, native to Node.js/Vercel, and avoids edge-runtime compatibility issues.
 6. Security Features (Rivaling or Exceeding OpenClaw)
 Nova Cloud uses per-user isolated microVMs with:
 
@@ -166,7 +166,7 @@ Updated COGS estimate (with E2B):
 
 LLM (Grok): $5,000–$8,000/mo
 E2B sandbox + storage: $1,000–$4,000/mo
-Convex + Vercel: $200–$600/mo
+SurrealDB + Vercel: $200–$600/mo
 Total COGS ≈ $6,200–$12,600/mo
 Gross margin: 60–80%+ — strong runway from launch.
 
@@ -182,7 +182,7 @@ From the product surface, Nova should present these capabilities through Studios
 
 Finalize Svelte 5 runes frontend
 Implement E2B SDK integration (using example code above)
-Build multiple agents/Studios in Convex
+Build multiple agents/Studios in SurrealDB
 Integrate Stripe + BYOK option
 Launch Nova Cloud paid tiers
 

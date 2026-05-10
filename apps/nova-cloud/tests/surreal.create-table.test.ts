@@ -31,7 +31,7 @@ describe.skipIf(skip)("SurrealDB create table (mandatory gate)", () => {
     await db.connect(url, {
       namespace,
       database,
-      authentication: { username, password },
+      authentication: { namespace, database, username, password },
     });
     await db.ready;
     // Clean up test table
@@ -44,13 +44,13 @@ describe.skipIf(skip)("SurrealDB create table (mandatory gate)", () => {
   });
 
   it("creates a record using create().content()", async () => {
-    const record = await db.create<TestProject>(new Table("_test_projects")).content({
+    const record = (await db.create(new Table("_test_projects")).content({
       name: "Test Project",
       status: "active",
       createdAt: new Date().toISOString(),
-    });
+    })) as unknown as TestProject[];
 
-    const firstRecord = Array.isArray(record) ? record[0] : record;
+    const [firstRecord] = record;
     expect(firstRecord).toBeDefined();
     expect(firstRecord.id).toBeDefined();
     expect(firstRecord.name).toBe("Test Project");
@@ -58,29 +58,29 @@ describe.skipIf(skip)("SurrealDB create table (mandatory gate)", () => {
   });
 
   it("selects all records from the table", async () => {
-    const records = await db.select<TestProject>(new Table("_test_projects"));
+    const records = (await db.select(new Table("_test_projects"))) as unknown as TestProject[];
     expect(records.length).toBeGreaterThanOrEqual(1);
     expect(records[0].name).toBe("Test Project");
   });
 
   it("updates a record using update().merge()", async () => {
-    const records = await db.select<TestProject>(new Table("_test_projects"));
+    const records = (await db.select(new Table("_test_projects"))) as unknown as TestProject[];
     const first = records[0];
 
-    const updated = await db.update<TestProject>(first.id).merge({ status: "completed" });
+    const updated = await db.update(first.id).merge({ status: "completed" });
 
     expect(updated).toBeDefined();
-    expect(updated.status).toBe("completed");
-    expect(updated.name).toBe("Test Project");
+    expect((updated as TestProject).status).toBe("completed");
+    expect((updated as TestProject).name).toBe("Test Project");
   });
 
   it("deletes a record", async () => {
-    const records = await db.select<TestProject>(new Table("_test_projects"));
+    const records = (await db.select(new Table("_test_projects"))) as unknown as TestProject[];
     const first = records[0];
 
     await db.delete(first.id);
 
-    const remaining = await db.select<TestProject>(new Table("_test_projects"));
+    const remaining = (await db.select(new Table("_test_projects"))) as unknown as TestProject[];
     expect(remaining.length).toBe(0);
   });
 });

@@ -12,8 +12,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 import { createStudioEvent } from "./surreal-studio-events";
 
@@ -57,7 +58,7 @@ export type ScheduledJobInput = {
 
 async function ensureScheduledJobTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS scheduled_job SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS scheduled_job SCHEMALESS");
   return db;
 }
 
@@ -98,7 +99,7 @@ export async function createScheduledJob(
     normalizeRouteParam(studioId),
     scheduledJobChatTitle(normalized.title),
   );
-  const created = await db.create(new Table("scheduled_job")).content({
+  const [created] = await db.create(new Table("scheduled_job")).content({
     userId,
     studioId: ensureRecordPrefix("studio", normalizeRouteParam(studioId)),
     chatId: ensureRecordPrefix("chat", chat._id),
@@ -110,8 +111,7 @@ export async function createScheduledJob(
     createdAt: now,
     updatedAt: now,
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  const job = withRecordIds(row as ScheduledJobRow);
+  const job = normalizeSurrealRow<ScheduledJobRow>(created);
   await createStudioEvent({
     userId,
     studioId,
@@ -135,7 +135,7 @@ export async function listScheduledJobsForStudio(userId: string, studioId: strin
     "SELECT * FROM scheduled_job WHERE userId = $userId AND studioId = $studioId ORDER BY createdAt DESC",
     { userId, studioId: ensureRecordPrefix("studio", normalizeRouteParam(studioId)) },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ScheduledJobRow>(rows);
 }
 
 export async function listDueScheduledJobs(limit = 10) {
@@ -146,17 +146,16 @@ export async function listDueScheduledJobs(limit = 10) {
     "SELECT * FROM scheduled_job WHERE status = 'enabled' AND nextRunAt <= $now AND (lockedUntil = NONE OR lockedUntil < $now) ORDER BY nextRunAt ASC LIMIT $limit",
     { now, limit },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ScheduledJobRow>(rows);
 }
 
 export async function getScheduledJobForUser(userId: string, jobId: string) {
   const db = await ensureScheduledJobTable();
-  const selected = await db.select<ScheduledJobRow>(
+  const row = await db.select<ScheduledJobRow>(
     new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))),
   );
-  const row = Array.isArray(selected) ? selected[0] : selected;
   if (!row || row.userId !== userId) return null;
-  return withRecordIds(row);
+  return normalizeSurrealRow<ScheduledJobRow>(row);
 }
 
 export async function updateScheduledJob(userId: string, jobId: string, input: ScheduledJobInput) {
@@ -165,15 +164,12 @@ export async function updateScheduledJob(userId: string, jobId: string, input: S
   if (!current) return null;
   const normalized = normalizeJobInput(input);
   const updated = await db
-    .update<ScheduledJobRow>(
-      new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))),
-    )
+    .update(new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))))
     .merge({
       ...normalized,
       updatedAt: Date.now(),
     });
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  const job = withRecordIds(row as ScheduledJobRow);
+  const job = normalizeSurrealRow<ScheduledJobRow>(updated);
   if (job.chatId) {
     await updateChat(job.chatId, {
       title: scheduledJobChatTitle(job.title),
@@ -245,9 +241,7 @@ export async function ensureScheduledJobChat(userId: string, jobId: string): Pro
 
     const db = await ensureScheduledJobTable();
     await db
-      .update<ScheduledJobRow>(
-        new StringRecordId(ensureRecordPrefix("scheduled_job", normalizedJobId)),
-      )
+      .update(new StringRecordId(ensureRecordPrefix("scheduled_job", normalizedJobId)))
       .merge({
         chatId: ensureRecordPrefix("chat", createdChat._id),
         updatedAt: Date.now(),
@@ -276,9 +270,7 @@ export async function markScheduledJobRun(
   const next = current.status === "enabled" ? nextRunAt(current) : null;
   const normalizedChatId = chatId ? ensureRecordPrefix("chat", normalizeRouteParam(chatId)) : null;
   const updated = await db
-    .update<ScheduledJobRow>(
-      new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))),
-    )
+    .update(new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))))
     .merge({
       lastRunAt: Date.now(),
       lastRunId: ensureRecordPrefix("chat_run", normalizeRouteParam(runId)),
@@ -288,8 +280,7 @@ export async function markScheduledJobRun(
       nextRunAt: next,
       updatedAt: Date.now(),
     });
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  const job = withRecordIds(row as ScheduledJobRow);
+  const job = normalizeSurrealRow<ScheduledJobRow>(updated);
   await createStudioEvent({
     userId,
     studioId: job.studioId,
@@ -321,15 +312,12 @@ export async function lockScheduledJob(userId: string, jobId: string, lockMs = 1
   }
 
   const updated = await db
-    .update<ScheduledJobRow>(
-      new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))),
-    )
+    .update(new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))))
     .merge({
       lockedUntil: now + lockMs,
       updatedAt: now,
     });
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  return withRecordIds(row as ScheduledJobRow);
+  return normalizeSurrealRow<ScheduledJobRow>(updated);
 }
 
 export async function markScheduledJobAttemptFailed(userId: string, jobId: string, error: string) {
@@ -338,17 +326,14 @@ export async function markScheduledJobAttemptFailed(userId: string, jobId: strin
   if (!current) return null;
   const next = current.status === "enabled" ? nextRunAt(current) : null;
   const updated = await db
-    .update<ScheduledJobRow>(
-      new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))),
-    )
+    .update(new StringRecordId(ensureRecordPrefix("scheduled_job", normalizeRouteParam(jobId))))
     .merge({
       lastError: error,
       lockedUntil: null,
       nextRunAt: next,
       updatedAt: Date.now(),
     });
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  const job = withRecordIds(row as ScheduledJobRow);
+  const job = normalizeSurrealRow<ScheduledJobRow>(updated);
   await createStudioEvent({
     userId,
     studioId: job.studioId,

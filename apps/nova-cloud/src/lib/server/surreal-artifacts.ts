@@ -4,9 +4,10 @@ import { createStudioEvent } from "./surreal-studio-events";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
   tableRecordId,
-  withRecordIds,
 } from "./surreal-records";
 
 export type ArtifactKind = "file" | "preview" | "generated" | "deploy-output";
@@ -32,7 +33,7 @@ export type ArtifactRow = {
 
 async function ensureArtifactTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS artifact SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS artifact SCHEMALESS");
   return db;
 }
 
@@ -44,7 +45,7 @@ async function getArtifactByKey(userId: string, studioId: string, kind: Artifact
     "SELECT * FROM artifact WHERE userId = $userId AND studioId = $studioId AND kind = $kind AND key = $key LIMIT 1",
     { userId, studioId: fullStudioId, kind, key },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<ArtifactRow>(rows[0]) : null;
 }
 
 export async function listArtifactsForStudio(
@@ -65,7 +66,7 @@ export async function listArtifactsForStudio(
         "SELECT * FROM artifact WHERE userId = $userId AND studioId = $studioId ORDER BY updatedAt DESC",
         { userId, studioId: fullStudioId },
       );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ArtifactRow>(rows);
 }
 
 export async function upsertArtifact(input: {
@@ -104,10 +105,8 @@ export async function upsertArtifact(input: {
   };
 
   if (existing) {
-    const updated = await db
-      .update<ArtifactRow>(tableRecordId("artifact", existing.id))
-      .merge(payload);
-    const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as ArtifactRow);
+    const updated = await db.update(tableRecordId("artifact", existing.id)).merge(payload);
+    const row = normalizeSurrealRow<ArtifactRow>(updated);
     await createStudioEvent({
       userId: input.userId,
       studioId: input.studioId,
@@ -126,11 +125,11 @@ export async function upsertArtifact(input: {
     return row;
   }
 
-  const created = await db.create(new Table("artifact")).content({
+  const [created] = await db.create(new Table("artifact")).content({
     ...payload,
     createdAt: now,
   });
-  const row = withRecordIds((Array.isArray(created) ? created[0] : created) as ArtifactRow);
+  const row = normalizeSurrealRow<ArtifactRow>(created);
   await createStudioEvent({
     userId: input.userId,
     studioId: input.studioId,
@@ -161,12 +160,12 @@ export async function markArtifactStatus(input: {
   if (!existing) return null;
 
   const db = await ensureArtifactTable();
-  const updated = await db.update<ArtifactRow>(tableRecordId("artifact", existing.id)).merge({
+  const updated = await db.update(tableRecordId("artifact", existing.id)).merge({
     status: input.status,
     metadata: input.metadata ?? existing.metadata ?? null,
     updatedAt: Date.now(),
   });
-  const row = withRecordIds((Array.isArray(updated) ? updated[0] : updated) as ArtifactRow);
+  const row = normalizeSurrealRow<ArtifactRow>(updated);
   await createStudioEvent({
     userId: input.userId,
     studioId: input.studioId,

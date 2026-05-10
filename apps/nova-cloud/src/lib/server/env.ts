@@ -3,8 +3,10 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 for (const path of [
+  resolve(process.cwd(), ".env"),
   resolve(process.cwd(), ".env.local"),
   resolve(process.cwd(), ".dev.vars"),
+  resolve(process.cwd(), "apps/nova-cloud/.env"),
   resolve(process.cwd(), "apps/nova-cloud/.env.local"),
   resolve(process.cwd(), "apps/nova-cloud/.dev.vars"),
 ]) {

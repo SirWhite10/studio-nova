@@ -1,3 +1,7 @@
+import {
+  STUDIO_CONTENT_INCLUDED_BYTES,
+  type StudioContentAllocationSummary,
+} from "$lib/studios/types";
 import { getStudioForUser } from "$lib/server/surreal-studios";
 
 export type R2FileEntry = {
@@ -20,6 +24,14 @@ function normalizeStoragePath(path = "") {
   return path.replace(/^\/+|\/+$/g, "");
 }
 
+function formatStorageBytes(bytes: number) {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unitIndex;
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
 export async function getStudioPrefix(userId: string, studioId: string): Promise<string | null> {
   const studio = await getStudioForUser(userId, studioId);
   return studio?.prefix ?? null;
@@ -32,7 +44,7 @@ export async function listFiles(
   path?: string,
 ): Promise<R2FileEntry[]> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -81,6 +93,78 @@ export async function listFiles(
   return files;
 }
 
+export async function getStudioStorageSummary(
+  event: any,
+  userId: string,
+  studioId: string,
+): Promise<StudioContentAllocationSummary> {
+  const storage = getStorageBinding(event);
+  if (!storage) throw new Error("object storage not available");
+
+  const prefix = await getStudioPrefix(userId, studioId);
+  if (!prefix) throw new Error("Studio prefix not found");
+
+  let cursor: string | undefined;
+  let usedBytes = 0;
+  let fileCount = 0;
+  let latestUploadAt: string | null = null;
+  const folders = new Set<string>();
+
+  do {
+    const listed = await storage.list({ prefix, cursor });
+    const objects = Array.isArray(listed.objects) ? listed.objects : [];
+
+    for (const object of objects) {
+      const relativeKey = object.key.slice(prefix.length);
+      if (!relativeKey || relativeKey.startsWith(INTERNAL_UPLOAD_PREFIX)) continue;
+
+      if (relativeKey.split("/").pop() === FOLDER_MARKER_FILE) {
+        const folderPath = relativeKey.slice(0, -FOLDER_MARKER_FILE.length).replace(/\/$/, "");
+        if (folderPath) folders.add(folderPath);
+        continue;
+      }
+
+      const parts = relativeKey.split("/").filter(Boolean);
+      if (parts.length > 1) {
+        let current = "";
+        for (const part of parts.slice(0, -1)) {
+          current = current ? `${current}/${part}` : part;
+          folders.add(current);
+        }
+      }
+
+      usedBytes += object.size ?? 0;
+      fileCount += 1;
+      const uploadedAt: string | null =
+        object.uploaded instanceof Date ? object.uploaded.toISOString() : latestUploadAt;
+      if (uploadedAt && (!latestUploadAt || uploadedAt > latestUploadAt)) {
+        latestUploadAt = uploadedAt;
+      }
+    }
+
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  const remainingBytes = Math.max(STUDIO_CONTENT_INCLUDED_BYTES - usedBytes, 0);
+  const percentUsed = Math.min(
+    100,
+    Math.round((usedBytes / STUDIO_CONTENT_INCLUDED_BYTES) * 1000) / 10,
+  );
+
+  return {
+    includedBytes: STUDIO_CONTENT_INCLUDED_BYTES,
+    usedBytes,
+    remainingBytes,
+    displayLabel: `${formatStorageBytes(usedBytes)} of ${formatStorageBytes(STUDIO_CONTENT_INCLUDED_BYTES)} used`,
+    usedLabel: formatStorageBytes(usedBytes),
+    remainingLabel: formatStorageBytes(remainingBytes),
+    percentUsed,
+    fileCount,
+    folderCount: folders.size,
+    latestUploadAt,
+  };
+}
+
 export async function uploadFile(
   event: any,
   userId: string,
@@ -90,7 +174,7 @@ export async function uploadFile(
   contentType: string,
 ): Promise<void> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -102,7 +186,7 @@ export async function uploadFile(
 
 function getChunkStorage(event: any) {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
   return storage;
 }
 
@@ -271,7 +355,7 @@ export async function createFolder(
   folderPath: string,
 ): Promise<string> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -294,7 +378,7 @@ export async function deleteFile(
   filePath: string,
 ): Promise<void> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -311,7 +395,7 @@ export async function deleteFolderRecursive(
   folderPath: string,
 ): Promise<{ deletedKeys: string[]; deletedFilePaths: string[] }> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -357,7 +441,7 @@ export async function getFile(
   filePath: string,
 ): Promise<{ body: ReadableStream; contentType: string; size: number } | null> {
   const storage = getStorageBinding(event);
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");
@@ -384,7 +468,7 @@ export async function fileExists(
     head?: (key: string) => Promise<unknown>;
     get: (key: string) => Promise<unknown>;
   } | null;
-  if (!storage) throw new Error("R2 storage not available");
+  if (!storage) throw new Error("object storage not available");
 
   const prefix = await getStudioPrefix(userId, studioId);
   if (!prefix) throw new Error("Studio prefix not found");

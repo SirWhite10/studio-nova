@@ -23,7 +23,7 @@ Status legend:
 - [26-04-06-nova-cloud-agent-chat-runtime-plan.md](./26-04-06-nova-cloud-agent-chat-runtime-plan.md) - **Partial** - the runtime/chat baseline exists, but several runtime, integration, and observability goals remain.
 - [26-04-22-nova-cloud-pwa-standalone-app-plan.md](./26-04-22-nova-cloud-pwa-standalone-app-plan.md) - **Open** - manifest, icons, service worker, and install UX are not implemented.
 - [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) - **Open** - broad implementation roadmap, not a completed feature plan.
-- [NOVA_CHAT_CONVEX_BETTER_AUTH_MIGRATION.md](./NOVA_CHAT_CONVEX_BETTER_AUTH_MIGRATION.md) - **Partial** - marked approved, but it reads like an active migration guide rather than a finished tracker.
+- [NOVA_CHAT_SURREALDB_BETTER_AUTH_MIGRATION.md](./NOVA_CHAT_SURREALDB_BETTER_AUTH_MIGRATION.md) - **Partial** - marked approved, but it now reads as a short legacy note rather than an active migration guide.
 - [NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md](./NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md) - **Open** - product/business strategy document, not an implementation tracker.
 - [SKILLS_ADVANCED_SEARCH.md](./SKILLS_ADVANCED_SEARCH.md) - **Partial** - semantic search is implemented, but advanced ranking and filtering work is still in progress.
 - [SKILLS_CHAT_INTEGRATION.md](./SKILLS_CHAT_INTEGRATION.md) - **Open** - slash-command autocomplete and explicit skill invocation are not implemented.

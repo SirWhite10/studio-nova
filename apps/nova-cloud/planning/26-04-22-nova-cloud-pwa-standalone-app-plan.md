@@ -693,7 +693,7 @@ Timestamp:
 - offline fallback appears when network is unavailable
 - push and badging tested later only if implemented
 
-[ ] `10.d` Production HTTPS and Cloudflare validation
+[ ] `10.d` Production HTTPS and tunnel validation
 Timestamp:
 
 - 2026-04-22 08:46:21 EDT: checkpoint created
@@ -704,7 +704,7 @@ Timestamp:
 - verify manifest content type
 - verify service worker scope
 - verify icons are cacheable
-- verify Cloudflare does not cache dynamic APIs incorrectly
+- verify the edge layer does not cache dynamic APIs incorrectly
 - verify deployed worker serves service worker and static assets correctly
 
 [ ] `10.e` Rollout and rollback plan
@@ -803,7 +803,7 @@ When stopping mid-implementation, append:
 - Should app badges count unread chat activity, completed jobs, failed jobs, or only user-action-required events?
 - Should push notifications be Studio-scoped, account-scoped, or both?
 - Should offline mode eventually allow composing prompts and jobs for later sync, or should Nova remain online-only for all agent actions?
-- How should service worker rollback be handled in Cloudflare deployments if a bad worker ships?
+- How should service worker rollback be handled in the chosen deployment target if a bad worker ships?
 
 ## 10. Success Criteria
 

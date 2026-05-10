@@ -33,7 +33,7 @@ describe.skipIf(skip)("SurrealDB CRUD patterns (messages-like flow)", () => {
     await db.connect(url, {
       namespace,
       database,
-      authentication: { username, password },
+      authentication: { namespace, database, username, password },
     });
     await db.ready;
     await db.query("REMOVE TABLE IF EXISTS _test_messages");
@@ -47,35 +47,35 @@ describe.skipIf(skip)("SurrealDB CRUD patterns (messages-like flow)", () => {
   let messageId: RecordId;
 
   it("creates a streaming message (isComplete=false)", async () => {
-    const msg = await db.create<TestMessage>(new Table("_test_messages")).content({
+    const msg = (await db.create(new Table("_test_messages")).content({
       chatId: "chat:test1",
       role: "assistant",
       content: "",
       isComplete: false,
       createdAt: new Date().toISOString(),
-    });
+    })) as unknown as TestMessage[];
 
-    const firstMsg = Array.isArray(msg) ? msg[0] : msg;
+    const [firstMsg] = msg;
     expect(firstMsg.id).toBeDefined();
     expect(firstMsg.isComplete).toBe(false);
     messageId = firstMsg.id;
   });
 
   it("appends content via update().merge()", async () => {
-    const updated = await db.update<TestMessage>(messageId).merge({ content: "Hello, " });
+    const updated = await db.update(messageId).merge({ content: "Hello, " });
 
-    expect(updated.content).toBe("Hello, ");
-    expect((updated as any).isComplete).toBe(false);
+    expect((updated as TestMessage).content).toBe("Hello, ");
+    expect((updated as TestMessage).isComplete).toBe(false);
   });
 
   it("finalizes message with full content and isComplete=true", async () => {
-    const finalized = await db.update<TestMessage>(messageId).merge({
+    const finalized = await db.update(messageId).merge({
       content: "Hello, world!",
       isComplete: true,
     });
 
-    expect(finalized.content).toBe("Hello, world!");
-    expect(finalized.isComplete).toBe(true);
+    expect((finalized as TestMessage).content).toBe("Hello, world!");
+    expect((finalized as TestMessage).isComplete).toBe(true);
   });
 
   it("queries messages by chatId using parameterized query", async () => {
@@ -90,7 +90,7 @@ describe.skipIf(skip)("SurrealDB CRUD patterns (messages-like flow)", () => {
 
   it("bulk creates multiple messages", async () => {
     for (let i = 0; i < 3; i++) {
-      await db.create<TestMessage>(new Table("_test_messages")).content({
+      await db.create(new Table("_test_messages")).content({
         chatId: "chat:test2",
         role: i === 0 ? "user" : "assistant",
         content: `Message ${i}`,

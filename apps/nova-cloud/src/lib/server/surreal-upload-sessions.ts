@@ -3,9 +3,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
   queryRows,
   recordIdToString,
-  withRecordIds,
 } from "./surreal-records";
 
 export type UploadSessionStatus =
@@ -46,7 +46,7 @@ export type UploadSessionRow = {
 
 async function ensureUploadSessionTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS upload_session SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS upload_session SCHEMALESS");
   return db;
 }
 
@@ -58,7 +58,7 @@ export async function getUploadSessionForUser(userId: string, studioId: string, 
     "SELECT * FROM upload_session WHERE userId = $userId AND studioId = $studioId AND uploadId = $uploadId LIMIT 1",
     { userId, studioId: fullStudioId, uploadId },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<UploadSessionRow>(rows[0]) : null;
 }
 
 export async function createUploadSession(input: {
@@ -76,7 +76,7 @@ export async function createUploadSession(input: {
   const fullStudioId = ensureRecordPrefix("studio", normalizeRouteParam(input.studioId));
   const now = Date.now();
 
-  const created = await db.create(new Table("upload_session")).content({
+  const [created] = await db.create(new Table("upload_session"), {
     userId: input.userId,
     studioId: fullStudioId,
     uploadId: input.uploadId,
@@ -96,7 +96,7 @@ export async function createUploadSession(input: {
     abortedAt: null,
   });
 
-  return withRecordIds((Array.isArray(created) ? created[0] : created) as UploadSessionRow);
+  return normalizeSurrealRow<UploadSessionRow>(created);
 }
 
 export async function updateUploadSession(
@@ -109,14 +109,12 @@ export async function updateUploadSession(
   if (!existing) return null;
 
   const db = await ensureUploadSessionTable();
-  const updated = await db
-    .update<UploadSessionRow>(new StringRecordId(recordIdToString(existing.id)))
-    .merge({
-      ...updates,
-      updatedAt: Date.now(),
-    });
+  const updated = await db.merge(new StringRecordId(recordIdToString(existing.id)), {
+    ...updates,
+    updatedAt: Date.now(),
+  });
 
-  return withRecordIds((Array.isArray(updated) ? updated[0] : updated) as UploadSessionRow);
+  return normalizeSurrealRow<UploadSessionRow>(updated);
 }
 
 export async function recordUploadSessionPart(input: {

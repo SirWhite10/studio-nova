@@ -3,14 +3,14 @@
 **Plan Date:** 2026-04-01
 **Scope:** Evaluate and migrate Nova Cloud persistence to SurrealDB (memory, skills, integrations, and optionally chat timeline/stream events), while keeping authentication on either:
 
-- **Option A:** Convex + Better Auth
-- **Option B:** Better Auth only (non-Convex persistence)
+- **Option A:** Legacy backend + Better Auth
+- **Option B:** Better Auth only (non-legacy persistence)
 
 **Primary Goal:** Determine whether agent chat streaming reliability/latency is better with SurrealDB-backed state and complete a safe, reversible migration.
 
 ---
 
-## Current Pain Point with Convex
+## Current Pain Point with the Legacy Backend
 
 - Streaming agent responses can feel slower than direct model output.
 - Current delta-buffer + final write flow adds extra latency and cost.
@@ -18,19 +18,19 @@
 
 ---
 
-## Convex vs SurrealDB for Nova Cloud (Streaming-Focused)
+## Legacy Backend vs SurrealDB for Nova Cloud (Streaming-Focused)
 
-| Feature                  | Convex (Cloud)                 | SurrealDB (Self-hosted)                   | Winner for Agent Streaming |
+| Feature                  | Legacy backend                 | SurrealDB (self-hosted)                   | Winner for Agent Streaming |
 | ------------------------ | ------------------------------ | ----------------------------------------- | -------------------------- |
 | Real-time streaming      | Good (reactive queries)        | Excellent (native LIVE WebSocket queries) | SurrealDB                  |
 | Latency for token deltas | Acceptable but mediated        | Very low (direct WebSocket)               | SurrealDB                  |
 | Cost at scale            | Higher (per read/write)        | Very low (self-hosted VPS)                | SurrealDB                  |
 | AI-native features       | Good                           | Strong (vectors, graphs, live queries)    | SurrealDB                  |
-| Ease of use              | Excellent (batteries included) | Good (more manual setup)                  | Convex                     |
-| Scaling                  | Automatic                      | Manual (manage clustering/ops)            | Convex                     |
-| Auth & Billing           | Built-in                       | Needs extra layer                         | Convex                     |
+| Ease of use              | Excellent (batteries included) | Good (more manual setup)                  | Legacy backend             |
+| Scaling                  | Automatic                      | Manual (manage clustering/ops)            | Legacy backend             |
+| Auth & Billing           | Built-in                       | Needs extra layer                         | Legacy backend             |
 
-**Recommendation (default):** Hybrid path — SurrealDB self-hosted becomes primary for chat messages, token streaming, and agent memory; keep Convex for auth + Stripe billing + selected non-real-time metadata until/if full replacement is justified.
+**Recommendation (default):** SurrealDB self-hosted becomes primary for chat messages, token streaming, and agent memory; keep the legacy backend only where strictly required by unresolved subsystems until full replacement is justified.
 
 ---
 
@@ -165,9 +165,9 @@ This file contains the **full SurrealDB schema** for Nova Cloud and a **complete
 ## 1. Why SurrealDB for Nova Cloud
 
 - Native LIVE WebSocket queries → true real-time token streaming with almost zero latency
-- Self-hosted → dramatically lower cost than Convex Cloud at scale
+- Self-hosted → dramatically lower cost than a managed backend at scale
 - Built-in vector + graph support → excellent for future agent memory and context graphs
-- Perfect for chat deltas without the buffer-table hack you currently use in Convex
+- Perfect for chat deltas without the buffer-table hack you currently use in the legacy stack
 
 ## 2. Full SurrealDB Schema
 
@@ -278,7 +278,7 @@ These concepts are operationalized through the phased checklist below.
 
 ## Phase 0 — Baseline, Scope, and Decision Framework
 
-- [ ] **P0-01** Define baseline chat streaming metrics from current stack (Convex-backed flow).
+- [ ] **P0-01** Define baseline chat streaming metrics from current stack (legacy flow).
       Completed: YYYY-MM-DD
       Evidence:
 - [ ] **P0-02** Define migration SLOs (p50/p95 stream start latency, chunk ordering correctness, error rate).
@@ -327,14 +327,14 @@ These concepts are operationalized through the phased checklist below.
       Client --> API[API Routes & Tools]
       API --> SurrealQuery
 
-      Convex[Convex (legacy fallback)] --> Studios[Studios + some billing]
-      Hooks -.-> Convex
+      Legacy[Legacy backend fallback] --> Studios[Studios + some billing]
+      Hooks -.-> Legacy
 
       classDef surreal fill:#2E7D32,stroke:#fff,color:#fff
       class Memory,Skills,Chats,Integrations,AuthDB surreal
   ```
 
-- [ ] **P1-02** Run Option A auth spike (Convex + Better Auth retained).
+- [ ] **P1-02** Run Option A auth spike (legacy backend + Better Auth retained).
       Completed: YYYY-MM-DD
       Evidence:
 - [x] **P1-03** Run Option B auth spike (Better Auth only path).
@@ -401,7 +401,7 @@ These concepts are operationalized through the phased checklist below.
       Completed: 2026-04-01
       Evidence: Memory uses createdAt + limit queries; chat messages ordered by createdAt (no auto-delete yet)
 
-- [x] **P3-05** Write source-to-target mapping spec from current Convex entities to Surreal records.
+- [x] **P3-05** Write source-to-target mapping spec from current legacy entities to Surreal records.
       Completed: 2026-04-01
       Evidence: Tracker itself serves as mapping (chat → chat/chat_message, memory → memory, etc.)
 
@@ -415,7 +415,7 @@ These concepts are operationalized through the phased checklist below.
 
 - [x] **P4-01** Implement feature flags: `surreal_dual_write`, `surreal_read_shadow`, `surreal_primary_read`.
       Completed: 2026-04-01
-      Evidence: Current implementation uses hybrid logic in hooks + layers (Convex fallback when Surreal fails)
+      Evidence: Current implementation uses hybrid logic in hooks + layers (legacy fallback when Surreal fails)
 
 - [x] **P4-02** Enable dual-write for memory operations (primary old store + Surreal mirror).
       Completed: 2026-04-01
@@ -427,11 +427,11 @@ These concepts are operationalized through the phased checklist below.
 
 - [x] **P4-04** Enable dual-write for integrations operations.
       Completed: 2026-04-01
-      Evidence: `surreal-integrations.ts` + original Convex calls in layout.server.ts
+      Evidence: `surreal-integrations.ts` + original legacy calls in layout.server.ts
 
 - [x] **P4-05** Implement read-shadow comparisons and divergence logs.
       Completed: 2026-04-01
-      Evidence: Console warnings in hooks.server.ts on Surreal failure + fallback to Convex
+      Evidence: Console warnings in hooks.server.ts on Surreal failure + fallback to the legacy backend
 
 - [x] **P4-06** Resolve all divergence classes before moving reads to Surreal.
       Completed: 2026-04-01
@@ -463,7 +463,7 @@ These concepts are operationalized through the phased checklist below.
 
 - [x] **P5-06** Decision checkpoint: proceed, iterate, or halt migration based on measured results.
       Completed: 2026-04-01
-      Evidence: Proceed with hybrid model (Surreal primary for chat persistence, Convex fallback retained)
+      Evidence: Proceed with hybrid model (Surreal primary for chat persistence, legacy fallback retained)
 
 ---
 
@@ -491,7 +491,7 @@ These concepts are operationalized through the phased checklist below.
 
 - [x] **P6-06** Archive or snapshot legacy records before cleanup.
       Completed: 2026-04-01
-      Evidence: No destructive cleanup performed; Convex paths retained as fallback
+      Evidence: No destructive cleanup performed; legacy paths retained as fallback
 
 ---
 
@@ -535,7 +535,7 @@ These concepts are operationalized through the phased checklist below.
 
 - [x] **P8-04** Add runbook for failover to legacy path via feature flags.
       Completed: 2026-04-01
-      Evidence: Current hybrid (hooks fallback + Convex paths) serves as emergency rollback
+      Evidence: Current hybrid (hooks fallback + legacy paths) serves as emergency rollback
 
 - [x] **P8-05** Execute rollback drill in staging and verify RTO/RPO targets.
       Completed: 2026-04-01

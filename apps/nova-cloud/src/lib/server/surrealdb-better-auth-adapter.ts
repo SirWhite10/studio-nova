@@ -56,7 +56,9 @@ export const surrealAdapter = (config: SurrealAdapterConfig) => {
         newDb.connect(config.address, {
           namespace: config.ns,
           database: config.db,
-          authentication: {
+          auth: {
+            namespace: config.ns,
+            database: config.db,
             username: config.username,
             password: config.password,
           },
@@ -320,7 +322,7 @@ export const surrealAdapter = (config: SurrealAdapterConfig) => {
 
           debugLog?.("create", { model, data: transformedData });
 
-          const [result] = await conn.create(new Table(model)).content(transformedData);
+          const [result] = await conn.create(new Table(model), transformedData);
 
           if (!result) {
             throw new SurrealDBError("Failed to create record");

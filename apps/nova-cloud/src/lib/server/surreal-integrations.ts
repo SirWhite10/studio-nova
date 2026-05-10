@@ -7,10 +7,11 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
   recordIdToString,
   stripRecordPrefix,
-  withRecordIds,
 } from "./surreal-records";
 
 type IntegrationRow = {
@@ -48,7 +49,7 @@ async function ensureDefaultIntegrations(
 
   const run = (async () => {
     const db = await getSurreal();
-    await db.query("DEFINE TABLE IF NOT EXISTS integrations SCHEMALESS").collect();
+    await db.query("DEFINE TABLE IF NOT EXISTS integrations SCHEMALESS");
 
     const fullStudioId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
 
@@ -76,7 +77,7 @@ async function ensureDefaultIntegrations(
 
     for (const integration of INTEGRATION_CAPABILITIES) {
       if (canonicalByKey.has(integration.key)) continue;
-      await db.create(new Table("integrations")).content({
+      await db.create(new Table("integrations"), {
         userId,
         studioId: fullStudioId,
         key: integration.key,
@@ -104,7 +105,9 @@ async function ensureDefaultIntegrations(
         resolvedByKey.set(row.key, row);
       }
     }
-    return Array.from(resolvedByKey.values()).map((row) => withRecordIds(row) as StoredIntegration);
+    return normalizeSurrealRows<IntegrationRow>(Array.from(resolvedByKey.values())).map(
+      (row) => row as StoredIntegration,
+    );
   })();
 
   integrationSeedLocks.set(lockKey, run);
@@ -172,5 +175,5 @@ export async function enableStudioIntegration(userId: string, studioId: string, 
       enabled: true,
     },
   });
-  return withRecordIds(row) as StoredIntegration;
+  return normalizeSurrealRow<IntegrationRow>(row) as StoredIntegration;
 }

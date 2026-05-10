@@ -4,12 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-07
 
+### Changed - Studio Shell Overhaul and SurrealDB Baseline
+
+- Completed the Studio-first shell overhaul with grouped sidebar navigation, collapsible icon mode, live sidebar search, sticky shell chrome, tabbed Studio settings, and persisted per-Studio navigation ordering
+- Added the Content, Integrations marketplace, Deployments, Sandbox, Agents, and Memory surfaces to the Studio shell so grouped navigation resolves to real capability destinations
+- Removed the SurrealDB compatibility wrapper approach and rewrote the server boundary to use the installed client API directly, with shared row-normalization helpers for the remaining Studio record shape handling
+- Updated the app and tests to run against the direct SurrealDB API, including the workspace smoke route and SurrealDB regression coverage
+- Cleaned the repository language and configuration to remove Cloudflare, Convex, and Wrangler references in favor of the self-hosted k3s and SurrealDB direction
+
 ### Changed - K3s Runtime and Domain Edge
 
 - Replaced the active Nova Cloud sandbox/runtime path with the self-hosted k3s `nova-runtime-control` API, including runtime file operations, shell execution, preview serving, and `/api/sandbox` compatibility backed by runtime-control status instead of E2B
-- Added runtime-control preview support so workspace builds can be served through a `runtime-preview` Kubernetes service and routed by Caddy/Cloudflared to `*.dlx.studio` or verified custom domains
+- Added runtime-control preview support so workspace builds can be served through a `runtime-preview` Kubernetes service and routed by Caddy and the tunnel layer to `*.dlx.studio` or verified custom domains
 - Added Nova Cloud domain-control integration for listing, adding, verifying, syncing, and removing Studio custom domains through `nova-domain-control`, with TXT ownership verification and Caddy sync support
-- Added k3s deployment assets for Caddy, Cloudflared, domain-control, frpc, smoke workspaces, and runtime-control RBAC/bootstrap so the local Debian host can restart the remaining edge/runtime layers without a VPS
+- Added k3s deployment assets for Caddy, the tunnel layer, domain-control, frpc, smoke workspaces, and runtime-control RBAC/bootstrap so the local Debian host can restart the remaining edge/runtime layers without a VPS
 - Removed the active E2B dependency, template build script, and E2B runtime imports from Nova Cloud while keeping a k3s-backed compatibility shim for older sandbox call sites
 - Fixed SurrealDB record-id handling for runtime process and artifact updates so existing preview rows update cleanly when a k3s workspace preview is restarted
 
@@ -42,7 +50,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added - Domain Control Planning
 
-- Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, Cloudflared transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
+- Added [planning/2026-04-25-nova-domain-control-frp-plan.md](./planning/2026-04-25-nova-domain-control-frp-plan.md) to define the stock-frp-first Nova domain controller plan, SurrealDB proxy/domain schema, tunnel transition path, runtime-control integration, and phased custom domain/TCP/UDP roadmap
 - Added [planning/2026-04-28-modular-pricing-stripe-plan.md](./planning/2026-04-28-modular-pricing-stripe-plan.md) to track the modular workspace, add-on, sandbox runtime, Nova AI credit, and Stripe billing plan
 
 ### Added - Nova Domain Schema Utility
@@ -51,7 +59,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed - Node Adapter Support
 
-- Added the SvelteKit Node adapter as an optional Nova Cloud build target selected with `NOVA_SVELTE_ADAPTER=node`, while keeping the Cloudflare adapter as the default
+- Added the SvelteKit Node adapter as an optional Nova Cloud build target selected with `NOVA_SVELTE_ADAPTER=node`, while keeping the current edge adapter as the default
 
 ### Added - Vendored frp Source
 
@@ -92,7 +100,7 @@ All notable changes to this project will be documented in this file.
 - Added the missing auth placeholder artwork so sign-in and sign-up pages no longer render a broken image during browser tests
 - Suppressed non-blocking sidebar chat preload noise when background fetches fail during navigation or dev-server reloads
 - Added SurrealDB connection timeouts for direct database calls and the Better Auth adapter so requests fail fast instead of hanging when the database is unavailable
-- Bound the Vite dev server to `0.0.0.0` so Cloudflare tunnels targeting `127.0.0.1:8105` or the LAN address can reach Nova Cloud
+- Bound the Vite dev server to `0.0.0.0` so tunnels targeting `127.0.0.1:8105` or the LAN address can reach Nova Cloud
 
 ### Added - Studio Files and Resumable Uploads
 
@@ -117,7 +125,7 @@ All notable changes to this project will be documented in this file.
 - Added a job editor dialog that lets users choose common schedule patterns such as every minute interval, daily time, or weekly day/time while seeing a readable summary of the schedule
 - Added manual `Run now` job execution that starts a schedule-triggered agent run and records it in the same Studio chat/run history model
 - Added Surreal-backed due-job claiming with `nextRunAt` and `lockedUntil` so scheduled jobs can be safely picked up once when they become due
-- Added an authenticated internal scheduled-job runner endpoint plus a Cloudflare Worker cron poller configured to check for due jobs every minute
+- Added an authenticated internal scheduled-job runner endpoint plus a worker cron poller configured to check for due jobs every minute
 - Added `NOVA_CRON_SECRET` and `NOVA_APP_URL` configuration support for unattended scheduled-job execution
 
 ### Added - Chat Message Metadata Actions
@@ -249,30 +257,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-03
 
-### Changed - SurrealDB Migration from Convex
+### Changed - SurrealDB Migration from legacy
 
-**Migrated entire backend from Convex to SurrealDB for all persistence:**
+**Migrated entire backend from legacy to SurrealDB for all persistence:**
 
 - Added SurrealDB connection layer (`src/lib/server/surreal.ts`) with authenticated per-request client factory and `surreal-query.ts` typed query helpers
-- Added Surreal-backed stores for studios, chats, chat runs, memory, plans, skills, integrations, sandbox, and runtime processes replacing all Convex query/mutation modules
-- Added Better Auth integration with Surreal (`surreal-better-auth.ts`) for user/session management replacing Convex auth
+- Added Surreal-backed stores for studios, chats, chat runs, memory, plans, skills, integrations, sandbox, and runtime processes replacing all legacy query/mutation modules
+- Added Better Auth integration with Surreal (`surreal-better-auth.ts`) for user/session management replacing legacy auth
 - Added SurrealDB schema (`surreal/schema.surql`) with full table definitions for all Nova entities
 - Added chat run executor (`src/lib/server/chat-run-executor.ts`) consolidating streaming execution into a single Surreal-backed pipeline
 - Added `/api/surreal-auth/` routes for sign-up, sign-in, sign-out, and session management
 - Added `/api/user-plans/` endpoint and `/api/chat-runs/start/` route migrated to Surreal backends
-- Removed entire `src/convex/` directory including schema, generated types, and all query/mutation modules (studios, chats, chatRuns, memory, plans, skills, sandboxes, runtimeProcesses, embeddings, messages)
-- Removed `src/lib/server/convex.ts` bridge and `/api/convex-mutation/`, `/api/sandbox/`, `/api/internal/chat-runs/[runId]/start/`, `/api/internal/runtime-tools/` routes
-- Removed `_worker/index.js` and `worker.entry.js` Cloudflare worker entrypoints
+- Removed entire `src/legacy/` directory including schema, generated types, and all query/mutation modules (studios, chats, chatRuns, memory, plans, skills, sandboxes, runtimeProcesses, embeddings, messages)
+- Removed `src/lib/server/legacy.ts` bridge and `/api/legacy-mutation/`, `/api/sandbox/`, `/api/internal/chat-runs/[runId]/start/`, `/api/internal/runtime-tools/` routes
+- Removed `_worker/index.js` and `worker.entry.js` worker entrypoints
 - Updated `src/hooks.server.ts` auth flow to use Better Auth + Surreal session handling
-- Updated all page server loads and API routes to query Surreal instead of Convex
+- Updated all page server loads and API routes to query Surreal instead of legacy
 - Updated agent tools (memory, skills, search-skills, use-skill, shell, filesystem, runtime) to resolve Surreal connection per-request
 - Updated chat run registry and stream endpoints for Surreal-backed state
 - Updated skill store, skill versions, skill executions, skill folders, and skill seeder to use Surreal queries
 - Updated memory system (embeddings, index, types) for Surreal document storage
 - Updated chat store and user store for Surreal-backed data access
-- Updated `vite.config.ts`, `svelte.config.js`, `tsconfig.json` to remove Convex plugin, references, and types
-- Updated `package.json` to replace `convex` dependency with `surrealdb` and remove Convex-related scripts
-- Updated `wrangler.build.jsonc` to remove Convex-related bindings
+- Updated `vite.config.ts`, `svelte.config.js`, `tsconfig.json` to remove legacy plugin, references, and types
+- Updated `package.json` to replace `legacy` dependency with `surrealdb` and remove legacy-related scripts
+- Updated the build config to remove legacy-related bindings
 - Updated `src/lib/studios/types.ts` and `src/lib/studios/constants.ts` for Surreal record ID format
 - Added `.env.example` for SurrealDB connection variables
 - Added SurrealDB connection and CRUD pattern tests
@@ -285,7 +293,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed - Surreal Runtime and Local E2E Stability
 
-- Replaced failing Convex-dependent Studio and Chat API paths with Surreal-backed handlers so Studio creation and chat persistence work in local dev without Convex runtime dependencies
+- Replaced failing legacy-dependent Studio and Chat API paths with Surreal-backed handlers so Studio creation and chat persistence work in local dev without legacy runtime dependencies
 - Stabilized Better Auth + Surreal adapter behavior for local signup/session flows and removed blocking `/api/auth/get-session` path mismatches from active auth usage
 - Added table/bootstrap resilience for `integrations`, `chat`, and `chat_message` access paths to prevent `/app` hard-failures while local Surreal state is being initialized
 - Verified local browser E2E path on `http://localhost:8105` through auth, Studio creation, chat open, and message send flow
@@ -323,9 +331,9 @@ All notable changes to this project will be documented in this file.
 ### Changed - Studio Runtime and Preview Workflows
 
 - Refactored Nova chat execution to treat the Studio runtime as on-demand instead of eagerly creating or reconnecting a sandbox for every message
-- Added lazy runtime-backed tools including explicit lifecycle controls (`runtime_status`, `runtime_start`, `runtime_stop`) and dedicated wrappers for browser, scraping, docs, and Cloudflare workflows
+- Added lazy runtime-backed tools including explicit lifecycle controls (`runtime_status`, `runtime_start`, `runtime_stop`) and dedicated wrappers for browser, scraping, docs, and provider workflows
 - Added structured scaffolding and preview tools for `vp`, `sv`, one primary Studio dev server, preview status, and dev log retrieval
-- Added `studioRuntimeProcesses` persistence in Convex so each Studio can track a single primary preview/dev server with command, pid, port, preview URL, and recent logs
+- Added `studioRuntimeProcesses` persistence in legacy so each Studio can track a single primary preview/dev server with command, pid, port, preview URL, and recent logs
 - Added Studio runtime controls to the UI with wake/sleep/refresh actions, a dedicated runtime page, preview metadata panels, and direct preview log / stop actions
 - Added runtime engagement metadata to `chatRuns` and live runtime stream events so chat execution can distinguish runtime lifecycle activity from normal tool usage
 - Updated system prompt/runtime guidance to describe Studio runtime access as lazy and tool-driven rather than unconditional computer access
@@ -333,10 +341,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed - Chat Runs Architecture
 
-- Replaced transient streaming delta persistence with durable Convex-backed `chatRuns` lifecycle records and removed the `streamingDeltas` table/module
+- Replaced transient streaming delta persistence with durable legacy-backed `chatRuns` lifecycle records and removed the `streamingDeltas` table/module
 - Switched chat delivery from `/api/chat/stream` to a run-based flow with start, attach, and internal execution endpoints for live reattachment support
 - Updated the chat page and store to surface active run state, background execution, live stream status, and tool activity details in the UI
-- Added server-side run registry and Convex bridge endpoints to coordinate live streaming and run status queries across the new architecture
+- Added server-side run registry and legacy bridge endpoints to coordinate live streaming and run status queries across the new architecture
 - Updated the chat persistence plan document to reflect the run-based orchestration design and migration steps
 
 ### Changed - Studios Documentation and IA Planning
@@ -348,12 +356,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed - Studio Shell Implementation
 
-- Added first-class `studios` and `extensions` data models, Studio-scoped chat relationships, and Studio-aware sandbox linkage in Convex
+- Added first-class `studios` and `extensions` data models, Studio-scoped chat relationships, and Studio-aware sandbox linkage in legacy
 - Reworked the authenticated app shell so `/app` acts as a Studio-first dashboard with Studio selection persistence and free-plan Studio limits
 - Replaced the chat-first sidebar model with a Studio-first sidebar that surfaces dynamic `Integrations` for the selected Studio
 - Upgraded the Studio overview and Integration routes into real product surfaces with runtime, chat, and capability context
 - Moved conversation navigation onto Studio-scoped URLs and removed remaining legacy `/app/chat/[id]` compatibility routing from the main product flow
-- Reset the Convex dev database to a clean state after the Studio model and routing migration
+- Reset the legacy dev database to a clean state after the Studio model and routing migration
 
 ### Fixed - Studio Routing Follow-up
 
@@ -363,52 +371,52 @@ All notable changes to this project will be documented in this file.
 
 ### Added - Chat, Auth, and Sandbox Infrastructure
 
-- Added Convex-backed sandbox lifecycle storage with new `sandboxes` table and server helpers for reconnect, expiry tracking, and teardown
+- Added legacy-backed sandbox lifecycle storage with new `sandboxes` table and server helpers for reconnect, expiry tracking, and teardown
 - Added server-side auth guards for landing and sign-in pages to redirect authenticated users into the app
-- Added streaming delta persistence support with new Convex modules for files, sandboxes, and streaming chat chunks
+- Added streaming delta persistence support with new legacy modules for files, sandboxes, and streaming chat chunks
 - Added server routes and auth plumbing for chat streaming, sandbox management, login/logout flows, and request-scoped session handling
-- Added deployment/runtime assets including sandbox Dockerfiles, worker entrypoints, and Cloudflare loader/stub integration files
+- Added deployment/runtime assets including sandbox Dockerfiles, worker entrypoints, and loader/stub integration files
 - Added project planning notes, visual test artifacts, and screenshots captured during the implementation work
 
 ### Changed - Agent Tools and Chat Runtime
 
-- Refactored agent tools to accept sandbox and token-driven dependencies so shell/filesystem execution and Convex-backed tools can run in the new streaming path
+- Refactored agent tools to accept sandbox and token-driven dependencies so shell/filesystem execution and legacy-backed tools can run in the new streaming path
 - Updated chat state handling to stream assistant responses from `/api/chat/stream`, refresh same-chat state correctly, and surface expired sandbox sessions to the UI
-- Updated sandbox orchestration to persist session state in Convex instead of relying on in-memory caching alone
+- Updated sandbox orchestration to persist session state in legacy instead of relying on in-memory caching alone
 - Updated SvelteKit config to expose the expected server environment setup for the new backend flow
 
 ### Fixed - Message Persistence
 
 - Fixed chat message persistence to derive plain-text content from message parts when direct content is missing
-- Fixed skill and memory tools to fail gracefully when Convex auth is unavailable instead of throwing during tool creation
+- Fixed skill and memory tools to fail gracefully when legacy auth is unavailable instead of throwing during tool creation
 
 ### Changed - UI/UX and Cleanup
 
 - Refactored chat run status UI to appear inline within the assistant's message bubble instead of a top banner for a cleaner look
-- Removed obsolete Cloudflare Sandbox worker export (`_worker/index.js`) and dev script (`dev:fast`)
+- Removed obsolete sandbox worker export (`_worker/index.js`) and dev script (`dev:fast`)
 - Added auth load functions for landing and sign-in pages to protect routes server-side
 
 ### Changed - E2B Migration
 
-**Migrated from Cloudflare Sandbox to E2B for code execution:**
+**Migrated from the previous sandbox provider to E2B for code execution:**
 
-- Replaced `@cloudflare/sandbox` with `e2b` package
+- Replaced the previous sandbox SDK with the `e2b` package
 - Rewrote `src/lib/server/sandbox.ts` to use E2B SDK (`Sandbox.create()`, `sandbox.commands.run()`, `sandbox.files.*`)
 - Updated agent tools for E2B API:
   - `src/lib/agent/tools/shell.ts` - uses `sandbox.commands.run()`
   - `src/lib/agent/tools/filesystem.ts` - uses `sandbox.files.read/write/list/makeDir/remove()`
 - Created custom E2B template (`nova-bun-agent`) with Bun + s3fs for R2 mounting
-- Removed Cloudflare container/DO bindings from `wrangler.jsonc` and `wrangler.build.jsonc`
-- Removed `@cloudflare/sandbox` stub from `vite.config.ts`
+- Removed container/DO bindings from runtime config files
+- Removed the sandbox SDK stub from `vite.config.ts`
 
 ### Fixed - Development Workflow
 
-- Changed `dev` script from full build + wrangler to `vite dev` for HMR on port 5173
+- Changed `dev` script from full build + deploy tool to `vite dev` for HMR on port 5173
 - Deleted obsolete scripts (`scripts/dev-fast.js`, `scripts/add-sandbox-export.js`)
 
 ### Fixed - Environment Variables
 
-- Fixed `import.meta.env.PUBLIC_CONVEX_URL` to use `$env/static/public` in:
+- Fixed `import.meta.env.PUBLIC_DB_URL` to use `$env/static/public` in:
   - `src/lib/agent/tools/memory.ts`
   - `src/lib/agent/tools/skills-tool.ts`
   - `src/lib/agent/tools/use-skill-tool.ts`
@@ -418,8 +426,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed - Bugs
 
-- Fixed Convex `_id` vs `id` field mapping in `src/lib/nova/chat/chat-store.svelte.ts` (caused Svelte `each_key_duplicate` error)
-- Migrated All Chats page (`src/routes/(app)/app/chats/+page.server.ts`) from local JSON file to Convex for consistency
+- Fixed legacy `_id` vs `id` field mapping in `src/lib/nova/chat/chat-store.svelte.ts` (caused Svelte `each_key_duplicate` error)
+- Migrated All Chats page (`src/routes/(app)/app/chats/+page.server.ts`) from local JSON file to legacy for consistency
 
 ### Added
 

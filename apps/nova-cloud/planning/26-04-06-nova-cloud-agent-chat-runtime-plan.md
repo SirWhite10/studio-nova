@@ -103,7 +103,7 @@ Nova Cloud should follow these principles:
 
 The following foundation work has already happened and should be treated as the baseline for future implementation:
 
-- migration from Convex-backed persistence to SurrealDB-backed persistence
+- migration from legacy-backed persistence to SurrealDB-backed persistence
 - move to run-based chat execution and reattachable streams
 - improved assistant `parts` persistence and reconstruction
 - stop handling and stale-run reconciliation improvements
@@ -521,7 +521,7 @@ Timestamp:
 - 2026-04-08 02:14:06 EDT: added a Studio execution-history surface backed by persisted `chat_run` records, including trigger metadata and recent run cards on the Studio overview, so direct agent work is now inspectable; scheduled jobs still need a real trigger/persistence path before this checkpoint can be completed
 - 2026-04-08 03:03:12 EDT: extracted chat-run startup into a shared server helper, added a Studio job endpoint that can start immediate `direct` or `schedule` triggered runs, and added a Studio overview direct-task composer so non-chat agent work flows into the same persisted execution-history surface; future cron scheduling can call the same endpoint/model rather than inventing a separate history path
 - 2026-04-10 17:45:53 EDT: added a dedicated Studio `Jobs` page in the sidebar with persisted `scheduled_job` records, a plain-language schedule editor dialog, manual `Run now` invocation, and recent scheduled-run history, so recurring work is now a first-class Studio surface instead of an implementation detail
-- 2026-04-10 17:45:53 EDT: added unattended scheduled-job execution using Surreal-backed due-job claiming (`nextRunAt`, `lockedUntil`, `lastRunAt`, `lastRunId`, `lastError`), an authenticated internal due-job runner endpoint, and a Cloudflare Worker cron poller that posts into the app once per minute, so enabled jobs can run without an open browser tab
+- 2026-04-10 17:45:53 EDT: added unattended scheduled-job execution using Surreal-backed due-job claiming (`nextRunAt`, `lockedUntil`, `lastRunAt`, `lastRunId`, `lastError`), an authenticated internal due-job runner endpoint, and a worker cron poller that posts into the app once per minute, so enabled jobs can run without an open browser tab
   Definition of done:
 - users can inspect agent work triggered by schedule or direct background task
 

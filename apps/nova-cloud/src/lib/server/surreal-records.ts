@@ -1,4 +1,5 @@
 import { StringRecordId } from "surrealdb";
+import type { Surreal } from "surrealdb";
 
 export function recordIdToString(id: unknown): string {
   if (!id) return "";
@@ -77,20 +78,29 @@ export function withRecordIds<T extends { id?: unknown }>(row: T) {
   };
 }
 
+export type SurrealNormalizedRow<T> = T & { id: string; _id: string };
+
+export function normalizeSurrealRow<T extends { id?: unknown }>(
+  row: unknown,
+): SurrealNormalizedRow<T> {
+  return withRecordIds(row as T) as SurrealNormalizedRow<T>;
+}
+
+export function normalizeSurrealRows<T extends { id?: unknown }>(
+  rows: unknown[],
+): Array<SurrealNormalizedRow<T>> {
+  return rows.map((row) => normalizeSurrealRow<T>(row));
+}
+
 export function normalizeRouteParam(raw: string): string {
   return stripRecordPrefix(decodeURIComponent(stripWrappingQuotes(raw.trim())));
 }
 
 export async function queryRows<T>(
-  db: {
-    query: <R = unknown>(
-      query: string,
-      vars?: Record<string, unknown>,
-    ) => { collect: () => Promise<R> };
-  },
+  db: Pick<Surreal, "query">,
   query: string,
   vars?: Record<string, unknown>,
 ): Promise<T[]> {
-  const result = await db.query<[T[]]>(query, vars).collect();
+  const result = await db.query<[T[]]>(query, vars);
   return result[0] ?? [];
 }

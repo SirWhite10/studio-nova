@@ -15,7 +15,7 @@ The product is designed around persistent user environments called `Studios`. Ea
 ### Chats
 
 - Chats are scoped to a Studio.
-- Durable run state and final message persistence are handled through Convex-backed chat run lifecycle records.
+- Durable run state and final message persistence are handled through SurrealDB-backed chat run lifecycle records.
 
 ### Runtime / Sandbox
 
@@ -50,7 +50,7 @@ The product is designed around persistent user environments called `Studios`. Ea
   - application shell, routes, streaming endpoints, and product UI
 - `Svelte 5`
   - runes-first component architecture for all modern Svelte work
-- `Convex`
+- `SurrealDB`
   - durable application state, chat persistence, run records, and backend functions
 - `Better Auth`
   - authentication and user session integration

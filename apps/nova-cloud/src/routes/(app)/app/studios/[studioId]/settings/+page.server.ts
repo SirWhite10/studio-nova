@@ -4,6 +4,10 @@ import { getStudioForUser } from "$lib/server/surreal-studios";
 import { getUserPlan } from "$lib/server/surreal-plans";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
 import { loadStudioDomainSettings } from "$lib/server/studio-domains";
+import {
+  defaultStudioAppearanceSettings,
+  defaultStudioNavigationProfile,
+} from "$lib/studios/types";
 
 export const load: PageServerLoad = async (event) => {
   const userId = requireUserId(event.locals);
@@ -26,6 +30,9 @@ export const load: PageServerLoad = async (event) => {
           description: studio.description ?? "",
           themeHue: studio.themeHue,
           purpose: studio.purpose ?? "general",
+          appearanceSettings:
+            studio.appearanceSettings ?? defaultStudioAppearanceSettings(studio.themeHue ?? 25),
+          navigationProfile: studio.navigationProfile ?? defaultStudioNavigationProfile(),
         }
       : null,
   };

@@ -245,7 +245,7 @@ Why this is the better fit:
 
 Open implementation detail:
 
-- verify the exact Cloudflare Worker runtime R2 multipart API surface available in this app environment before coding
+- verify the exact object-storage multipart API surface available in this app environment before coding
 
 ---
 

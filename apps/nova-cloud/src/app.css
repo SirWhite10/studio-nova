@@ -17,8 +17,12 @@
     transform: translateY(-6px);
   }
 }
+
 :root {
-  --radius: 0.625rem;
+  --radius: 0.65rem;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "Geist", ui-sans-serif, system-ui, sans-serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -43,13 +47,19 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.586 0.253 17.585);
+  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.712 0.194 13.428);
+  --nova-shell-glow: radial-gradient(circle at top left, rgb(212 175 55 / 0.12), transparent 28%);
+  --nova-shell-glow-secondary: radial-gradient(
+    circle at top right,
+    rgb(151 176 255 / 0.08),
+    transparent 24%
+  );
 }
 
 .dark {
@@ -129,13 +139,68 @@
 }
 
 @layer base {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
+    font-family: var(--font-body);
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .studio-shell-page {
+    min-height: calc(100vh - 4rem);
+    overflow-x: clip;
+    padding-inline: 1.5rem;
+    padding-block: 2rem;
+  }
+
+  .studio-shell-page__inner {
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .studio-shell-panel {
+    border-radius: 1.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-background) 94%, transparent),
+        color-mix(in srgb, var(--color-background) 88%, transparent)
+      ),
+      var(--nova-shell-glow),
+      var(--nova-shell-glow-secondary);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 12px 48px rgb(0 0 0 / 0.08);
+  }
+
+  .studio-shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    background: color-mix(in srgb, var(--color-background) 88%, transparent);
+    backdrop-filter: blur(22px);
+  }
+
+  .studio-shell-search {
+    min-width: 0;
   }
 }

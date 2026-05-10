@@ -27,7 +27,7 @@ describe.skipIf(skip)("SurrealDB connection + authentication", () => {
     await db.connect(url, {
       namespace,
       database,
-      authentication: { username, password },
+      auth: { namespace, database, username, password },
     });
 
     await db.ready;
@@ -40,7 +40,7 @@ describe.skipIf(skip)("SurrealDB connection + authentication", () => {
   });
 
   it("reports correct namespace and database via INFO", async () => {
-    const [info] = await db.query("INFO FOR DB");
+    const [info] = await db.query<[unknown]>("INFO FOR DB");
     expect(info).toBeDefined();
   });
 });

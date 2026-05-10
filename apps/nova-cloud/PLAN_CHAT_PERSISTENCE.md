@@ -2,19 +2,19 @@
 
 **Date:** 2026-03-25
 **Status:** ACTIVE
-**Goal:** Move Nova chat to an enterprise-grade run architecture with direct low-latency streaming to the connected user, durable run lifecycle in Convex, one active run per chat, and no `streamingDeltas`.
+**Goal:** Move Nova chat to an enterprise-grade run architecture with direct low-latency streaming to the connected user, durable run lifecycle in SurrealDB, one active run per chat, and no `streamingDeltas`.
 
 ## Target Architecture
 
 **Core design**
 
-- Convex owns durable orchestration and final state
+- SurrealDB owns durable orchestration and final state
 - SvelteKit owns live stream delivery and E2B-backed tool execution
 - The browser is never the source of truth
 - Final assistant messages are persisted; per-token deltas are not
 
 ```
-Client ──► Convex startRun mutation
+Client ──► SurrealDB startRun mutation
           ├── save user message
           ├── create durable chatRun
           └── return runId + streamKey
@@ -22,7 +22,7 @@ Client ──► Convex startRun mutation
 Client ──► /api/chat-runs/[runId]/stream?key=...
           └── attach/re-attach to live server stream if available
 
-Convex ──► run lifecycle
+SurrealDB ──► run lifecycle
           ├── queued
           ├── preparing
           ├── running
@@ -31,7 +31,7 @@ Convex ──► run lifecycle
           └── aborted
 
 SvelteKit ──► live generation session
-             ├── reconnect sandbox via Convex sandboxes table
+             ├── reconnect sandbox via SurrealDB sandboxes table
              ├── run model + tools
              ├── stream tokens directly to browser
              └── persist only final assistant message + run terminal state
@@ -75,23 +75,23 @@ SvelteKit ──► live generation session
 
 ## Runtime Flow
 
-1. Client calls Convex `startRun({ chatId, content })`
-2. Convex saves the user message and creates a durable `chatRun`
-3. Convex starts or coordinates detached processing for the run
+1. Client calls SurrealDB `startRun({ chatId, content })`
+2. SurrealDB saves the user message and creates a durable `chatRun`
+3. SurrealDB starts or coordinates detached processing for the run
 4. Client immediately attempts to attach to `/api/chat-runs/[runId]/stream?key=...`
 5. If the live stream is available, SvelteKit streams tokens directly to the browser
-6. If the browser refreshes, the client reloads active run state from Convex and re-attaches if possible
+6. If the browser refreshes, the client reloads active run state from SurrealDB and re-attaches if possible
 7. On completion, the final assistant message is written to `messages` and the run is marked `completed`
 
 ## Files To Create Or Change
 
-### Convex
+### SurrealDB
 
-1. **`src/convex/schema.ts`**
+1. **`src/surreal/schema.ts`**
    - Add `chatRuns`
    - Remove `streamingDeltas`
 
-2. **`src/convex/chatRuns.ts`** (NEW)
+2. **`src/surreal/chatRuns.ts`** (NEW)
    - `startRun`
    - `getRun`
    - `getActiveRunForChat`
@@ -102,10 +102,10 @@ SvelteKit ──► live generation session
    - `markFailed`
    - `markAborted`
 
-3. **`src/convex/messages.ts`**
+3. **`src/surreal/messages.ts`**
    - Ensure final assistant message persistence remains canonical
 
-4. **`src/convex/sandboxes.ts`**
+4. **`src/surreal/sandboxes.ts`**
    - Keep sandbox reconnect + metadata aligned with run lifecycle
 
 ### Server
@@ -143,7 +143,7 @@ SvelteKit ──► live generation session
 ### Cleanup
 
 12. **Delete or retire**
-    - `src/convex/streamingDeltas.ts`
+    - `src/surreal/streamingDeltas.ts`
     - `src/routes/api/chat/stream/+server.ts`
     - delta reconstruction logic in `chat-store.svelte.ts`
 
@@ -205,7 +205,7 @@ Fallback if re-attach is unavailable:
 
 ### Phase 1
 
-- Add `chatRuns` schema + Convex functions
+- Add `chatRuns` schema + SurrealDB functions
 - Load active run state in chat page data
 
 ### Phase 2

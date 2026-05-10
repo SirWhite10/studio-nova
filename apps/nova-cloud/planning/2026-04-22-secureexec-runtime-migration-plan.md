@@ -201,8 +201,8 @@ SecureExec implementation options:
 
 Open validation:
 
-- whether `vp`, `bun`, `git`, `firecrawl`, `agent-browser`, `ctx7`, and `wrangler` can run reliably through SecureExec child process support in our deployment environment
-- whether Cloudflare/Wrangler deployment target permits the required V8/native APIs
+- whether `vp`, `bun`, `git`, `firecrawl`, `agent-browser`, `ctx7`, and the deploy CLI can run reliably through SecureExec child process support in our deployment environment
+- whether the current deployment target permits the required V8/native APIs
 
 ### `runtime_filesystem`
 
@@ -217,7 +217,7 @@ SecureExec implementation:
 - store small files in SecureExec virtual FS or host workspace
 - persist to R2 after mutations
 
-### `runtime_firecrawl`, `runtime_browser`, `runtime_context7`, `runtime_wrangler`
+### `runtime_firecrawl`, `runtime_browser`, `runtime_context7`, `runtime_deploy`
 
 Target:
 
@@ -255,7 +255,7 @@ Open validation:
 
 - long-running process stability under our app host
 - whether runtime survives server restarts
-- whether Cloudflare deployment supports the required networking/process primitives
+- whether the deployment target supports the required networking/process primitives
 
 ## 7. Skills and Tools Strategy
 
@@ -285,11 +285,11 @@ This avoids turning SecureExec into an unrestricted local terminal while still g
 
 - confirm whether SecureExec works in local Node dev
 - confirm whether it works in the target production runtime
-- explicitly test Cloudflare/Wrangler constraints before committing to full replacement
+- explicitly test deployment constraints before committing to full replacement
 
 [ ] `0.c` Validate command/tool parity
 
-- test `node`, `bun`, `vp`, `git`, `firecrawl`, `ctx7`, `agent-browser`, and `wrangler`
+- test `node`, `bun`, `vp`, `git`, `firecrawl`, `ctx7`, `agent-browser`, and the deploy CLI
 - classify each as native SecureExec, host-side tool, or fallback-only
 
 ### Phase 1: Runtime Provider Interface

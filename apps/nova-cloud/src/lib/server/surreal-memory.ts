@@ -1,6 +1,6 @@
 import { Table } from "surrealdb";
 import { getSurreal } from "./surreal";
-import { queryRows, withRecordIds } from "./surreal-records";
+import { normalizeSurrealRow, normalizeSurrealRows, queryRows } from "./surreal-records";
 
 type MemoryRow = {
   id: unknown;
@@ -31,21 +31,20 @@ export async function addMemoryForUser(
   metadata?: Record<string, unknown>,
 ) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS");
 
-  const created = await db.create(new Table("memory")).content({
+  const [created] = await db.create(new Table("memory"), {
     userId,
     content,
     metadata: metadata ?? null,
     createdAt: Date.now(),
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as MemoryRow);
+  return normalizeSurrealRow<MemoryRow>(created);
 }
 
 export async function getMemoriesByUser(userId: string, chatId?: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS");
 
   const rows = await queryRows<MemoryRow>(
     db,
@@ -54,7 +53,7 @@ export async function getMemoriesByUser(userId: string, chatId?: string) {
       : "SELECT * FROM memory WHERE userId = $userId ORDER BY createdAt DESC",
     chatId ? { userId, chatId } : { userId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<MemoryRow>(rows);
 }
 
 export async function searchMemoriesForUser(

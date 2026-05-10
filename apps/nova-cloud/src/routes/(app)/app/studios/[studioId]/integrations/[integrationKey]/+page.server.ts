@@ -6,6 +6,7 @@ import { listResolvedStudioIntegrations } from "$lib/server/surreal-integrations
 import { requireUserId } from "$lib/server/surreal-query";
 import { normalizeRouteParam } from "$lib/server/surreal-records";
 import { getStudioForUser } from "$lib/server/surreal-studios";
+import type { StudioIntegration } from "$lib/studios/types";
 
 export const load: PageServerLoad = async (event) => {
   const userId = requireUserId(event.locals);
@@ -19,7 +20,7 @@ export const load: PageServerLoad = async (event) => {
   ]);
 
   const integration =
-    integrations.find((entry) => entry.key === integrationKey) ??
+    integrations.find((entry: StudioIntegration) => entry.key === integrationKey) ??
     (getIntegrationCapability(integrationKey)
       ? {
           id: integrationKey,

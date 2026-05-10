@@ -133,7 +133,7 @@ export async function ensureTables() {
   ensurePromise = (async () => {
     const db = await getSurreal();
     for (const ddl of TABLE_DEFINITIONS) {
-      await db.query(ddl).collect();
+      await db.query(ddl);
     }
     ensured = true;
     console.log("[DB] Ensured all tables exist");

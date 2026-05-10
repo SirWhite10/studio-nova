@@ -3,8 +3,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 
 export type RunStatus = "queued" | "preparing" | "running" | "completed" | "failed" | "aborted";
@@ -29,7 +30,7 @@ export type ChatRunRow = {
 
 async function ensureChatRunTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS chat_run SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS chat_run SCHEMALESS");
   return db;
 }
 
@@ -50,7 +51,7 @@ export async function createChatRun(input: {
   const fullStudioId = input.studioId
     ? ensureRecordPrefix("studio", normalizeRouteParam(input.studioId))
     : null;
-  const created = await db.create(new Table("chat_run")).content({
+  const [created] = await db.create(new Table("chat_run"), {
     userId: input.userId,
     chatId: fullChatId,
     studioId: fullStudioId,
@@ -67,25 +68,22 @@ export async function createChatRun(input: {
     updatedAt: now,
   });
 
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as ChatRunRow);
+  return normalizeSurrealRow<ChatRunRow>(created);
 }
 
 export async function getChatRunForUser(userId: string, runId: string) {
   const db = await ensureChatRunTable();
   const fullRunId = ensureRecordPrefix("chat_run", normalizeRouteParam(runId));
-  const selected = await db.select<ChatRunRow>(new StringRecordId(fullRunId));
-  const row = Array.isArray(selected) ? selected[0] : selected;
+  const row = await db.select<ChatRunRow>(new StringRecordId(fullRunId));
   if (!row || row.userId !== userId) return null;
-  return withRecordIds(row);
+  return normalizeSurrealRow<ChatRunRow>(row);
 }
 
 export async function getChatRun(runId: string) {
   const db = await ensureChatRunTable();
   const fullRunId = ensureRecordPrefix("chat_run", normalizeRouteParam(runId));
-  const selected = await db.select<ChatRunRow>(new StringRecordId(fullRunId));
-  const row = Array.isArray(selected) ? selected[0] : selected;
-  return row ? withRecordIds(row) : null;
+  const row = await db.select<ChatRunRow>(new StringRecordId(fullRunId));
+  return row ? normalizeSurrealRow<ChatRunRow>(row) : null;
 }
 
 const DEFAULT_STALE_RUN_MS = 5 * 60 * 1000;
@@ -105,7 +103,7 @@ export async function getActiveRunForChat(
   const row = rows[0];
   if (!row) return null;
 
-  const typedRow = withRecordIds(row);
+  const typedRow = normalizeSurrealRow<ChatRunRow>(row);
   if (Date.now() - typedRow.startedAt > staleRunMs) {
     await updateChatRunStatus(typedRow._id, "failed", {
       error: `Run timed out after ${Math.floor(staleRunMs / 60000)} minutes of inactivity`,
@@ -125,7 +123,7 @@ export async function listActiveRunsForStudio(userId: string, studioId: string) 
     "SELECT * FROM chat_run WHERE userId = $userId AND studioId = $studioId AND status IN ['queued','preparing','running'] ORDER BY updatedAt DESC",
     { userId, studioId: fullStudioId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ChatRunRow>(rows);
 }
 
 export async function listRunsForChat(userId: string, chatId: string, limit = 20) {
@@ -136,7 +134,7 @@ export async function listRunsForChat(userId: string, chatId: string, limit = 20
     "SELECT * FROM chat_run WHERE userId = $userId AND chatId = $chatId ORDER BY createdAt DESC LIMIT $limit",
     { userId, chatId: fullChatId, limit },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ChatRunRow>(rows);
 }
 
 export async function listRunsForStudio(userId: string, studioId: string, limit = 20) {
@@ -147,7 +145,7 @@ export async function listRunsForStudio(userId: string, studioId: string, limit 
     "SELECT * FROM chat_run WHERE userId = $userId AND studioId = $studioId ORDER BY createdAt DESC LIMIT $limit",
     { userId, studioId: fullStudioId, limit },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<ChatRunRow>(rows);
 }
 
 export async function updateChatRunStatus(
@@ -179,7 +177,6 @@ export async function updateChatRunStatus(
   }
 
   const fullRunId = ensureRecordPrefix("chat_run", runId);
-  const updated = await db.update(new StringRecordId(fullRunId)).merge(updatePayload);
-  const row = Array.isArray(updated) ? updated[0] : updated;
-  return withRecordIds(row as ChatRunRow);
+  const updated = await db.merge(new StringRecordId(fullRunId), updatePayload);
+  return normalizeSurrealRow<ChatRunRow>(updated);
 }

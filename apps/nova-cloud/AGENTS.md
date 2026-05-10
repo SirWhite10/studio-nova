@@ -526,7 +526,7 @@ Nova Cloud's platform differentiator is support for multiple independent AI exec
 
 **Technical implementation:**
 
-- Each agent is a row in Convex `agents` table
+- Each agent is a row in the SurrealDB `agents` table
 - Each agent has a unique sandbox ID (`nova-agent-${userId}-${agentId}`)
 - Each agent has a dedicated R2 sub-bucket mounted at `/workspace`
 - The user-facing UI should prefer Studio switching and Studio-scoped navigation over a global chat list
@@ -565,7 +565,7 @@ Current runtime tool families include:
 
 - lifecycle: `runtime_status`, `runtime_start`, `runtime_stop`
 - general execution: `runtime_shell`, `runtime_filesystem`
-- installed CLI wrappers: `runtime_browser`, `runtime_firecrawl`, `runtime_context7`, `runtime_wrangler`
+- installed CLI wrappers: `runtime_browser`, `runtime_firecrawl`, `runtime_context7`, `runtime_deploy`
 - scaffolding and preview workflows: `runtime_vite_create`, `runtime_svelte_create`, `runtime_dev_start`, `runtime_dev_stop`, `runtime_dev_logs`, `runtime_preview_status`
 
 Studio runtime UI should surface:
@@ -585,8 +585,8 @@ Users can optionally attach their own Grok API key to any agent:
 ## 5. Example – Executing a PTC Script in an Agent’s Sandbox
 
 ````ts
-// lib/agent-executor.ts (called from SvelteKit API route or Convex action)
-import { getSandbox } from '@cloudflare/sandbox';
+// lib/agent-executor.ts (called from SvelteKit API route or Nova backend action)
+import { getRuntime } from './runtime-provider';
 
 export async function executeInAgentSandbox(
   userId: string,
@@ -665,7 +665,7 @@ This file serves as the canonical implementation guide for how Studios, agents, 
 **Version:** 1.0 (March 2026)
 **Related Document:** [NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md](./NOVA_CLOUD_PRODUCT_AND_BUSINESS_PLAN.md)
 
-This file outlines the steps to migrate the execution layer (currently Cloudflare Sandbox) to another provider (e.g. E2B, Northflank, Fly Machines, or self-hosted Firecracker) while preserving Bun runtime, PTC pattern, multi-agent workspaces, and Svelte 5 frontend.
+This file outlines the steps to migrate the execution layer (currently the previous sandbox provider) to another provider (e.g. E2B, Northflank, Fly Machines, or self-hosted Firecracker) while preserving Bun runtime, PTC pattern, multi-agent workspaces, and Svelte 5 frontend.
 
 ## 1. Why Migrate?
 
@@ -680,7 +680,7 @@ This file outlines the steps to migrate the execution layer (currently Cloudflar
 - [ ] Create account & get API key
 - [ ] Install SDK/CLI for target (e.g. `bun add @e2b/sdk`)
 - [ ] Build/test custom template/image with Bun pre-installed
-- [ ] Identify all places where Cloudflare Sandbox is called (search for `getSandbox`, `mountBucket`, `exec`, `startProcess`, `exposePort`)
+- [ ] Identify all places where the previous sandbox provider is called (search for the provider-specific runtime APIs, filesystem mount helpers, process execution, and preview exposure helpers)
 
 ## 3. Step-by-Step Migration (Example: to E2B)
 
@@ -707,7 +707,7 @@ EOF
 
 bunx @e2b/cli template create --name nova-bun-agent --dockerfile ./Dockerfile
 Step 3.2 – Update agent executor code
-Replace Cloudflare calls with E2B equivalents:
+Replace the current provider calls with E2B equivalents:
 // lib/agent-executor.ts (after migration)
 import { Sandbox } from '@e2b/sdk';
 
@@ -756,19 +756,19 @@ export async function runPtcInAgentSandbox(
 Step 3.3 – Data & Persistence Migration
 
 Manually copy files from old R2 buckets → new sandbox via filesystem.write
-Update Convex agents table to store sandboxProvider and sandboxId
+Update the agents table to store sandboxProvider and sandboxId
 
 Step 3.4 – Test & Rollout
 
 Run full POC per agent tier
 Monitor cost (E2B Pro $150/mo base + per-second usage)
 Roll out to new users first → migrate existing gradually
-Keep old Cloudflare code as fallback (conditional import)
+Keep the old provider code as fallback (conditional import)
 
 4. Rollback Plan
 
-Revert to Cloudflare Sandbox if E2B latency, cost, or preview URLs don’t meet expectations
-Use feature flag in Convex (sandboxProvider: 'cloudflare' | 'e2b')
+Revert to the previous sandbox provider if E2B latency, cost, or preview URLs don’t meet expectations
+Use feature flag in the backend config (sandboxProvider: 'previous' | 'e2b')
 
 5. Recommended Providers for Future Evaluation
 
@@ -867,3 +867,11 @@ For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/
 - [ ] Run `vp check` and `vp test` to validate changes.
 <!--VITE PLUS END-->
 ````
+
+<!-- SPECKIT START -->
+
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+`specs/001-studio-shell-marketplace/plan.md`
+
+<!-- SPECKIT END -->

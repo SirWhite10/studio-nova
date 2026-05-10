@@ -1,19 +1,25 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import FileIcon from '@lucide/svelte/icons/file';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 	import FolderPlusIcon from '@lucide/svelte/icons/folder-plus';
 	import FolderOpenIcon from '@lucide/svelte/icons/folder-open';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import Layers3Icon from '@lucide/svelte/icons/layers-3';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { useFileUploadManager } from '$lib/files/upload-manager.svelte';
+	import StudioPageShell from '$lib/components/studios/studio-page-shell.svelte';
 	import { toast } from 'svelte-sonner';
 
 	let { data }: { data: any } = $props();
+	const storageSummary = $derived(data.storageSummary);
+	const contentWorkspaces = $derived(data.workspaces ?? []);
 
 	type FileEntry = {
 		key: string;
@@ -223,8 +229,8 @@
 		dragOver = false;
 	}
 
-	$effect(() => {
-		loadFiles();
+	onMount(() => {
+		void loadFiles();
 	});
 
 	$effect(() => {
@@ -237,19 +243,23 @@
 	});
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),transparent_26%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),transparent_26%)] px-6 py-8 sm:px-10">
-	<div class="mx-auto max-w-5xl space-y-6">
+<StudioPageShell
+	class="bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),transparent_26%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),transparent_26%)]"
+	containerClass="max-w-5xl"
+>
+	<div class="space-y-6">
 		<section class="rounded-[2rem] border border-border/70 bg-background/85 p-8 shadow-sm backdrop-blur">
 			<div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 				<div class="space-y-3">
 					<div class="flex flex-wrap items-center gap-2">
-						<Badge class="rounded-full bg-muted px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Storage</Badge>
+						<Badge class="rounded-full bg-muted px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Content</Badge>
+						<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.18em]">2 GB included</Badge>
 						<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.18em]">{files.length} items</Badge>
 						<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.18em]">{formatSize(totalSize)}</Badge>
 					</div>
 					<h1 class="text-3xl font-semibold tracking-tight sm:text-5xl">{data.studio?.name ?? 'Studio'} files</h1>
 					<p class="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-						Persistent file storage for this Studio. Files are stored in R2 and survive sandbox expiration. Drop files anywhere to upload.
+						Persistent Studio content storage backed by object storage. Files survive sandbox expiration, power workspace content mounts, and set the foundation for future CMS tools in this Studio.
 					</p>
 				</div>
 
@@ -329,8 +339,113 @@
 			/>
 		</section>
 
+		<div class="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+			<section class="rounded-[2rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur">
+				<div class="mb-5 flex items-center gap-3">
+					<div class="rounded-2xl bg-sky-500/10 p-3 text-sky-700">
+						<FolderIcon class="size-5" />
+					</div>
+					<div>
+						<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Allocation</p>
+						<h2 class="text-lg font-semibold">Content storage summary</h2>
+					</div>
+				</div>
+
+				{#if storageSummary}
+					<div class="space-y-4">
+						<div class="rounded-[1.5rem] border border-border/60 bg-background/70 p-4">
+							<div class="flex items-center justify-between gap-4">
+								<p class="text-sm font-medium text-foreground">{storageSummary.displayLabel}</p>
+								<Badge variant="outline" class="rounded-full text-[11px] uppercase tracking-[0.16em]">
+									{storageSummary.percentUsed}% used
+								</Badge>
+							</div>
+							<div class="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+								<div
+									class="h-full rounded-full bg-primary transition-all"
+									style:width={`${Math.max(storageSummary.percentUsed, 2)}%`}
+								></div>
+							</div>
+						</div>
+
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div class="rounded-[1.4rem] border border-border/60 bg-background/70 p-4">
+								<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Used</p>
+								<p class="mt-3 text-2xl font-semibold">{storageSummary.usedLabel}</p>
+							</div>
+							<div class="rounded-[1.4rem] border border-border/60 bg-background/70 p-4">
+								<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Remaining</p>
+								<p class="mt-3 text-2xl font-semibold">{storageSummary.remainingLabel}</p>
+							</div>
+							<div class="rounded-[1.4rem] border border-border/60 bg-background/70 p-4">
+								<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Stored files</p>
+								<p class="mt-3 text-2xl font-semibold">{storageSummary.fileCount}</p>
+							</div>
+							<div class="rounded-[1.4rem] border border-border/60 bg-background/70 p-4">
+								<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Folders</p>
+								<p class="mt-3 text-2xl font-semibold">{storageSummary.folderCount}</p>
+							</div>
+						</div>
+					</div>
+				{:else}
+					<div class="rounded-[1.4rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm leading-7 text-muted-foreground">
+						Storage summary is unavailable until object storage bindings are active in this environment.
+					</div>
+				{/if}
+			</section>
+
+			<section class="rounded-[2rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur">
+				<div class="mb-5 flex items-center gap-3">
+					<div class="rounded-2xl bg-amber-500/10 p-3 text-amber-700">
+						<Layers3Icon class="size-5" />
+					</div>
+					<div>
+						<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">CMS-ready</p>
+						<h2 class="text-lg font-semibold">More than a file browser</h2>
+					</div>
+				</div>
+
+				<div class="space-y-3">
+					<a class="block rounded-[1.4rem] border border-border/60 bg-background/70 px-4 py-4 transition-colors hover:bg-muted/40" href={`/app/studios/${data.studioId}/collections`}>
+						<div class="flex items-center gap-3">
+							<Layers3Icon class="size-4 text-muted-foreground" />
+							<div>
+								<p class="font-medium">Collections</p>
+								<p class="text-sm leading-7 text-muted-foreground">Plan structured content models and map them to workspace content roots.</p>
+							</div>
+						</div>
+					</a>
+					<a class="block rounded-[1.4rem] border border-border/60 bg-background/70 px-4 py-4 transition-colors hover:bg-muted/40" href={`/app/studios/${data.studioId}/media`}>
+						<div class="flex items-center gap-3">
+							<ImageIcon class="size-4 text-muted-foreground" />
+							<div>
+								<p class="font-medium">Media</p>
+								<p class="text-sm leading-7 text-muted-foreground">Review reusable uploads, asset readiness, and storage health for brand content.</p>
+							</div>
+						</div>
+					</a>
+				</div>
+
+				{#if contentWorkspaces.length > 0}
+					<div class="mt-5 rounded-[1.4rem] border border-border/60 bg-background/70 px-4 py-4">
+						<p class="text-sm font-medium">Workspace content mounts</p>
+						<div class="mt-3 space-y-2 text-sm leading-7 text-muted-foreground">
+							{#each contentWorkspaces as workspace (workspace.workspace._id)}
+								<p>
+									<span class="font-medium text-foreground">{workspace.workspace.name}</span>
+									mounts content from
+									<span class="font-mono text-[11px] text-foreground">{workspace.runtimeContract.storage.contentPath}</span>
+								</p>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</section>
+		</div>
+
 		<section
 			class="rounded-[2rem] border border-border/70 bg-background/85 shadow-sm backdrop-blur"
+			aria-label="Studio file browser"
 			ondrop={onDrop}
 			ondragover={onDragOver}
 			ondragleave={onDragLeave}
@@ -434,10 +549,10 @@
 				</div>
 			</div>
 			<div class="grid gap-4 md:grid-cols-3 text-sm leading-7 text-muted-foreground">
-				<p>Files uploaded here are stored in R2-compatible object storage under a unique prefix for this Studio, providing permanent storage.</p>
+				<p>Files uploaded here are stored in object storage under a unique prefix for this Studio, providing permanent storage.</p>
 				<p>When the runtime is active, the sandbox mounts this same prefix at <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/home/user/workspace</code> so the agent can read and write files.</p>
 				<p>Even after a sandbox expires, your files persist. Starting a new runtime automatically re-mounts the same storage.</p>
 			</div>
 		</section>
 	</div>
-</div>
+</StudioPageShell>

@@ -10,7 +10,7 @@
 
 Plan a new Nova domain controller app under `apps` that owns public workspace domain routing for Nova Cloud runtimes.
 
-The goal is to replace the current Cloudflared-dependent preview routing path with a Nova-controlled frp-based tunnel system backed by SurrealDB. SurrealDB is the source of truth for workspace proxy records, subdomains, custom domains, and the status values that decide whether `frps` can issue a certificate and route traffic.
+The goal is to replace the current tunnel-dependent preview routing path with a Nova-controlled frp-based tunnel system backed by SurrealDB. SurrealDB is the source of truth for workspace proxy records, subdomains, custom domains, and the status values that decide whether `frps` can issue a certificate and route traffic.
 
 This document now records the finalized direction: a custom standalone `frps` binary under `apps/nova-frp` should own public `80/443`, perform direct SurrealDB host authorization, issue/reuse ACME certificates, redirect HTTP to HTTPS, and route HTTPS traffic through outbound frpc tunnels to local/k3s workspaces.
 
@@ -270,16 +270,16 @@ customDomains = ["test.dlx.studio"]
 
 Production frpc can run on the runtime host/k3s side and should publish HTTP proxies for workspace services. The public browser path remains HTTPS because `frps` terminates TLS before forwarding through the tunnel.
 
-## 9. Cloudflared Transition
+## 9. Tunnel Transition
 
-The early plan assumed the current local machine and Cloudflared would remain in the path during transition. The current direction is a public frps edge fronted by your owned domain, without hardwiring a VPS into the architecture.
+The early plan assumed the current local machine and an intermediate tunnel layer would remain in the path during transition. The current direction is a public frps edge fronted by your owned domain, without hardwiring a VPS into the architecture.
 
 Production DNS model:
 
 - `*.dlx.studio` should point to the public edge that fronts `frps`.
 - customer custom domains can point to that same public edge by A record or CNAME.
 - `frps` must be reachable on public `80` and `443` for HTTP-01 and HTTPS.
-- Cloudflare can still host DNS, and any tunnel layer must preserve public reachability for the `frps` HTTP-01 and HTTPS path.
+- DNS can still be hosted by any provider, and any tunnel layer must preserve public reachability for the `frps` HTTP-01 and HTTPS path.
 
 Custom domain constraint:
 
@@ -386,7 +386,7 @@ Exit criteria:
 Choose one:
 
 - keep stock frp and terminate TLS with an outer proxy later.
-- use Cloudflare custom hostname/SaaS certificates if the Cloudflare account model supports it.
+- use custom hostname/SaaS certificates if the account model supports it.
 - fork frps to terminate TLS, obtain certificates, and resolve hosts through an internal cache backed by SurrealDB.
 
 Do not fork frp before phases 1-5 prove the product and runtime flow.
@@ -466,7 +466,7 @@ Remaining production work:
 ## 13. Open Questions
 
 - What is the production base domain for generated workspace subdomains?
-- Will this machine eventually accept direct public `80/443`, or will Cloudflared remain permanently?
+- Will this machine eventually accept direct public `80/443`, or will the tunnel layer remain permanently?
 - Should the first k3s integration use shared frpc or per-workspace sidecars?
 - Where should frpc run: on the k3s node, inside the cluster, or on a separate bridge host?
 - Should custom domain certificates be solved by DNS-01 first, HTTP-01 first, or delayed until the frps fork?

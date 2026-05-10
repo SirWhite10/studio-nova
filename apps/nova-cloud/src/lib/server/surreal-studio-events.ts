@@ -3,8 +3,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 
 export type StudioEventKind =
@@ -33,7 +34,7 @@ export type StudioEventRow = {
 
 async function ensureStudioEventTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio_event SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS studio_event SCHEMALESS");
   return db;
 }
 
@@ -48,7 +49,7 @@ export async function createStudioEvent(input: {
   payload?: Record<string, unknown> | null;
 }) {
   const db = await ensureStudioEventTable();
-  const created = await db.create(new Table("studio_event")).content({
+  const [created] = await db.create(new Table("studio_event"), {
     userId: input.userId,
     studioId: ensureRecordPrefix("studio", normalizeRouteParam(input.studioId)),
     kind: input.kind,
@@ -59,8 +60,7 @@ export async function createStudioEvent(input: {
     payload: input.payload ?? null,
     createdAt: Date.now(),
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as StudioEventRow);
+  return normalizeSurrealRow<StudioEventRow>(created);
 }
 
 export async function listStudioEventsSince(
@@ -80,7 +80,7 @@ export async function listStudioEventsSince(
       limit,
     },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<StudioEventRow>(rows);
 }
 
 export async function listRecentStudioEvents(userId: string, studioId: string, limit = 20) {
@@ -94,5 +94,5 @@ export async function listRecentStudioEvents(userId: string, studioId: string, l
       limit,
     },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<StudioEventRow>(rows);
 }

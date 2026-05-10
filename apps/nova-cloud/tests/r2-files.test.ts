@@ -108,4 +108,46 @@ describe("r2-files", () => {
       },
     ]);
   });
+
+  it("derives a content allocation summary from authoritative storage records", async () => {
+    const uploadedAt = new Date("2026-05-10T02:00:00.000Z");
+    const storage = {
+      list: vi.fn().mockResolvedValue({
+        truncated: false,
+        objects: [
+          {
+            key: "studio-prefix/content/posts/hello.md",
+            size: 1024,
+            uploaded: uploadedAt,
+          },
+          {
+            key: "studio-prefix/media/hero.png",
+            size: 2048,
+            uploaded: uploadedAt,
+          },
+          {
+            key: "studio-prefix/content/posts/.nova-folder",
+            size: 0,
+            uploaded: uploadedAt,
+          },
+          {
+            key: "studio-prefix/.uploads/upload-123/part-1",
+            size: 4096,
+            uploaded: uploadedAt,
+          },
+        ],
+      }),
+    };
+
+    const { getStudioStorageSummary } = await import("../src/lib/server/r2-files");
+    const summary = await getStudioStorageSummary(createEvent(storage), "user-123", "studio-123");
+
+    expect(summary.includedBytes).toBe(2 * 1024 * 1024 * 1024);
+    expect(summary.usedBytes).toBe(3072);
+    expect(summary.fileCount).toBe(2);
+    expect(summary.folderCount).toBe(3);
+    expect(summary.latestUploadAt).toBe(uploadedAt.toISOString());
+    expect(summary.displayLabel).toContain("3.0 KB");
+    expect(summary.displayLabel).toContain("2.0 GB");
+  });
 });

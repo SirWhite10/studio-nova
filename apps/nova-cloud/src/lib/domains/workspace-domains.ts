@@ -120,7 +120,7 @@ export function createPendingCustomDomain(
         value: DOMAIN_CNAME_TARGET,
         status,
         purpose: looksLikeApex
-          ? "Use your DNS provider's ALIAS/ANAME/CNAME flattening support for the apex, or attach the apex in Cloudflare Tunnel when the zone is on Cloudflare."
+          ? "Use your DNS provider's ALIAS/ANAME/CNAME flattening support for apex records."
           : "Routes the custom domain to the Nova workspace edge.",
       },
       {
@@ -132,7 +132,7 @@ export function createPendingCustomDomain(
       },
     ],
     routingHint: looksLikeApex
-      ? "Apex domains require ALIAS/ANAME/CNAME flattening support from the DNS provider, or a direct Cloudflare Tunnel hostname if the zone is already on Cloudflare."
+      ? "Apex domains require ALIAS/ANAME/CNAME flattening support from the DNS provider."
       : "Subdomains can point to domain.dlx.studio with a standard CNAME record.",
   };
 }

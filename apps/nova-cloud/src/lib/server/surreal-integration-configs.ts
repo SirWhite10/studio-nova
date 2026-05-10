@@ -6,9 +6,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
   queryRows,
   recordIdToString,
-  withRecordIds,
 } from "./surreal-records";
 
 type IntegrationConfigRow = {
@@ -24,7 +24,7 @@ type IntegrationConfigRow = {
 
 async function ensureIntegrationConfigTable() {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS integration_config SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS integration_config SCHEMALESS");
   return db;
 }
 
@@ -36,7 +36,7 @@ async function getIntegrationConfigRow(userId: string, studioId: string, integra
     "SELECT * FROM integration_config WHERE userId = $userId AND studioId = $studioId AND integrationKey = $integrationKey LIMIT 1",
     { userId, studioId: fullStudioId, integrationKey },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<IntegrationConfigRow>(rows[0]) : null;
 }
 
 function maskSecret(value: string) {
@@ -134,16 +134,12 @@ export async function saveIntegrationConfig(
 
   const now = Date.now();
   if (existing) {
-    const updated = await db
-      .update<IntegrationConfigRow>(new StringRecordId(recordIdToString(existing.id)))
-      .merge({
-        values: nextEncoded,
-        configuredAt: existing.configuredAt ?? now,
-        updatedAt: now,
-      });
-    const row = withRecordIds(
-      (Array.isArray(updated) ? updated[0] : updated) as IntegrationConfigRow,
-    );
+    const updated = await db.merge(new StringRecordId(recordIdToString(existing.id)), {
+      values: nextEncoded,
+      configuredAt: existing.configuredAt ?? now,
+      updatedAt: now,
+    });
+    const row = normalizeSurrealRow<IntegrationConfigRow>(updated);
     await createStudioEvent({
       userId,
       studioId,
@@ -161,7 +157,7 @@ export async function saveIntegrationConfig(
     return row;
   }
 
-  const created = await db.create(new Table("integration_config")).content({
+  const [created] = await db.create(new Table("integration_config"), {
     userId,
     studioId: fullStudioId,
     integrationKey,
@@ -170,9 +166,7 @@ export async function saveIntegrationConfig(
     createdAt: now,
     updatedAt: now,
   });
-  const row = withRecordIds(
-    (Array.isArray(created) ? created[0] : created) as IntegrationConfigRow,
-  );
+  const row = normalizeSurrealRow<IntegrationConfigRow>(created);
   await createStudioEvent({
     userId,
     studioId,

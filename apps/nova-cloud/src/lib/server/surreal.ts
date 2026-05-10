@@ -1,20 +1,5 @@
 import { Surreal, type ConnectionStatus } from "surrealdb";
-
-let instance: Surreal | null = null;
-let connectPromise: Promise<Surreal> | null = null;
-
 import { surrealConfig } from "./env";
-
-function getEnv(key: string): string {
-  const val = surrealConfig[key as keyof typeof surrealConfig];
-  if (!val) throw new Error(`Missing env var: ${key}`);
-  return val;
-}
-
-function getEnvOrDefault(key: string, fallback: string): string {
-  const val = surrealConfig[key as keyof typeof surrealConfig] as string | undefined;
-  return val || fallback;
-}
 
 export interface SurrealConfig {
   url: string;
@@ -26,6 +11,20 @@ export interface SurrealConfig {
 }
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
+
+let instance: Surreal | null = null;
+let connectPromise: Promise<Surreal> | null = null;
+
+function getEnv(key: string): string {
+  const val = surrealConfig[key as keyof typeof surrealConfig];
+  if (!val) throw new Error(`Missing env var: ${key}`);
+  return val;
+}
+
+function getEnvOrDefault(key: string, fallback: string): string {
+  const val = surrealConfig[key as keyof typeof surrealConfig] as string | undefined;
+  return val || fallback;
+}
 
 export function getSurrealConnectTimeoutMs(): number {
   const raw = getEnvOrDefault("SURREALDB_CONNECT_TIMEOUT_MS", String(DEFAULT_CONNECT_TIMEOUT_MS));
@@ -50,7 +49,9 @@ async function connectWithTimeout(db: Surreal, cfg: SurrealConfig): Promise<void
     await db.connect(cfg.url, {
       namespace: cfg.namespace,
       database: cfg.database,
-      authentication: {
+      auth: {
+        namespace: cfg.namespace,
+        database: cfg.database,
         username: cfg.username,
         password: cfg.password,
       },
@@ -80,7 +81,6 @@ export async function getSurreal(): Promise<Surreal> {
     const status: ConnectionStatus = instance.status;
     if (status === "connected") return instance;
 
-    // Connection dropped — tear down and reconnect
     if (status === "disconnected") {
       instance = null;
       connectPromise = null;
@@ -92,7 +92,6 @@ export async function getSurreal(): Promise<Surreal> {
   connectPromise = (async () => {
     const cfg = getSurrealConfig();
     const db = new Surreal();
-
     await connectWithTimeout(db, cfg);
     instance = db;
     return db;
@@ -116,5 +115,5 @@ export async function closeSurreal(): Promise<void> {
 }
 
 export function getSurrealStatus(): ConnectionStatus {
-  return instance?.status ?? "disconnected";
+  return (instance?.status ?? "disconnected") as ConnectionStatus;
 }

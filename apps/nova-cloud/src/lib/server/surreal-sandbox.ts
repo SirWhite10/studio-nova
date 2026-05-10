@@ -1,6 +1,12 @@
 import { StringRecordId, Table } from "surrealdb";
 import { getSurreal } from "./surreal";
-import { ensureRecordPrefix, queryRows, recordIdToString, withRecordIds } from "./surreal-records";
+import {
+  ensureRecordPrefix,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
+  queryRows,
+  recordIdToString,
+} from "./surreal-records";
 import { ensureTables } from "./surreal-tables";
 
 export type SandboxRow = {
@@ -31,7 +37,7 @@ export async function getSandboxForStudio(userId: string, studioId: string) {
     "SELECT * FROM sandbox WHERE userId = $userId AND studioId = $studioId LIMIT 1",
     { userId, studioId: fullId },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<SandboxRow>(rows[0]) : null;
 }
 
 export async function getSandboxForUser(userId: string) {
@@ -41,7 +47,7 @@ export async function getSandboxForUser(userId: string) {
     "SELECT * FROM sandbox WHERE userId = $userId ORDER BY lastUsedAt DESC LIMIT 1",
     { userId },
   );
-  return rows[0] ? withRecordIds(rows[0]) : null;
+  return rows[0] ? normalizeSurrealRow<SandboxRow>(rows[0]) : null;
 }
 
 export async function listSandboxesForUser(userId: string) {
@@ -51,7 +57,7 @@ export async function listSandboxesForUser(userId: string) {
     "SELECT * FROM sandbox WHERE userId = $userId ORDER BY updatedAt DESC",
     { userId },
   );
-  return rows.map((row) => withRecordIds(row));
+  return normalizeSurrealRows<SandboxRow>(rows);
 }
 
 export async function upsertSandbox(input: {
@@ -81,8 +87,8 @@ export async function upsertSandbox(input: {
       const nextWorkspaceId = input.workspaceId ?? existing.workspaceId;
       if (nextWorkspaceId) patch.workspaceId = nextWorkspaceId;
       if (fullStudioId) patch.studioId = fullStudioId;
-      const updated = await db.update<SandboxRow>(new StringRecordId(rid)).merge(patch);
-      return withRecordIds((Array.isArray(updated) ? updated[0] : updated) as SandboxRow);
+      const updated = await db.merge(new StringRecordId(rid), patch);
+      return normalizeSurrealRow<SandboxRow>(updated);
     }
   }
 
@@ -99,8 +105,8 @@ export async function upsertSandbox(input: {
   if (fullStudioId) content.studioId = fullStudioId;
   if (input.workspaceId) content.workspaceId = input.workspaceId;
 
-  const created = await db.create(new Table("sandbox")).content(content);
-  return withRecordIds((Array.isArray(created) ? created[0] : created) as SandboxRow);
+  const [created] = await db.create(new Table("sandbox"), content);
+  return normalizeSurrealRow<SandboxRow>(created);
 }
 
 export async function markSandboxExpired(userId: string, studioId?: string) {

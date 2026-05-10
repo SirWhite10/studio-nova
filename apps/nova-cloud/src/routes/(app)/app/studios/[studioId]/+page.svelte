@@ -10,6 +10,7 @@
 	import { onMount } from 'svelte';
 	import StudioIcon from '$lib/components/studios/studio-icon.svelte';
 	import ArtifactCard from '$lib/components/studios/artifact-card.svelte';
+	import StudioPageShell from '$lib/components/studios/studio-page-shell.svelte';
 	import { planDisplayMessage } from '$lib/studios/constants';
 	import { chatStore } from '$lib/nova/chat';
 	import { Badge } from '$lib/components/ui/badge';
@@ -246,8 +247,11 @@
 	});
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),transparent_28%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),transparent_26%)] px-6 py-8 sm:px-10">
-	<div class="mx-auto flex max-w-7xl flex-col gap-6">
+<StudioPageShell
+	class="bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),transparent_28%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),transparent_26%)]"
+	containerClass="max-w-7xl"
+>
+	<div class="flex flex-col gap-6">
 		<section class="rounded-[2.25rem] border border-border/70 bg-background/85 p-6 shadow-sm backdrop-blur sm:p-8">
 			<div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
 				<div class="flex items-start gap-5">
@@ -272,8 +276,8 @@
 				</div>
 
 				<div class="flex flex-wrap gap-3">
-					<Button variant="outline" class="rounded-full px-5" href={`/app/studios/${data.studio._id}/runtime`}>
-						Open runtime
+					<Button variant="outline" class="rounded-full px-5" href={`/app/studios/${data.studio._id}/sandbox`}>
+						Open sandbox
 					</Button>
 					<Button class="rounded-full px-5" onclick={createChat} disabled={isCreatingChat}>
 						{isCreatingChat ? 'Creating chat...' : 'New chat'}
@@ -343,12 +347,15 @@
 							<WrenchIcon class="size-5" />
 						</div>
 					<div>
-							<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Runtime</p>
-							<h2 class="text-lg font-semibold">Studio runtime</h2>
+							<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sandbox</p>
+							<h2 class="text-lg font-semibold">Studio sandbox</h2>
 						</div>
 					</div>
 					<p class="text-sm leading-7 text-muted-foreground">{runtime.summary}</p>
 					<div class="mt-4 flex flex-wrap gap-3">
+						<Button variant="outline" size="sm" class="rounded-full" href={`/app/studios/${data.studio._id}/sandbox`}>
+							Open sandbox
+						</Button>
 						<Button variant="outline" size="sm" class="rounded-full" onclick={() => mutateRuntime('refresh')}>
 							Refresh
 						</Button>
@@ -367,12 +374,17 @@
 							<GlobeIcon class="size-5" />
 						</div>
 						<div class="flex-1">
-							<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspaces</p>
+							<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Deployments</p>
 							<h2 class="text-lg font-semibold">Deployable apps</h2>
 						</div>
-						<Button size="sm" class="rounded-full" onclick={createWorkspace} disabled={isCreatingWorkspace}>
+						<div class="flex gap-2">
+							<Button variant="outline" size="sm" class="rounded-full" href={`/app/studios/${data.studio._id}/deployments`}>
+								Manage
+							</Button>
+							<Button size="sm" class="rounded-full" onclick={createWorkspace} disabled={isCreatingWorkspace}>
 							{isCreatingWorkspace ? 'Creating...' : 'Create blog workspace'}
-						</Button>
+							</Button>
+						</div>
 					</div>
 
 					{#if workspaces.length > 0}
@@ -606,4 +618,4 @@
 			</div>
 		</div>
 	</div>
-</div>
+</StudioPageShell>

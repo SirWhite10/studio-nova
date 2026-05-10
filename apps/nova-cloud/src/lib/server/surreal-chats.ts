@@ -3,8 +3,9 @@ import { getSurreal } from "./surreal";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
+  normalizeSurrealRow,
+  normalizeSurrealRows,
   queryRows,
-  withRecordIds,
 } from "./surreal-records";
 
 export type ChatRow = {
@@ -34,20 +35,19 @@ export async function createChat(
   title = "New chat",
 ) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS chat SCHEMALESS").collect();
-  await db.query("DEFINE TABLE IF NOT EXISTS chat_message SCHEMALESS").collect();
+  await db.query("DEFINE TABLE IF NOT EXISTS chat SCHEMALESS");
+  await db.query("DEFINE TABLE IF NOT EXISTS chat_message SCHEMALESS");
 
   const fullStudioId = studioId ? ensureRecordPrefix("studio", studioId) : null;
 
-  const created = await db.create(new Table("chat")).content({
+  const [created] = await db.create(new Table("chat"), {
     userId,
     studioId: fullStudioId,
     title,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as ChatRow);
+  return normalizeSurrealRow<ChatRow>(created);
 }
 
 export async function listChatsForUser(userId: string, studioId?: string) {
@@ -63,7 +63,7 @@ export async function listChatsForUser(userId: string, studioId?: string) {
       q,
       fullStudioId ? { userId, studioId: fullStudioId } : { userId },
     );
-    return rows.map(withRecordIds);
+    return normalizeSurrealRows<ChatRow>(rows);
   } catch {
     return [];
   }
@@ -72,19 +72,18 @@ export async function listChatsForUser(userId: string, studioId?: string) {
 export async function getChat(chatId: string) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("chat", normalizeRouteParam(chatId));
-  const selected = await db.select<ChatRow>(new StringRecordId(fullId));
-  const chat = Array.isArray(selected) ? selected[0] : selected;
-  return chat ? withRecordIds(chat) : null;
+  const chat = await db.select<ChatRow>(new StringRecordId(fullId));
+  return chat ? normalizeSurrealRow<ChatRow>(chat) : null;
 }
 
 export async function updateChat(chatId: string, updates: Partial<ChatRow>) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("chat", normalizeRouteParam(chatId));
-  const res = await db.update<ChatRow>(new StringRecordId(fullId)).merge({
+  const res = await db.merge(new StringRecordId(fullId), {
     ...updates,
     updatedAt: Date.now(),
   });
-  return withRecordIds((Array.isArray(res) ? res[0] : res) as ChatRow);
+  return normalizeSurrealRow<ChatRow>(res);
 }
 
 export async function deleteChat(chatId: string) {
@@ -104,7 +103,7 @@ export async function saveMessage(
 ) {
   const db = await getSurreal();
   const fullChatId = ensureRecordPrefix("chat", normalizeRouteParam(chatId));
-  const created = await db.create(new Table("chat_message")).content({
+  const [created] = await db.create(new Table("chat_message"), {
     chatId: fullChatId,
     userId,
     role,
@@ -113,8 +112,7 @@ export async function saveMessage(
     createdAt: Date.now(),
     metadata: metadata || null,
   });
-  const row = Array.isArray(created) ? created[0] : created;
-  return withRecordIds(row as MessageRow);
+  return normalizeSurrealRow<MessageRow>(created);
 }
 
 export async function listMessagesForChat(chatId: string, limit = 50) {
@@ -127,7 +125,7 @@ export async function listMessagesForChat(chatId: string, limit = 50) {
       "SELECT * FROM chat_message WHERE chatId = $chatId ORDER BY createdAt ASC LIMIT $limit",
       { chatId: fullChatId, limit },
     );
-    return rows.map(withRecordIds);
+    return normalizeSurrealRows<MessageRow>(rows);
   } catch {
     return [];
   }
