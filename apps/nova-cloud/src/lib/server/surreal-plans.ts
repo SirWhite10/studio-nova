@@ -42,14 +42,14 @@ export async function setUserPlan(userId: string, plan: "free" | "pro"): Promise
 
   if (existing[0]) {
     const rid = recordIdToString(existing[0].id);
-    const updated = await db.merge(new StringRecordId(rid), {
+    const updated = await db.update(new StringRecordId(rid)).merge({
       plan,
       updatedAt: now,
     });
     return normalizeSurrealRow<UserPlanRow>(updated);
   }
 
-  const [created] = await db.create(new Table("user_plan"), {
+  const [created] = await db.create(new Table("user_plan")).content({
     userId,
     plan,
     createdAt: now,

@@ -77,7 +77,7 @@ async function ensureDefaultIntegrations(
 
     for (const integration of INTEGRATION_CAPABILITIES) {
       if (canonicalByKey.has(integration.key)) continue;
-      await db.create(new Table("integrations"), {
+      await db.create(new Table("integrations")).content({
         userId,
         studioId: fullStudioId,
         key: integration.key,

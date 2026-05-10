@@ -76,7 +76,7 @@ export async function createUploadSession(input: {
   const fullStudioId = ensureRecordPrefix("studio", normalizeRouteParam(input.studioId));
   const now = Date.now();
 
-  const [created] = await db.create(new Table("upload_session"), {
+  const [created] = await db.create(new Table("upload_session")).content({
     userId: input.userId,
     studioId: fullStudioId,
     uploadId: input.uploadId,
@@ -109,7 +109,7 @@ export async function updateUploadSession(
   if (!existing) return null;
 
   const db = await ensureUploadSessionTable();
-  const updated = await db.merge(new StringRecordId(recordIdToString(existing.id)), {
+  const updated = await db.update(new StringRecordId(recordIdToString(existing.id))).merge({
     ...updates,
     updatedAt: Date.now(),
   });

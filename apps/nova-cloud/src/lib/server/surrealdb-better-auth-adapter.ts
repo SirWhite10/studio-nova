@@ -56,7 +56,7 @@ export const surrealAdapter = (config: SurrealAdapterConfig) => {
         newDb.connect(config.address, {
           namespace: config.ns,
           database: config.db,
-          auth: {
+          authentication: {
             namespace: config.ns,
             database: config.db,
             username: config.username,

@@ -92,7 +92,7 @@ export async function upsertSkillForUser(userId: string, input: UpsertSkillInput
   if (input.id) {
     const existing = await getSkillByIdForUser(userId, input.id);
     if (!existing) throw new Error("Skill not found");
-    const updated = await db.merge(new StringRecordId(existing.id), payload);
+    const updated = await db.update(new StringRecordId(existing.id)).merge(payload);
     return normalizeSurrealRow<SurrealSkill>(updated);
   }
 
@@ -104,11 +104,11 @@ export async function upsertSkillForUser(userId: string, input: UpsertSkillInput
 
   if (byName[0]) {
     const existingId = recordIdToString(byName[0].id);
-    const updated = await db.merge(new StringRecordId(existingId), payload);
+    const updated = await db.update(new StringRecordId(existingId)).merge(payload);
     return normalizeSurrealRow<SurrealSkill>(updated);
   }
 
-  const [created] = await db.create(new Table("skills"), {
+  const [created] = await db.create(new Table("skills")).content({
     userId,
     ...payload,
     usageCount: 0,

@@ -49,7 +49,7 @@ export async function createStudioEvent(input: {
   payload?: Record<string, unknown> | null;
 }) {
   const db = await ensureStudioEventTable();
-  const [created] = await db.create(new Table("studio_event"), {
+  const [created] = await db.create(new Table("studio_event")).content({
     userId: input.userId,
     studioId: ensureRecordPrefix("studio", normalizeRouteParam(input.studioId)),
     kind: input.kind,

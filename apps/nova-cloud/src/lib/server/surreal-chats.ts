@@ -40,7 +40,7 @@ export async function createChat(
 
   const fullStudioId = studioId ? ensureRecordPrefix("studio", studioId) : null;
 
-  const [created] = await db.create(new Table("chat"), {
+  const [created] = await db.create(new Table("chat")).content({
     userId,
     studioId: fullStudioId,
     title,
@@ -79,7 +79,7 @@ export async function getChat(chatId: string) {
 export async function updateChat(chatId: string, updates: Partial<ChatRow>) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("chat", normalizeRouteParam(chatId));
-  const res = await db.merge(new StringRecordId(fullId), {
+  const res = await db.update(new StringRecordId(fullId)).merge({
     ...updates,
     updatedAt: Date.now(),
   });
@@ -103,7 +103,7 @@ export async function saveMessage(
 ) {
   const db = await getSurreal();
   const fullChatId = ensureRecordPrefix("chat", normalizeRouteParam(chatId));
-  const [created] = await db.create(new Table("chat_message"), {
+  const [created] = await db.create(new Table("chat_message")).content({
     chatId: fullChatId,
     userId,
     role,

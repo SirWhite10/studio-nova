@@ -320,14 +320,14 @@ export async function createWorkspaceForStudio(input: {
     updatedAt: now,
   };
 
-  const [created] = await db.create(new Table("workspace"), workspaceContent);
+  const [created] = await db.create(new Table("workspace")).content(workspaceContent);
   const row = normalizeSurrealRow<WorkspaceRow>(created);
   const paths = buildWorkspaceStoragePaths(row._id);
   const projectRoot = `/home/user/workspace/${paths.sourcePath}`.replace(/\/+$/g, "");
   const projectDirName = paths.sourcePath.replace(/\/$/g, "");
   const fullWorkspaceId = ensureRecordPrefix("workspace", row._id);
 
-  const updated = await db.merge(new StringRecordId(fullWorkspaceId), {
+  const updated = await db.update(new StringRecordId(fullWorkspaceId)).merge({
     rootPath: paths.rootPath,
     sourcePath: paths.sourcePath,
     buildPath: paths.buildPath,
@@ -377,11 +377,13 @@ export async function createWorkspaceForStudio(input: {
     deploymentContent.runtimeImage = workspace.runtimeImage;
   }
 
-  const [deployment] = await db.create(new Table("workspace_deployment"), deploymentContent);
+  const [deployment] = await db
+    .create(new Table("workspace_deployment"))
+    .content(deploymentContent);
 
   const deploymentRow = normalizeSurrealRow<WorkspaceDeploymentRow>(deployment);
 
-  const activatedWorkspace = await db.merge(new StringRecordId(fullWorkspaceId), {
+  const activatedWorkspace = await db.update(new StringRecordId(fullWorkspaceId)).merge({
     status: "ready",
     activeDeploymentId: deploymentRow._id,
     updatedAt: Date.now(),
@@ -438,7 +440,7 @@ export async function markWorkspaceDeploymentStatus(input: {
   const fullWorkspaceId = ensureRecordPrefix("workspace", normalizeRouteParam(input.workspaceId));
   const now = Date.now();
 
-  const updatedDeployment = await db.merge(new StringRecordId(fullDeploymentId), {
+  const updatedDeployment = await db.update(new StringRecordId(fullDeploymentId)).merge({
     status: input.deploymentStatus,
     updatedAt: now,
     ...(input.activated ? { activatedAt: now } : {}),
@@ -452,7 +454,9 @@ export async function markWorkspaceDeploymentStatus(input: {
   };
   if (input.workspaceStatus) workspacePatch.status = input.workspaceStatus;
   if (input.activated) workspacePatch.activeDeploymentId = deployment._id;
-  const updatedWorkspace = await db.merge(new StringRecordId(fullWorkspaceId), workspacePatch);
+  const updatedWorkspace = await db
+    .update(new StringRecordId(fullWorkspaceId))
+    .merge(workspacePatch);
 
   const workspace = normalizeSurrealRow<WorkspaceRow>(updatedWorkspace);
 

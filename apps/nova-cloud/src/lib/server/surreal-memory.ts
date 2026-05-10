@@ -33,7 +33,7 @@ export async function addMemoryForUser(
   const db = await getSurreal();
   await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS");
 
-  const [created] = await db.create(new Table("memory"), {
+  const [created] = await db.create(new Table("memory")).content({
     userId,
     content,
     metadata: metadata ?? null,

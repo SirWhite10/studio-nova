@@ -185,8 +185,7 @@
         color-mix(in srgb, var(--color-background) 94%, transparent),
         color-mix(in srgb, var(--color-background) 88%, transparent)
       ),
-      var(--nova-shell-glow),
-      var(--nova-shell-glow-secondary);
+      var(--nova-shell-glow), var(--nova-shell-glow-secondary);
     backdrop-filter: blur(18px);
     box-shadow: 0 12px 48px rgb(0 0 0 / 0.08);
   }

@@ -51,7 +51,7 @@ export async function createChatRun(input: {
   const fullStudioId = input.studioId
     ? ensureRecordPrefix("studio", normalizeRouteParam(input.studioId))
     : null;
-  const [created] = await db.create(new Table("chat_run"), {
+  const [created] = await db.create(new Table("chat_run")).content({
     userId: input.userId,
     chatId: fullChatId,
     studioId: fullStudioId,
@@ -177,6 +177,6 @@ export async function updateChatRunStatus(
   }
 
   const fullRunId = ensureRecordPrefix("chat_run", runId);
-  const updated = await db.merge(new StringRecordId(fullRunId), updatePayload);
+  const updated = await db.update(new StringRecordId(fullRunId)).merge(updatePayload);
   return normalizeSurrealRow<ChatRunRow>(updated);
 }

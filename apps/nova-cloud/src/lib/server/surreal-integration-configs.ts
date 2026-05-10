@@ -134,7 +134,7 @@ export async function saveIntegrationConfig(
 
   const now = Date.now();
   if (existing) {
-    const updated = await db.merge(new StringRecordId(recordIdToString(existing.id)), {
+    const updated = await db.update(new StringRecordId(recordIdToString(existing.id))).merge({
       values: nextEncoded,
       configuredAt: existing.configuredAt ?? now,
       updatedAt: now,
@@ -157,7 +157,7 @@ export async function saveIntegrationConfig(
     return row;
   }
 
-  const [created] = await db.create(new Table("integration_config"), {
+  const [created] = await db.create(new Table("integration_config")).content({
     userId,
     studioId: fullStudioId,
     integrationKey,

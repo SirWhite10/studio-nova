@@ -27,7 +27,7 @@ describe.skipIf(skip)("SurrealDB connection + authentication", () => {
     await db.connect(url, {
       namespace,
       database,
-      auth: { namespace, database, username, password },
+      authentication: { namespace, database, username, password },
     });
 
     await db.ready;

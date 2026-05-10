@@ -83,7 +83,7 @@ export async function createStudioForUser(input: {
   const now = Date.now();
   const purpose = input.purpose || "general";
 
-  const [created] = await db.create(new Table("studio"), {
+  const [created] = await db.create(new Table("studio")).content({
     userId: input.userId,
     name: input.name,
     description: input.description || null,
@@ -104,7 +104,7 @@ export async function createStudioForUser(input: {
   const studioId = record._id;
   const prefix = `user-${input.userId}-studio-${studioId}/`;
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
-  await db.merge(new StringRecordId(fullId), { prefix });
+  await db.update(new StringRecordId(fullId)).merge({ prefix });
 
   return { ...record, prefix };
 }
@@ -129,7 +129,7 @@ export async function updateStudio(
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
   const now = Date.now();
-  const updated = await db.merge(new StringRecordId(fullId), {
+  const updated = await db.update(new StringRecordId(fullId)).merge({
     ...updates,
     updatedAt: now,
   });
@@ -139,7 +139,7 @@ export async function updateStudio(
 export async function touchStudio(studioId: string) {
   const db = await getSurreal();
   const fullId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
-  await db.merge(new StringRecordId(fullId), {
+  await db.update(new StringRecordId(fullId)).merge({
     lastOpenedAt: Date.now(),
     updatedAt: Date.now(),
   });

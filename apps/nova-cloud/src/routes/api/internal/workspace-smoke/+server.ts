@@ -33,7 +33,7 @@ async function ensureSyntheticUser(userId: string, email: string) {
   }
 
   const now = new Date().toISOString();
-  await db.create(new Table("user"), {
+  await db.create(new Table("user")).content({
     id: `user:${userId}`,
     email,
     emailVerified: true,

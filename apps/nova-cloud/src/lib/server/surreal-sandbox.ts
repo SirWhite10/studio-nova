@@ -87,7 +87,7 @@ export async function upsertSandbox(input: {
       const nextWorkspaceId = input.workspaceId ?? existing.workspaceId;
       if (nextWorkspaceId) patch.workspaceId = nextWorkspaceId;
       if (fullStudioId) patch.studioId = fullStudioId;
-      const updated = await db.merge(new StringRecordId(rid), patch);
+      const updated = await db.update(new StringRecordId(rid)).merge(patch);
       return normalizeSurrealRow<SandboxRow>(updated);
     }
   }
@@ -105,7 +105,7 @@ export async function upsertSandbox(input: {
   if (fullStudioId) content.studioId = fullStudioId;
   if (input.workspaceId) content.workspaceId = input.workspaceId;
 
-  const [created] = await db.create(new Table("sandbox"), content);
+  const [created] = await db.create(new Table("sandbox")).content(content);
   return normalizeSurrealRow<SandboxRow>(created);
 }
 
