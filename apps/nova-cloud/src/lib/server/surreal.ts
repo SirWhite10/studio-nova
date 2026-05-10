@@ -50,8 +50,6 @@ async function connectWithTimeout(db: Surreal, cfg: SurrealConfig): Promise<void
       namespace: cfg.namespace,
       database: cfg.database,
       authentication: {
-        namespace: cfg.namespace,
-        database: cfg.database,
         username: cfg.username,
         password: cfg.password,
       },
