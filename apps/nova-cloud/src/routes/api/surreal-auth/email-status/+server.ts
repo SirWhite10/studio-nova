@@ -20,7 +20,7 @@ export const GET: RequestHandler = async (event) => {
   const db = await getSurreal();
   const rows = await queryRows<UserEmailRow>(
     db,
-    "SELECT id, email FROM user WHERE string::lowercase(email) = $email LIMIT 1",
+    "SELECT id, email FROM user WHERE email != NONE AND string::lowercase(email) = $email LIMIT 1",
     { email },
   );
 

@@ -5,7 +5,7 @@
     href?: string | null;
   }
 
-  let { size = 'md', class: className = '', href = '/' } = $props();
+  let { size = 'md', class: className = '', href = '/app' } = $props();
 
   const textSize = $derived(size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-2xl' : 'text-xl');
 </script>

@@ -31,7 +31,7 @@
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton
 					size="lg"
-					class="data-[slot=sidebar-menu-button]:!p-1.5 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+					class="bg-transparent data-[slot=sidebar-menu-button]:!p-1.5 data-[active=true]:bg-transparent data-[state=open]:bg-transparent hover:bg-sidebar-accent/10 hover:text-sidebar-foreground"
 					tooltipContent="Nova Cloud"
 				>
 					{#snippet child({ props })}

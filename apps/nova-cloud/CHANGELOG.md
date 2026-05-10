@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-05-10
+
+### Fixed - Auth Flow and Studio Sidebar Polish
+
+- Fixed the email-first sign-in flow against the direct SurrealDB client baseline, including email existence checks, Better Auth session persistence, and cleanup of malformed auth rows created during the earlier adapter mismatch
+- Updated the shared sidebar primitives so active state styling only applies to truly active rows instead of every item with a false `data-active` attribute
+- Rebuilt the Studio sidebar navigation to follow the ShadCN template structure more closely, with collapsible section rows, nested tree rendering for agent and integration hierarchies, separate section action buttons, and Studio-aware active/open state handling
+- Moved the Agents overview route target to the dedicated `/agents` surface, restored the nested tree connector line, and aligned top-level sidebar ordering for Content, Integrations, Sandbox, and Deployments
+- Increased the Studio sidebar shell width and row spacing, neutralized the logo/search/switcher/user resting backgrounds, and pointed the primary Nova logo entry to `/app`
+
 ## [Unreleased] - 2026-04-07
 
 ### Changed - Studio Shell Overhaul and SurrealDB Baseline

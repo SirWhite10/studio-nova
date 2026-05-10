@@ -41,7 +41,7 @@
 					<Sidebar.MenuButton
 						{...props}
 						size="lg"
-						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+						class="bg-transparent data-[active=true]:bg-transparent data-[state=open]:bg-sidebar-accent/15 data-[state=open]:text-sidebar-foreground hover:bg-sidebar-accent/10"
 					>
 						<div class="flex size-8 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
 							<StudioIcon name={currentStudio?.icon ?? "sparkles"} class="size-4" />

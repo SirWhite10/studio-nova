@@ -71,8 +71,13 @@
       root.style.setProperty('--primary', `oklch(0.55 0.22 ${hue})`);
       root.style.setProperty('--primary-foreground', `oklch(0.98 0.01 ${hue})`);
       root.style.setProperty('--ring', `oklch(0.65 0.18 ${hue})`);
+      root.style.setProperty('--accent', `oklch(0.55 0.22 ${hue})`);
+      root.style.setProperty('--accent-foreground', `oklch(0.98 0.01 ${hue})`);
       root.style.setProperty('--sidebar-primary', `oklch(0.55 0.22 ${hue})`);
       root.style.setProperty('--sidebar-primary-foreground', `oklch(0.98 0.01 ${hue})`);
+      root.style.setProperty('--sidebar-accent', `oklch(0.55 0.22 ${hue})`);
+      root.style.setProperty('--sidebar-accent-foreground', `oklch(0.98 0.01 ${hue})`);
+      root.style.setProperty('--sidebar-ring', `oklch(0.65 0.18 ${hue})`);
       root.style.setProperty('--chart-1', `oklch(0.75 0.15 ${hue})`);
       root.style.setProperty('--chart-2', `oklch(0.60 0.18 ${hue + 15})`);
       root.style.setProperty('--chart-3', `oklch(0.55 0.20 ${hue + 30})`);
@@ -82,8 +87,13 @@
       root.style.removeProperty('--primary');
       root.style.removeProperty('--primary-foreground');
       root.style.removeProperty('--ring');
+      root.style.removeProperty('--accent');
+      root.style.removeProperty('--accent-foreground');
       root.style.removeProperty('--sidebar-primary');
       root.style.removeProperty('--sidebar-primary-foreground');
+      root.style.removeProperty('--sidebar-accent');
+      root.style.removeProperty('--sidebar-accent-foreground');
+      root.style.removeProperty('--sidebar-ring');
       root.style.removeProperty('--chart-1');
       root.style.removeProperty('--chart-2');
       root.style.removeProperty('--chart-3');

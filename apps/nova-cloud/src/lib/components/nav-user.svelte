@@ -31,7 +31,7 @@
 					<Sidebar.MenuButton
 						{...props}
 						size="lg"
-						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+						class="bg-transparent data-[active=true]:bg-transparent data-[state=open]:bg-sidebar-accent/15 data-[state=open]:text-sidebar-foreground hover:bg-sidebar-accent/10"
 					>
 						<Avatar.Root class="size-8 rounded-lg grayscale">
 							<Avatar.Image src={user.avatar ?? undefined} alt={user.name} />

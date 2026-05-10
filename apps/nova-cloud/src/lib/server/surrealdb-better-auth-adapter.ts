@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createAdapterFactory, type DBAdapterDebugLogOption } from "better-auth/adapters";
-import { jsonify, StringRecordId, Surreal, Table } from "surrealdb";
+import { jsonify, StringRecordId, Surreal } from "surrealdb";
 
 /**
  * SurrealDB adapter configuration
@@ -57,8 +57,6 @@ export const surrealAdapter = (config: SurrealAdapterConfig) => {
           namespace: config.ns,
           database: config.db,
           authentication: {
-            namespace: config.ns,
-            database: config.db,
             username: config.username,
             password: config.password,
           },
@@ -322,7 +320,20 @@ export const surrealAdapter = (config: SurrealAdapterConfig) => {
 
           debugLog?.("create", { model, data: transformedData });
 
-          const [result] = await conn.create(new Table(model), transformedData);
+          const idValue = transformedData.id;
+          const contentData = { ...transformedData };
+          delete contentData.id;
+
+          let createQuery = `CREATE ${model} CONTENT $data RETURN AFTER`;
+          if (typeof idValue === "string" && idValue.length > 0) {
+            const recordId = idValue.includes(":") ? idValue : `${model}:${idValue}`;
+            createQuery = `CREATE ${recordId} CONTENT $data RETURN AFTER`;
+          }
+
+          const [rows] = await conn.query<[Record<string, unknown>[]]>(createQuery, {
+            data: contentData,
+          });
+          const result = rows?.[0];
 
           if (!result) {
             throw new SurrealDBError("Failed to create record");

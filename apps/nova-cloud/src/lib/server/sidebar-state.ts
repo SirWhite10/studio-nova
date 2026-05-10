@@ -122,49 +122,55 @@ function buildNavigation(
   }
 
   const studioBase = currentStudio.url;
+  const primaryAgentId = `agent-${currentStudio.id}`;
   const agentItems = orderItems(
     [
-      { id: "overview", title: "Overview", href: studioBase, icon: "waypoints", reorderable: true },
       {
-        id: "chats",
-        title: "Chats",
-        href: `/app/chats?studio=${currentStudio.id}`,
-        icon: "message-square",
-        reorderable: true,
-        children: currentStudio.chatPreview.map((chat) => ({
-          id: `chat-${chat.id}`,
-          title: chat.title,
-          href: chat.url,
-          icon: "message-square",
-        })),
-      },
-      {
-        id: "skills",
-        title: "Skills",
-        href: `${studioBase}/skills`,
-        icon: "sparkles",
-        reorderable: true,
-      },
-      {
-        id: "agents",
-        title: "Agents",
+        id: "overview",
+        title: "Overview",
         href: `${studioBase}/agents`,
+        icon: "waypoints",
+        reorderable: true,
+      },
+      {
+        id: "primary-agent",
+        title: "Primary Agent",
         icon: "bot",
         reorderable: true,
-      },
-      {
-        id: "memory",
-        title: "Memory",
-        href: `${studioBase}/memory`,
-        icon: "brain",
-        reorderable: true,
-      },
-      {
-        id: "jobs",
-        title: "Jobs",
-        href: `${studioBase}/jobs`,
-        icon: "calendar-clock",
-        reorderable: true,
+        href: `${studioBase}/agents/${primaryAgentId}`,
+        manageKind: "agent",
+        children: [
+          {
+            id: `${primaryAgentId}-chats`,
+            title: "Chats",
+            href: `/app/chats?studio=${currentStudio.id}`,
+            icon: "message-square",
+            children: currentStudio.chatPreview.map((chat) => ({
+              id: `chat-${chat.id}`,
+              title: chat.title,
+              href: chat.url,
+              icon: "message-square",
+            })),
+          },
+          {
+            id: `${primaryAgentId}-skills`,
+            title: "Skills",
+            href: `${studioBase}/skills`,
+            icon: "sparkles",
+          },
+          {
+            id: `${primaryAgentId}-memory`,
+            title: "Memory",
+            href: `${studioBase}/memory`,
+            icon: "brain",
+          },
+          {
+            id: `${primaryAgentId}-jobs`,
+            title: "Jobs",
+            href: `${studioBase}/jobs`,
+            icon: "calendar-clock",
+          },
+        ],
       },
     ],
     profile.sectionConfigs.agent?.itemOrder,
@@ -191,15 +197,25 @@ function buildNavigation(
   );
 
   const integrationItems = orderItems(
-    integrations
-      .filter((integration) => integration.enabled)
-      .map((integration) => ({
-        id: integration.key,
-        title: integration.title,
-        href: integration.route,
-        icon: integration.icon ?? "blocks",
+    [
+      {
+        id: "overview",
+        title: "Overview",
+        href: `${studioBase}/marketplace`,
+        icon: "waypoints",
         reorderable: true,
-      })),
+      },
+      ...integrations
+        .filter((integration) => integration.enabled)
+        .map((integration) => ({
+          id: integration.key,
+          title: integration.title,
+          href: integration.route,
+          icon: integration.icon ?? "blocks",
+          reorderable: true,
+          manageKind: "integration" as const,
+        })),
+    ],
     profile.sectionConfigs.integrations?.itemOrder,
   );
 
@@ -234,10 +250,16 @@ function buildNavigation(
   const sectionsById: Record<StudioSidebarSectionId, StudioSidebarSection> = {
     agent: {
       id: "agent",
-      title: "Agent",
-      icon: "sparkles",
+      title: "Agents",
+      icon: "bot",
       reorderable: true,
       items: agentItems,
+      action: {
+        id: "agents-add",
+        title: "Add Agent",
+        href: `${studioBase}/agents`,
+        icon: "plus",
+      },
     },
     "workspace-sandbox": {
       id: "workspace-sandbox",

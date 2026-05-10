@@ -9,7 +9,7 @@
 				outline: "bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
 			},
 			size: {
-				default: "h-8 text-sm",
+				default: "h-10 text-sm",
 				sm: "h-7 text-xs",
 				lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
 			},
@@ -56,13 +56,20 @@
 
 	const sidebar = useSidebar();
 
-	const buttonProps = $derived({
-		class: cn(sidebarMenuButtonVariants({ variant, size }), className),
-		"data-slot": "sidebar-menu-button",
-		"data-sidebar": "menu-button",
-		"data-size": size,
-		"data-active": isActive,
-		...restProps,
+	const buttonProps = $derived.by(() => {
+		const props: Record<string, unknown> = {
+			class: cn(sidebarMenuButtonVariants({ variant, size }), className),
+			"data-slot": "sidebar-menu-button",
+			"data-sidebar": "menu-button",
+			"data-size": size,
+			...restProps,
+		};
+
+		if (isActive) {
+			props["data-active"] = true;
+		}
+
+		return props;
 	});
 </script>
 

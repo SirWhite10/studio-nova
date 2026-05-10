@@ -4,8 +4,8 @@ import type { RuntimeStatus } from "./runtime-state";
 export const STUDIO_SIDEBAR_SECTION_IDS = [
   "agent",
   "workspace-sandbox",
-  "integrations",
   "content",
+  "integrations",
 ] as const;
 
 export type StudioSidebarSectionId = (typeof STUDIO_SIDEBAR_SECTION_IDS)[number];
@@ -47,10 +47,10 @@ export function defaultStudioNavigationProfile(): StudioNavigationProfile {
     version: 1,
     sectionOrder: [...STUDIO_SIDEBAR_SECTION_IDS],
     sectionConfigs: {
-      agent: { itemOrder: ["overview", "chats", "skills", "agents", "memory", "jobs"] },
-      "workspace-sandbox": { itemOrder: ["deployments", "sandbox"] },
-      integrations: { itemOrder: [] },
+      agent: { itemOrder: ["overview", "primary-agent"] },
+      "workspace-sandbox": { itemOrder: ["sandbox", "deployments"] },
       content: { itemOrder: ["files", "collections", "media"] },
+      integrations: { itemOrder: [] },
     },
   };
 }
@@ -127,21 +127,15 @@ export type StudioSidebarSectionAction = {
   icon?: string;
 };
 
-export type StudioSidebarItemChild = {
-  id: string;
-  title: string;
-  href: string;
-  icon?: string;
-};
-
 export type StudioSidebarItem = {
   id: string;
   title: string;
-  href: string;
+  href?: string;
   icon?: string;
   badge?: string;
   reorderable?: boolean;
-  children?: StudioSidebarItemChild[];
+  manageKind?: "agent" | "integration";
+  children?: StudioSidebarItem[];
 };
 
 export type StudioSidebarSection = {

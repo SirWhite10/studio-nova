@@ -84,7 +84,7 @@
 	type="button"
 	onclick={() => (open = true)}
 	class={cn(
-		"studio-shell-search group data-[collapsed=true]:justify-center flex h-10 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/35 px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-2",
+		"studio-shell-search group flex h-10 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-transparent px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-foreground data-[collapsed=true]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-2",
 		className,
 	)}
 >
