@@ -1,7 +1,10 @@
+<script lang="ts" module>
+	import { alertVariants, type AlertVariant } from "./alert-variants.js";
+</script>
+
 <script lang="ts">
 	import type { HTMLAttributes } from "svelte/elements";
 	import { cn, type WithElementRef } from "$lib/utils.js";
-	import { alertVariants, type AlertVariant } from "./alert-variants.js";
 
 	let {
 		ref = $bindable(null),

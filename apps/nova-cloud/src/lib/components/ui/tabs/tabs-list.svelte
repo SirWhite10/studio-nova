@@ -1,7 +1,10 @@
+<script lang="ts" module>
+	import { tabsListVariants, type TabsListVariant } from "./tabs-list-variants.js";
+</script>
+
 <script lang="ts">
 	import { Tabs as TabsPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils.js";
-	import { tabsListVariants, type TabsListVariant } from "./tabs-list-variants.js";
 
 	let {
 		ref = $bindable(null),

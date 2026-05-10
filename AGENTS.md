@@ -86,3 +86,10 @@ For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/
 - [ ] Run `vp install` after pulling remote changes and before getting started.
 - [ ] Run `vp check` and `vp test` to validate changes.
 <!--VITE PLUS END-->
+
+<!-- SPECKIT START -->
+
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+
+<!-- SPECKIT END -->

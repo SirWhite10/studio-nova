@@ -18,7 +18,7 @@ export type TooltipPayload = {
   key?: string;
   label?: string;
   config?: Record<string, unknown>;
-  [key: string]: unknown;
+  [k: string]: unknown;
 };
 
 // Helper to extract item config from a payload.

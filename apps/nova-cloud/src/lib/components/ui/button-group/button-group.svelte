@@ -1,7 +1,10 @@
+<script lang="ts" module>
+	import { buttonGroupVariants, type ButtonGroupOrientation } from "./button-group-variants.js";
+</script>
+
 <script lang="ts">
 	import { cn, type WithElementRef } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
-	import { buttonGroupVariants, type ButtonGroupOrientation } from "./button-group-variants.js";
 
 	let {
 		ref = $bindable(null),

@@ -1,7 +1,10 @@
+<script lang="ts" module>
+	import { toggleVariants, type ToggleSize, type ToggleVariant } from "./toggle-variants.js";
+</script>
+
 <script lang="ts">
 	import { Toggle as TogglePrimitive } from "bits-ui";
 	import { cn } from "$lib/utils.js";
-	import { toggleVariants, type ToggleSize, type ToggleVariant } from "./toggle-variants.js";
 
 	let {
 		ref = $bindable(null),
