@@ -180,6 +180,9 @@ function findComponentPath(
  * Create editor store
  */
 export function createEditorStore(initialComponents: CanvasNode[] = []) {
+  function componentsEqual(left: CanvasNode[], right: CanvasNode[]) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
   // Create the writable store with initial state
   const store = writable<EditorState>({
     canRedo: undefined,
@@ -197,7 +200,7 @@ export function createEditorStore(initialComponents: CanvasNode[] = []) {
     ],
     historyIndex: 0,
     sidebarMode: "docked",
-    sidebarVisible: true,
+    sidebarVisible: false,
     componentRegistry: {},
     isDragging: false,
   });
@@ -215,15 +218,26 @@ export function createEditorStore(initialComponents: CanvasNode[] = []) {
     store.update((state) => ({ ...state, sidebarVisible }));
   }
 
-  function setComponents(components: CanvasNode[]) {
+  function setComponents(components: CanvasNode[], options: { trackHistory?: boolean } = {}) {
+    const { trackHistory = true } = options;
+    let changed = false;
+
     store.update((state) => {
       const newComponents = cloneComponents(components);
+      if (componentsEqual(state.components, newComponents)) {
+        return state;
+      }
+
+      changed = true;
       return {
         ...state,
         components: newComponents,
       };
     });
-    addHistoryEntry();
+
+    if (changed && trackHistory) {
+      addHistoryEntry();
+    }
   }
 
   function setSelection(selection?: ComponentSelection) {

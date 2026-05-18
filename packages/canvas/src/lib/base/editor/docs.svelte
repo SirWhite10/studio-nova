@@ -3,8 +3,8 @@ import Button from "$lib/base/button/button.svelte";
 import type { ComponentDef } from "$lib/base/canvas/types.js";
 import Text from "$lib/base/text/index.js";
 import Box from "$lib/base/view/index.js";
-import { StudioEditor } from "./index.js";
-import type { EditorMode, EditorSidebarMode } from "./types.js";
+import { CanvasEditor } from "./index.js";
+import type { EditorMode } from "./types.js";
 
 // Sample component data for the editor
 const sampleComponents: ComponentDef[] = [
@@ -22,7 +22,7 @@ const sampleComponents: ComponentDef[] = [
 				props: {
 					size: "2xl",
 					weight: "bold",
-					text: "Welcome to Studio Editor",
+					text: "Welcome to Canvas Editor",
 				},
 			},
 			{
@@ -158,7 +158,6 @@ const editorConfig = {
 };
 
 let editorMode: EditorMode = $state("edit");
-let sidebarMode: EditorSidebarMode = $state("docked");
 let components = $state(sampleComponents);
 
 function handleComponentsChange(newComponents: ComponentDef[]) {
@@ -173,7 +172,7 @@ function handleModeChange(newMode: EditorMode) {
 <div class="space-y-8">
   <!-- Header -->
   <div class="space-y-2">
-    <h1 class="text-3xl font-bold">Studio Editor</h1>
+    <h1 class="text-3xl font-bold">Canvas Editor</h1>
     <p class="text-lg" style="color: var(--muted-foreground);">
       A comprehensive visual component editor with drag & drop functionality.
     </p>
@@ -183,7 +182,7 @@ function handleModeChange(newMode: EditorMode) {
   <div class="space-y-4">
     <h2 class="text-2xl font-semibold">Overview</h2>
     <p>
-      The Studio Editor is a powerful visual editor that allows you to create
+      The Canvas Editor is a powerful visual editor that allows you to create
       and modify component structures through an intuitive interface. It
       features drag & drop functionality, property editing, real-time preview,
       and comprehensive keyboard shortcuts.
@@ -201,7 +200,7 @@ function handleModeChange(newMode: EditorMode) {
         <li>Undo/redo functionality with history</li>
         <li>Keyboard shortcuts for common actions</li>
         <li>Component selection and highlighting</li>
-        <li>Responsive sidebar with multiple panels</li>
+        <li>Minimal sidebar inspector opened from a top-right trigger</li>
         <li>Component registry for extensibility</li>
       </ul>
     </div>
@@ -219,10 +218,9 @@ function handleModeChange(newMode: EditorMode) {
       class="border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 600px;"
     >
-      <StudioEditor
+      <CanvasEditor
         bind:components
         bind:mode={editorMode}
-        {sidebarMode}
         {componentRegistry}
         {editorConfig}
         onChange={handleComponentsChange}
@@ -311,7 +309,7 @@ function handleModeChange(newMode: EditorMode) {
         <h4 class="font-medium mb-2">Edit Mode</h4>
         <p class="text-sm" style="color: var(--muted-foreground);">
           Full editing capabilities with component selection, property editing,
-          and sidebar panels.
+          and the sidebar inspector.
         </p>
       </div>
 
@@ -328,18 +326,18 @@ function handleModeChange(newMode: EditorMode) {
     </div>
   </div>
 
-  <!-- Sidebar Panels -->
+  <!-- Inspector States -->
   <div class="space-y-4">
-    <h2 class="text-2xl font-semibold">Sidebar Panels</h2>
+    <h2 class="text-2xl font-semibold">Inspector States</h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div
         class="p-4 border rounded-lg"
         style="border-color: var(--border); background: var(--card);"
       >
-        <h4 class="font-medium mb-2">Properties</h4>
+        <h4 class="font-medium mb-2">App Root</h4>
         <p class="text-sm" style="color: var(--muted-foreground);">
-          Edit component properties and styling options
+          When nothing is selected, the sidebar shows app-level settings and root metadata.
         </p>
       </div>
 
@@ -347,29 +345,9 @@ function handleModeChange(newMode: EditorMode) {
         class="p-4 border rounded-lg"
         style="border-color: var(--border); background: var(--card);"
       >
-        <h4 class="font-medium mb-2">Layers</h4>
+        <h4 class="font-medium mb-2">Selected Node</h4>
         <p class="text-sm" style="color: var(--muted-foreground);">
-          Navigate component hierarchy and structure
-        </p>
-      </div>
-
-      <div
-        class="p-4 border rounded-lg"
-        style="border-color: var(--border); background: var(--card);"
-      >
-        <h4 class="font-medium mb-2">Components</h4>
-        <p class="text-sm" style="color: var(--muted-foreground);">
-          Browse available components to add
-        </p>
-      </div>
-
-      <div
-        class="p-4 border rounded-lg"
-        style="border-color: var(--border); background: var(--card);"
-      >
-        <h4 class="font-medium mb-2">Settings</h4>
-        <p class="text-sm" style="color: var(--muted-foreground);">
-          Configure editor preferences and options
+          Selecting a canvas node switches the sidebar to schema-driven node properties.
         </p>
       </div>
     </div>
@@ -386,7 +364,7 @@ function handleModeChange(newMode: EditorMode) {
           class="p-4 rounded-lg text-sm overflow-x-auto"
           style="background: var(--muted); color: var(--foreground);"><code
             >&lt;script&gt;
-  import &#123; StudioEditor &#125; from '$lib/base/editor';
+  import &#123; CanvasEditor &#125; from '$lib/base/editor';
 
   let components = [
     &#123;
@@ -409,7 +387,7 @@ function handleModeChange(newMode: EditorMode) {
   &#125;;
 &lt;/script&gt;
 
-&lt;StudioEditor
+&lt;CanvasEditor
   bind:components
   &#123;componentRegistry&#125;
   class="h-screen"
@@ -448,7 +426,7 @@ function handleModeChange(newMode: EditorMode) {
   &#125;
 &lt;/script&gt;
 
-&lt;StudioEditor
+&lt;CanvasEditor
   bind:components
   &#123;componentRegistry&#125;
   &#123;editorConfig&#125;
@@ -490,7 +468,7 @@ function handleModeChange(newMode: EditorMode) {
             <td class="p-2 font-mono text-sm">sidebarMode</td>
             <td class="p-2 text-sm">EditorSidebarMode</td>
             <td class="p-2 text-sm">'docked'</td>
-            <td class="p-2 text-sm">Sidebar display mode</td>
+            <td class="p-2 text-sm">Optional legacy sidebar mode prop. The default CanvasEditor experience uses a minimal trigger + right inspector and starts closed.</td>
           </tr>
           <tr class="border-b" style="border-color: var(--border);">
             <td class="p-2 font-mono text-sm">componentRegistry</td>

@@ -1,6 +1,6 @@
 export const editorCodeTemplates = {
   basicUsage: `<script>
-  import { StudioEditor } from "$lib/base/editor";
+  import { CanvasEditor } from "$lib/base/editor";
 
   let components = [
     {
@@ -23,14 +23,14 @@ export const editorCodeTemplates = {
   };
 </script>
 
-<StudioEditor
+<CanvasEditor
   bind:components
   {componentRegistry}
   class="h-screen"
 />`,
 
   withEditorConfig: `<script>
-  import { StudioEditor } from "$lib/base/editor";
+  import { CanvasEditor } from "$lib/base/editor";
 
   const componentRegistry = {
     Box: () => import("$lib/base/box").then(m => m.Box),
@@ -121,7 +121,7 @@ export const editorCodeTemplates = {
   ];
 </script>
 
-<StudioEditor
+<CanvasEditor
   bind:components
   {componentRegistry}
   {editorConfig}
@@ -129,7 +129,7 @@ export const editorCodeTemplates = {
 />`,
 
   withCallbacks: `<script>
-  import { StudioEditor } from "$lib/base/editor";
+  import { CanvasEditor } from "$lib/base/editor";
 
   let components = [];
   let mode = "edit";
@@ -154,7 +154,7 @@ export const editorCodeTemplates = {
   });
 </script>
 
-<StudioEditor
+<CanvasEditor
   bind:components
   bind:mode
   {componentRegistry}
@@ -162,31 +162,16 @@ export const editorCodeTemplates = {
   onModeChange={handleModeChange}
 />`,
 
-  customSidebarMode: `// Docked sidebar (default)
-<StudioEditor
+  customSidebarMode: `// Minimal sidebar editor (closed by default)
+<CanvasEditor
   {components}
-  sidebarMode="docked"
   {componentRegistry}
 />
 
-// Floating sidebar
-<StudioEditor
+// Preview mode without opening the editor
+<CanvasEditor
   {components}
-  sidebarMode="floating"
-  {componentRegistry}
-/>
-
-// Hidden sidebar
-<StudioEditor
-  {components}
-  sidebarMode="hidden"
-  {componentRegistry}
-/>
-
-// Auto mode (responsive)
-<StudioEditor
-  {components}
-  sidebarMode="auto"
+  mode="preview"
   {componentRegistry}
 />`,
 
@@ -388,7 +373,7 @@ export const editorCodeTemplates = {
 };`,
 
   customRenderer: `<script>
-  import { StudioEditor } from "$lib/base/editor";
+  import { CanvasEditor } from "$lib/base/editor";
 
   // Custom render function for special component handling
   function customRenderComponent(component) {
@@ -403,7 +388,7 @@ export const editorCodeTemplates = {
   }
 </script>
 
-<StudioEditor
+<CanvasEditor
   {components}
   {componentRegistry}
   renderComponent={customRenderComponent}
@@ -424,38 +409,20 @@ export const editorCodeTemplates = {
 // These work automatically when the editor is mounted`,
 
   responsiveEditor: `<script>
-  import { StudioEditor } from "$lib/base/editor";
-
-  let sidebarMode = "auto"; // Automatically handles responsive behavior
-  let isMobile = false;
-
-  onMount(() => {
-    if (typeof window !== "undefined") {
-      // Detect mobile and adjust editor accordingly
-      isMobile = window.innerWidth < 768;
-      sidebarMode = isMobile ? "hidden" : "docked";
-
-      // Listen for resize events
-      window.addEventListener("resize", () => {
-        const wasMobile = isMobile;
-        isMobile = window.innerWidth < 768;
-        if (wasMobile !== isMobile) {
-          sidebarMode = isMobile ? "hidden" : "docked";
-        }
-      });
-    }
-  });
+  import { CanvasEditor } from "$lib/base/editor";
 </script>
 
-<StudioEditor
+<CanvasEditor
   {components}
   {componentRegistry}
-  {sidebarMode}
   class="h-screen"
-/>`,
+/>
+
+<!-- The minimal editor keeps the same top-right trigger behavior across screen sizes
+     and starts with the inspector closed by default. -->`,
 
   fullExample: `<script>
-  import { StudioEditor } from "$lib/base/editor";
+  import { CanvasEditor } from "$lib/base/editor";
   import { onMount } from "svelte";
 
   // Component registry
@@ -543,7 +510,7 @@ export const editorCodeTemplates = {
               id: "subtitle",
               type: "Text",
               props: {
-                text: "Built with Studio Editor",
+                text: "Built with Canvas Editor",
                 size: "lg"
               }
             }
@@ -571,7 +538,6 @@ export const editorCodeTemplates = {
   ];
 
   let mode = "edit";
-  let sidebarMode = "docked";
 
   function handleComponentsChange(newComponents) {
     console.log("Components updated:", newComponents);
@@ -598,10 +564,9 @@ export const editorCodeTemplates = {
 </script>
 
 <div class="h-screen flex flex-col">
-  <StudioEditor
+  <CanvasEditor
     bind:components
     bind:mode
-    {sidebarMode}
     {componentRegistry}
     {editorConfig}
     onChange={handleComponentsChange}

@@ -2,10 +2,15 @@ import type { Component, Snippet } from "svelte";
 import type { SvelteMap } from "svelte/reactivity";
 import type {
   CanvasComponentCatalog,
+  CanvasDocument,
   CanvasNode,
   CanvasNodeKind,
+  CanvasProviderActions,
+  CanvasProviderData,
+  CanvasProviderNode,
   RenderComponentFn,
 } from "$lib/base/canvas/types.js";
+import type { CanvasAppConfig } from "$lib/base/canvas-app/types.js";
 
 /**
  * Editor mode
@@ -20,7 +25,9 @@ export type EditorSidebarMode = "docked" | "floating" | "hidden" | "auto";
 /**
  * Editor panel types
  */
-export type EditorPanel = "Properties" | "Layers" | "Components" | "Settings";
+export type EditorPanel = "Properties" | "Settings";
+
+export type EditorLeftPanel = "Outline" | "Components" | "Settings";
 
 /**
  * Editor field types
@@ -315,7 +322,12 @@ export interface EditorState {
  * Editor props
  */
 export interface EditorProps {
+  document?: CanvasDocument;
   components?: CanvasNode[];
+  providers?: CanvasProviderNode[];
+  providerData?: CanvasProviderData;
+  providerActions?: CanvasProviderActions;
+  canvasAppConfig?: CanvasAppConfig;
   mode?: EditorMode;
   sidebarMode?: EditorSidebarMode;
   onChange?: (components: CanvasNode[]) => void;
@@ -327,6 +339,8 @@ export interface EditorProps {
   appEditorConfig?: EditorComponent<any>;
   updateAppProperty?: (property: string, value: any) => void;
   renderComponent?: (component: CanvasNode) => Snippet;
+  leftSidebar?: Snippet;
+  onSave?: () => void;
   class?: string;
 }
 
@@ -337,6 +351,7 @@ export interface EditorSidebarProps {
   mode?: EditorSidebarMode;
   components?: CanvasNode[];
   selection?: ComponentSelection;
+  documentSelection?: ComponentSelection;
   clipboardAvailable?: boolean;
   clipboardNode?: CanvasNode;
   componentCatalog?: CanvasComponentCatalog;
@@ -347,17 +362,26 @@ export interface EditorSidebarProps {
   updateAppProperty?: (property: string, value: any) => void;
   class?: string;
   isDraggable?: boolean;
-  activePanel?: EditorPanel; // Added activePanel prop
+  activePanel?: EditorPanel;
+  onPanelChange?: (panel: EditorPanel) => void;
+  showTabs?: boolean;
+  mobile?: boolean;
+  onClose?: () => void;
 }
 
 /**
  * Editor canvas props
  */
 export interface EditorCanvasProps {
+  document?: CanvasDocument;
   components?: CanvasNode[];
+  providers?: CanvasProviderNode[];
+  providerData?: CanvasProviderData;
+  providerActions?: CanvasProviderActions;
+  canvasAppConfig?: CanvasAppConfig;
   mode?: EditorMode;
   selection?: ComponentSelection;
-  onSelect?: (selection: ComponentSelection) => void;
+  onSelect?: (selection: ComponentSelection | undefined) => void;
   onHover?: (component: CanvasNode | undefined) => void;
   onRequestEdit?: (selection: ComponentSelection) => void;
   componentRegistry?: SvelteMap<string, Component>;
@@ -434,6 +458,7 @@ export interface EditorContextMenuProps {
 }
 
 export interface EditorComponent<T extends Record<string, any> = {}> {
+  label?: string;
   component?: Component<T>;
   props?: Partial<T>;
   editorConfig?: EditorConfig;

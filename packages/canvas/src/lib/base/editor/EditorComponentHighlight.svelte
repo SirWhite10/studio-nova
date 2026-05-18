@@ -1,87 +1,109 @@
 <script lang="ts">
-import Copy from "@lucide/svelte/icons/copy";
-import Settings from "@lucide/svelte/icons/settings";
-import SquarePlus from "@lucide/svelte/icons/square-plus";
-import Trash2 from "@lucide/svelte/icons/trash-2";
-import type { CanvasNode } from "$lib/base/canvas/types.js";
-import DropdownMenu from "$lib/components/view-ui/dropdown-menu.svelte";
-import { cn } from "$lib/utils.js";
+	import Copy from "@lucide/svelte/icons/copy";
+	import Settings from "@lucide/svelte/icons/settings";
+	import SquarePlus from "@lucide/svelte/icons/square-plus";
+	import Trash2 from "@lucide/svelte/icons/trash-2";
+	import DropdownMenu from "$lib/components/view-ui/dropdown-menu.svelte";
+	import { cn } from "$lib/utils.js";
+	import type { CanvasNode } from "$lib/base/canvas/types.js";
 
-let {
-	component,
-	isSelected = false,
-	isHovered = false,
-	label = component.type,
-	onClick,
-	onEdit,
-	onCopy,
-	onDuplicate,
-	onDelete,
-	onHover,
-	onLeave,
-	onContextMenu,
-	children,
-}: {
-	component: CanvasNode;
-	isSelected?: boolean;
-	isHovered?: boolean;
-	label?: string;
-	onClick?: (e: MouseEvent) => void;
-	onEdit?: () => void;
-	onCopy?: () => void;
-	onDuplicate?: () => void;
-	onDelete?: () => void;
-	onHover?: () => void;
-	onLeave?: () => void;
-	onContextMenu?: (e: MouseEvent) => void;
-	children?: any;
-} = $props();
+	let {
+		component,
+		isSelected = false,
+		isHovered = false,
+		label = component.type,
+		onClick,
+		onEdit,
+		onCopy,
+		onDuplicate,
+		onDelete,
+		onHover,
+		onLeave,
+		onContextMenu,
+		children,
+	}: {
+		component: CanvasNode;
+		isSelected?: boolean;
+		isHovered?: boolean;
+		label?: string;
+		onClick?: (e: MouseEvent) => void;
+		onEdit?: () => void;
+		onCopy?: () => void;
+		onDuplicate?: () => void;
+		onDelete?: () => void;
+		onHover?: () => void;
+		onLeave?: () => void;
+		onContextMenu?: (e: MouseEvent) => void;
+		children?: any;
+	} = $props();
 
-let suppressNextClick = $state(false);
-let longPressTimer: ReturnType<typeof setTimeout> | undefined;
+	let suppressNextClick = $state(false);
+	let longPressTimer: ReturnType<typeof setTimeout> | undefined;
+	let rootElement = $state<HTMLElement | undefined>(undefined);
+	let chromeHorizontal = $state<"left" | "right">("left");
+	let chromeVertical = $state<"top" | "bottom">("top");
 
-function clearLongPress() {
-	if (longPressTimer) {
-		clearTimeout(longPressTimer);
-		longPressTimer = undefined;
-	}
-}
-
-function handlePointerDown(event: PointerEvent) {
-	if (event.pointerType !== "touch") {
-		return;
+	function clearLongPress() {
+		if (longPressTimer) {
+			clearTimeout(longPressTimer);
+			longPressTimer = undefined;
+		}
 	}
 
-	clearLongPress();
-	longPressTimer = setTimeout(() => {
-		suppressNextClick = true;
-		onClick?.(new MouseEvent("click"));
-		onEdit?.();
-	}, 450);
-}
+	function updateChromePlacement() {
+		if (!rootElement || typeof window === "undefined") {
+			return;
+		}
 
-function handlePointerUp() {
-	clearLongPress();
-}
-
-function handleClick(event: MouseEvent) {
-	event.stopPropagation();
-	if (suppressNextClick) {
-		suppressNextClick = false;
-		return;
+		const rect = rootElement.getBoundingClientRect();
+		chromeVertical = rect.top < 56 ? "bottom" : "top";
+		chromeHorizontal = rect.left > window.innerWidth - 360 ? "right" : "left";
 	}
-	onClick?.(event);
-}
 
-const menuItems = $derived([
-	{ id: "edit", label: "Edit", icon: Settings, onSelect: onEdit },
-	{ id: "copy", label: "Copy", icon: Copy, onSelect: onCopy },
-	{ id: "duplicate", label: "Duplicate", icon: SquarePlus, onSelect: onDuplicate },
-	{ id: "delete", label: "Delete", icon: Trash2, destructive: true, onSelect: onDelete },
-]);
+	function handlePointerDown(event: PointerEvent) {
+		if (event.pointerType !== "touch") {
+			return;
+		}
+
+		clearLongPress();
+		longPressTimer = setTimeout(() => {
+			suppressNextClick = true;
+			onClick?.(new MouseEvent("click"));
+			onEdit?.();
+		}, 450);
+	}
+
+	function handlePointerUp() {
+		clearLongPress();
+	}
+
+	function handleClick(event: MouseEvent) {
+		event.stopPropagation();
+		if (suppressNextClick) {
+			suppressNextClick = false;
+			return;
+		}
+		onClick?.(event);
+	}
+
+	$effect(() => {
+		if (isHovered || isSelected) {
+			updateChromePlacement();
+		}
+	});
+
+	const menuItems = $derived([
+		{ id: "edit", label: "Edit", icon: Settings, onSelect: onEdit },
+		{ id: "copy", label: "Copy", icon: Copy, onSelect: onCopy },
+		{ id: "duplicate", label: "Duplicate", icon: SquarePlus, onSelect: onDuplicate },
+		{ id: "delete", label: "Delete", icon: Trash2, destructive: true, onSelect: onDelete },
+	]);
 </script>
 
+<svelte:window onresize={updateChromePlacement} onscroll={updateChromePlacement} />
+
 <div
+	bind:this={rootElement}
 	class={cn("editor-component-highlight", {
 		"editor-component-selected": isSelected,
 		"editor-component-hovered": isHovered && !isSelected,
@@ -120,19 +142,27 @@ const menuItems = $derived([
 		onpointercancel={handlePointerUp}
 	></div>
 
-	{#if isHovered || isSelected}
-		<div class="editor-component-chrome">
-			<div class="editor-component-label">{label}</div>
-			<div class="editor-component-actions">
-				<DropdownMenu
-					triggerClass="editor-component-menu-button"
-					menuClass="editor-component-menu"
-					ariaLabel={`Open options for ${label}`}
-					iconOnly={true}
-					items={menuItems}
-				>
-					<span aria-hidden="true">•••</span>
-				</DropdownMenu>
+	{#if isSelected}
+		<div
+			class={cn(
+				"editor-component-chrome",
+				chromeVertical === "bottom" && "editor-component-chrome-bottom",
+				chromeHorizontal === "right" && "editor-component-chrome-right",
+			)}
+		>
+			<div class="editor-component-badge">
+				<div class="editor-component-label">{label}</div>
+				<div class="editor-component-actions">
+					<DropdownMenu
+						triggerClass="editor-component-menu-button"
+						menuClass="editor-component-menu"
+						ariaLabel={`Open options for ${label}`}
+						iconOnly={true}
+						items={menuItems}
+					>
+						<span aria-hidden="true">•••</span>
+					</DropdownMenu>
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -186,13 +216,37 @@ const menuItems = $derived([
 
 	.editor-component-chrome {
 		position: absolute;
-		inset: -2.1rem 0 auto 0;
+		left: 0;
+		bottom: calc(100% + 0.5rem);
 		z-index: 4;
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
+		gap: 0.375rem;
 		pointer-events: none;
+		max-width: min(100vw - 2rem, 24rem);
+	}
+
+	.editor-component-chrome-bottom {
+		top: calc(100% + 0.5rem);
+		bottom: auto;
+	}
+
+	.editor-component-chrome-right {
+		left: auto;
+		right: 0;
+	}
+
+	.editor-component-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		max-width: 100%;
+		padding: 0.2rem;
+		border: 1px solid color-mix(in srgb, var(--primary) 25%, white 75%);
+		border-radius: 999px;
+		background: color-mix(in srgb, white 94%, var(--primary) 6%);
+		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+		pointer-events: auto;
 	}
 
 	.editor-component-label {
@@ -200,21 +254,16 @@ const menuItems = $derived([
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		padding: 0.35rem 0.65rem;
-		border: 1px solid color-mix(in srgb, var(--primary) 25%, white 75%);
-		border-radius: 999px;
-		background: color-mix(in srgb, white 94%, var(--primary) 6%);
+		padding: 0.35rem 0.55rem;
 		color: color-mix(in srgb, var(--foreground) 88%, var(--primary) 12%);
 		font-size: 0.75rem;
 		font-weight: 600;
 		line-height: 1;
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-		pointer-events: auto;
 	}
 
 	.editor-component-actions {
 		position: relative;
-		display: flex;
+		display: inline-flex;
 		align-items: center;
 		pointer-events: auto;
 	}
@@ -223,9 +272,9 @@ const menuItems = $derived([
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 2rem;
-		height: 2rem;
-		padding: 0 0.65rem;
+		min-width: 1.75rem;
+		height: 1.75rem;
+		padding: 0 0.45rem;
 		border: 1px solid color-mix(in srgb, var(--border) 85%, white 15%);
 		border-radius: 999px;
 		background: color-mix(in srgb, white 96%, var(--accent) 4%);
@@ -233,7 +282,7 @@ const menuItems = $derived([
 		font-size: 0.95rem;
 		line-height: 1;
 		cursor: pointer;
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+		box-shadow: none;
 	}
 
 	:global(.editor-component-menu.canvas-dropdown-menu) {
@@ -249,14 +298,9 @@ const menuItems = $derived([
 			border-width: 3px;
 		}
 
-		.editor-component-chrome {
-			inset: -2.5rem 0 auto 0;
-			gap: 0.4rem;
-		}
-
 		.editor-component-label {
 			max-width: min(260px, calc(100vw - 7.5rem));
-			padding: 0.45rem 0.75rem;
+			padding: 0.45rem 0.65rem;
 			font-size: 0.8rem;
 		}
 

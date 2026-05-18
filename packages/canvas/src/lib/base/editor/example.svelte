@@ -3,8 +3,8 @@ import type { ComponentDef } from "$lib/base/canvas/types.js";
 import Button from "$lib/components/view-ui/button/button.svelte";
 import Text from "../text/text.svelte";
 import View from "../view/view.svelte";
-import { StudioEditor } from "./index.js";
-import type { EditorMode, EditorSidebarMode } from "./types.js";
+import { CanvasEditor } from "./index.js";
+import type { EditorMode } from "./types.js";
 
 // Sample component structures for different examples
 const basicComponents: ComponentDef[] = [
@@ -111,7 +111,7 @@ const complexComponents: ComponentDef[] = [
 						props: {
 							size: "3xl",
 							weight: "bold",
-							text: "Welcome to Studio Editor",
+							text: "Welcome to Canvas Editor",
 						},
 					},
 					{
@@ -285,7 +285,7 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
 </script>
 
 <div class="p-8 space-y-12">
-  <h1 class="text-3xl font-bold">Studio Editor Examples</h1>
+  <h1 class="text-3xl font-bold">Canvas Editor Examples</h1>
 
   <!-- Basic Editor -->
   <div class="space-y-4">
@@ -299,10 +299,9 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
       class="border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 500px;"
     >
-      <StudioEditor
+      <CanvasEditor
         bind:components={basicExample}
         bind:mode={basicMode}
-        sidebarMode="docked"
         {componentRegistry}
         {editorConfig}
         onChange={handleBasicChange}
@@ -323,10 +322,9 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
       class="border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 600px;"
     >
-      <StudioEditor
+      <CanvasEditor
         bind:components={complexExample}
         bind:mode={complexMode}
-        sidebarMode="docked"
         {componentRegistry}
         {editorConfig}
         onChange={handleComplexChange}
@@ -335,21 +333,20 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
     </div>
   </div>
 
-  <!-- Floating Sidebar Mode -->
+  <!-- Minimal Sidebar Overlay -->
   <div class="space-y-4">
-    <h2 class="text-2xl font-semibold">Floating Sidebar Mode</h2>
+    <h2 class="text-2xl font-semibold">Minimal Sidebar Overlay</h2>
     <p style="color: var(--muted-foreground);">
-      Editor with floating sidebar that can be repositioned.
+      The default editor stays focused on the app preview and opens a right sidebar from the top-right trigger.
     </p>
 
     <div
       class="border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 500px;"
     >
-      <StudioEditor
+      <CanvasEditor
         bind:components={responsiveExample}
         bind:mode={responsiveMode}
-        sidebarMode="floating"
         {componentRegistry}
         {editorConfig}
         onChange={handleResponsiveChange}
@@ -363,17 +360,16 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
     <h2 class="text-2xl font-semibold">Preview Mode</h2>
     <p style="color: var(--muted-foreground);">
       Toggle between edit and preview modes to see how your components look
-      without editor UI. Use Ctrl/Cmd + P or the toolbar button to switch modes.
+      without editor UI. Use Ctrl/Cmd + P to switch modes.
     </p>
 
     <div
       class="border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 500px;"
     >
-      <StudioEditor
+      <CanvasEditor
         components={basicComponents}
         mode="preview"
-        sidebarMode="hidden"
         {componentRegistry}
         {editorConfig}
         class="h-full"
@@ -385,16 +381,15 @@ function handleResponsiveChange(newComponents: ComponentDef[]) {
   <div class="space-y-4">
     <h2 class="text-2xl font-semibold">Mobile Responsive</h2>
     <p style="color: var(--muted-foreground);">
-      Editor optimized for mobile devices with auto sidebar mode.
+      The sidebar still starts closed on smaller screens and opens from the same trigger.
     </p>
 
     <div
       class="max-w-sm border rounded-lg overflow-hidden"
       style="border-color: var(--border); height: 600px;"
     >
-      <StudioEditor
+      <CanvasEditor
         components={basicComponents}
-        sidebarMode="auto"
         {componentRegistry}
         {editorConfig}
         class="h-full"

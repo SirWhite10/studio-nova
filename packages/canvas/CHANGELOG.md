@@ -1,5 +1,150 @@
 # Canvas Changelog
 
+## 2026-05-18
+
+### Summary
+
+- Completed the first real `CanvasEditor` refactor away from the older package-level `StudioEditor` shell.
+- Made `CanvasApp` the true runtime root for the landing editor flow.
+- Reworked the landing document so `Hero.1` is the first authored section child under a document `View` root.
+- Added a Puck-inspired but Svelte-native editor layout with dual desktop sidebars and preserved mobile bottom-sheet behavior.
+- Moved `Hero.1` toward a block-owned authored schema instead of relying primarily on nested slot navigation.
+
+### What We Did
+
+#### 1. Finalized the Canvas runtime/editor architecture direction
+
+- Kept `CanvasApp` as the rendered runtime root.
+- Kept `CanvasDocument` as the authored document model.
+- Positioned `CanvasEditor` as the generic package editor entry point.
+- Reduced `StudioEditor` to a thin compatibility wrapper around `CanvasEditor` rather than the primary shell.
+
+#### 2. Reworked the landing document structure
+
+- Removed the extra width-constraining landing wrapper around the hero.
+- Made the landing document root a meaningful selectable `View` node.
+- Made `Hero.1` the direct first child section in the landing flow.
+- Kept page flow inside the document instead of route wrappers.
+
+#### 3. Added the Canvas app runtime foundation
+
+- Added the `canvas-app` runtime layer and context.
+- Added responsive foundation helpers for viewport/container-aware values.
+- Updated `Text` to support responsive authored typography props.
+- Shifted hero typography to authored `Text` props rather than page-specific utility sizing.
+
+#### 4. Built the generic editor decomposition
+
+- Added dedicated editor pieces for:
+  - surface
+  - trigger
+  - left rail
+  - left sidebar
+  - header
+  - inspector router
+  - app inspector
+  - node inspector
+  - right inspector sidebar
+- Split the older monolithic sidebar responsibilities into smaller focused components.
+- Exposed the new generic editor pieces through package exports.
+
+#### 5. Moved desktop editing to a dual-sidebar shell
+
+- Replaced the earlier right-overlay-only desktop composition.
+- Desktop now uses:
+  - left workflow rail + panel
+  - sticky editor header
+  - center canvas surface
+  - right inspector
+- Left and right desktop sidebars now open by default and are independently collapsible.
+- The desktop header now includes:
+  - left sidebar toggle
+  - right sidebar toggle
+  - document title
+  - undo
+  - redo
+  - preview
+  - save affordance
+
+#### 6. Preserved the mobile editor path for now
+
+- Kept the mobile bottom-tab + shared-bottom-sheet interaction model.
+- Kept the compact mobile trigger instead of forcing the desktop shell onto small screens.
+- Mapped mobile tabs to:
+  - Outline
+  - Components
+  - Properties
+  - Settings
+
+#### 7. Changed editor targeting behavior
+
+- Properties now defaults to the document root when nothing is selected.
+- App/runtime editing moved under Settings instead of being the default no-selection target.
+- The left rail now includes Settings as the final workflow item.
+- The right inspector content now changes based on the active left workflow and current selection.
+
+#### 8. Updated selection chrome behavior
+
+- Hover state now uses highlight-only treatment.
+- Selected state now owns the title/action pill.
+- Component labels now favor component-oriented naming like:
+  - `View - landing-canvas-page-root`
+  - `Hero.1 - landing-canvas-hero`
+
+#### 9. Moved `Hero.1` toward a block-owned authored schema
+
+- Added authored fields for:
+  - content
+  - actions
+  - media
+  - layout
+  - advanced class
+- Kept slot support available, but made the authored inspector path primary for the landing demo.
+- Updated the landing document to use the authored hero props directly.
+
+#### 10. Improved editor shell visuals
+
+- Added clearer editor-shell separation between:
+  - left sidebar surfaces
+  - header chrome
+  - center canvas area
+  - right inspector surface
+- Added stronger borders and off-surface tinting so the sidebars read as editor chrome instead of blending into the canvas.
+
+#### 11. Stabilized editor state syncing
+
+- Fixed the earlier `effect_update_depth_exceeded` loop by moving to per-instance editor stores.
+- Diffed incoming component sync before applying it.
+- Prevented redundant `onChange` emissions for equivalent component trees.
+
+### Validation
+
+- Repeated targeted `vp check` runs passed on the changed editor/runtime/route/block files.
+- Desktop and mobile behavior were visually tested with `agent-browser`.
+- Visual artifacts captured during this phase include:
+  - `/tmp/canvas-check/landing-dual-sidebar-desktop.png`
+  - `/tmp/canvas-check/landing-dual-sidebar-mobile.png`
+  - `/tmp/canvas-check/landing-shell-surfaces.png`
+
+### Current State
+
+- `CanvasEditor` is now the real generic editor implementation in `packages/canvas`.
+- The landing canvas demo is running on the new authored/runtime/editor model.
+- Desktop editor chrome uses a dual-sidebar shell with sticky header.
+- Mobile still uses the shared-sheet model until a later dedicated redesign.
+- `Hero.1` is the first concrete block-owned authored schema example.
+
+### Follow-up Work Suggested For Later Pickup
+
+1. Tighten the desktop visual polish further against Puck spacing and surface rhythm.
+2. Refine full-height behavior and scroll isolation until the shell feels fully production-grade.
+3. Add a more complete save flow/callback contract for package consumers.
+4. Consider whether the right inspector also needs resizable width behavior.
+5. Continue moving complex authored blocks/widgets toward block-owned schemas.
+6. Redesign mobile editor chrome once the desktop shell stabilizes.
+7. Decide how much of `StudioEditor` compatibility should remain in this package long-term.
+
+
 ## 2026-05-14
 
 ### Summary

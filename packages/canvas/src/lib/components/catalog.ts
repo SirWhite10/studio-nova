@@ -16,6 +16,25 @@ export const canvasComponentCatalog = {
     category: "layout",
     label: "View",
     description: "Low-level layout primitive.",
+    editorConfig: {
+      fields: {
+        class: {
+          type: "text",
+          label: "Class",
+        },
+        style: {
+          type: "text",
+          label: "Style",
+          multiline: true,
+        },
+      },
+      groups: {
+        layout: {
+          label: "Layout",
+          fields: ["class", "style"],
+        },
+      },
+    },
   },
   Text: {
     type: "Text",

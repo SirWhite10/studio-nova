@@ -113,22 +113,25 @@ export function getComponentDisplayLabel(
   componentCatalog: CanvasComponentCatalog = {},
 ): string {
   const definition = componentCatalog[component.type];
-  const componentLabel = definition?.label ?? formatComponentType(component.type);
+  const componentLabel =
+    component.type === "Hero.1"
+      ? component.type
+      : (definition?.label ?? formatComponentType(component.type));
   const detail = [
     component.props?.label,
     component.props?.title,
-    component.props?.text,
     component.props?.name,
     component.props?.heading,
+    component.id,
   ]
     .find((value) => typeof value === "string" && value.trim().length > 0)
     ?.trim();
 
   if (detail && detail !== componentLabel) {
-    return `${detail} - ${componentLabel}`;
+    return `${componentLabel} - ${detail}`;
   }
 
-  return `${componentLabel} - ${component.type}`;
+  return componentLabel;
 }
 
 /**

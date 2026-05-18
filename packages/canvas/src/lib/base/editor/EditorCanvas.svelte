@@ -3,10 +3,9 @@
 import Trash from "@lucide/svelte/icons/trash";
 import { onMount } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import { get } from "svelte/store";
 import type { CanvasNode } from "$lib/base/canvas/types.js";
 import { cn } from "$lib/utils.js";
-import Canvas from "../canvas/index.ts";
+import CanvasApp from "$lib/base/canvas-app/CanvasApp.svelte";
 import CanvasRenderNode from "../canvas/render-node.svelte";
 import { getEditorContext } from "./context.js";
 import EditorComponentHighlight from "./EditorComponentHighlight.svelte";
@@ -16,7 +15,12 @@ import { getComponentDisplayLabel } from "./utils.js";
 const isBrowser = typeof window !== "undefined";
 
 let {
+	document = undefined,
 	components = [],
+	providers = [],
+	providerData = {},
+	providerActions = {},
+	canvasAppConfig = undefined,
 	mode = "edit",
 	selection = undefined,
 	onSelect = undefined,
@@ -27,6 +31,16 @@ let {
 	renderComponent = undefined,
 	class: className = "",
 }: EditorCanvasProps = $props();
+
+let resolvedDocument = $derived(
+	document
+		? {
+				...document,
+				components,
+				providers: document.providers ?? providers,
+			}
+		: undefined,
+);
 
 // Local state
 let hoveredComponent = $state<CanvasNode | undefined>(undefined);
@@ -119,7 +133,6 @@ onMount(() => {
 });
 
 const context = getEditorContext();
-const editorState = get(context);
 </script>
 
 {#snippet renderComponentSnippetForChildren(component: CanvasNode, path: string[])}
@@ -175,10 +188,16 @@ const editorState = get(context);
   })}
   bind:this={canvasElement}
 >
-  <Canvas
+  <CanvasApp
+    document={resolvedDocument}
     {components}
+    {providers}
+    {providerData}
+    {providerActions}
+    componentCatalog={componentCatalog}
     customComponents={componentRegistry}
     renderComponent={renderEditorComponentSnippet}
+    config={canvasAppConfig}
   />
 
   {#if contextMenuComponent}
@@ -190,8 +209,8 @@ const editorState = get(context);
         <button
           class="context-menu-item"
           onclick={() => {
-            if (editorState.selection)
-              context.deleteComponent(editorState.selection.path);
+            if ($context.selection)
+              context.deleteComponent($context.selection.path);
             closeContextMenu();
           }}
         >
