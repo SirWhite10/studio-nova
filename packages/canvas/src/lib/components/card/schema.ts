@@ -3,23 +3,13 @@ import type { BaseProps } from "$lib/base/canvas/types.js";
 export const cardSizes = ["default", "sm"] as const;
 export type CardSize = (typeof cardSizes)[number];
 
-export const cardVariants = [
-  "default",
-  "outline",
-  "elevated",
-  "interactive",
-] as const;
+export const cardVariants = ["default", "outline", "elevated", "interactive"] as const;
 export type CardVariant = (typeof cardVariants)[number];
 
 export const cardActionEvents = ["tap"] as const;
 export type CardActionEvent = (typeof cardActionEvents)[number];
 
-export const cardActionTargets = [
-  "_self",
-  "_blank",
-  "_parent",
-  "_top",
-] as const;
+export const cardActionTargets = ["_self", "_blank", "_parent", "_top"] as const;
 export type CardActionTarget = (typeof cardActionTargets)[number];
 
 export interface CardNavigateAction {
@@ -45,10 +35,7 @@ export interface CardEmitAction {
   payload?: Record<string, unknown>;
 }
 
-export type CardAction =
-  | CardNavigateAction
-  | CardProviderAction
-  | CardEmitAction;
+export type CardAction = CardNavigateAction | CardProviderAction | CardEmitAction;
 
 export interface CardRootProps extends BaseProps {
   size?: CardSize;

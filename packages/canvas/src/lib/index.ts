@@ -1,5 +1,56 @@
 export { default as Canvas } from "./base/canvas/canvas.svelte";
+export { default as CanvasApp } from "./base/canvas-app/CanvasApp.svelte";
+export { getCanvasAppContext, setCanvasAppContext } from "./base/canvas-app/index.js";
 export { canvasCodeTemplates } from "./base/canvas/index.js";
+export {
+  CONTAINER_BREAKPOINTS,
+  RESPONSIVE_BREAKPOINT_ORDER,
+  RESPONSIVE_NON_BASE_BREAKPOINT_ORDER,
+  VIEWPORT_BREAKPOINTS,
+  createEmptyBreakpointState,
+  createMinWidthQuery,
+  getBreakpointDefinition,
+  getOrderedBreakpointKeys,
+  getOrderedNonBaseBreakpointKeys,
+} from "./base/responsive/breakpoints.js";
+export {
+  createContainerBreakpointState,
+  createResponsiveQueryState,
+  createStaticResponsiveQueryState,
+  createViewportBreakpointState,
+} from "./base/responsive/media-query.svelte.js";
+export {
+  createResponsiveValue,
+  flattenResponsiveModeValue,
+  getActiveBreakpoint,
+  getResponsiveBranch,
+  hasResponsiveOverride,
+  isResponsiveModeValue,
+  isResponsiveValue,
+  listDefinedResponsiveBreakpoints,
+  removeResponsiveOverride,
+  resolveResponsiveModeValue,
+  resolveResponsiveValue,
+  setResponsiveOverride,
+} from "./base/responsive/resolve-responsive.js";
+export type { ResponsiveQueryState } from "./base/responsive/media-query.svelte.js";
+export type {
+  CanvasResponsiveBreakpointSet,
+  CanvasResponsiveConfig,
+  MaybeResponsiveValue,
+  ResolvedResponsiveValue,
+  ResponsiveBreakpoint,
+  ResponsiveBreakpointDefinition,
+  ResponsiveBreakpointMatch,
+  ResponsiveBreakpointState,
+  ResponsiveFieldState,
+  ResponsiveMode,
+  ResponsiveModeValue,
+  ResponsiveNonBaseBreakpoint,
+  ResponsiveValue,
+  ResolveResponsiveModeValueOptions,
+  ResolveResponsiveValueOptions,
+} from "./base/responsive/types.js";
 export type {
   BaseProps,
   CanvasActionRef,
@@ -17,6 +68,12 @@ export type {
   ComponentDef,
 } from "./base/canvas/types.js";
 export type {
+  CanvasAppConfig,
+  CanvasAppContextValue,
+  CanvasAppProps,
+  CanvasSplashConfig,
+} from "./base/canvas-app/types.js";
+export type {
   EditorComponent,
   EditorConfig,
   EditorFieldConfig,
@@ -25,21 +82,11 @@ export type {
 } from "./base/editor/types.js";
 
 export { default as View } from "./base/view/view.svelte";
-export type {
-  ViewProps,
-  ViewStyleProps,
-  ViewStateStyles,
-} from "./base/view/view.types.js";
+export type { ViewProps, ViewStyleProps, ViewStateStyles } from "./base/view/view.types.js";
 
 export { default as ViewFlex } from "./components/layout/view-flex.svelte";
 export { default as ViewGrid } from "./components/layout/view-grid.svelte";
-export {
-  canvasTheme,
-  cardGradient,
-  px,
-  space,
-  transition,
-} from "./components/layout/tokens.js";
+export { canvasTheme, cardGradient, px, space, transition } from "./components/layout/tokens.js";
 export { default as Icon } from "./components/icon/icon.svelte";
 export { default as ViewDropdownMenu } from "./components/view-ui/dropdown-menu.svelte";
 export { Button as ViewButton } from "./components/view-ui/button/index.js";
@@ -131,6 +178,7 @@ export const Form = {
 export const CardSlots = cardComponentCatalog["Card.Root"].slots;
 export const FormSlots = formComponentCatalog["Form.Root"].slots;
 
+export { default as CanvasEditor } from "./base/editor/CanvasEditor.svelte";
 export { default as StudioEditor } from "./base/editor/StudioEditor.svelte";
 
 export { default as ViewAppSidebar } from "./components/app-sidebar.svelte";

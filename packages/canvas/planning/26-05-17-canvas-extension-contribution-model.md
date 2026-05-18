@@ -124,29 +124,37 @@ This plan assumes the following runtime work lands first:
 ## Core concepts
 
 ### 1. Extension / plugin
+
 A package or contribution unit that adds new capabilities to Canvas.
 
 ### 2. Contribution manifest
+
 The typed declaration of what an extension provides.
 
 ### 3. Scoped registry
+
 A runtime-assembled component/widget registry limited to the current app/document/editor use case.
 
 ### 4. Widget contribution
+
 A renderable, configurable, often provider-backed unit intended for surfaces like dashboards.
 
 ### 5. Editor contribution
+
 Field definitions, grouping, inspector metadata, and possibly custom field UIs defined by the extension.
 
 These contributions should target the generic Canvas editor model rather than hard-coding nova-cloud workspace behavior into the Canvas library.
 
 ### 6. Provider contribution
+
 A typed data/action/integration contribution that supplies runtime data to widgets/components.
 
 ### 7. App preset contribution
+
 A predefined app/runtime configuration or app shell tailored to a specific use case.
 
 ### 8. Document preset/template contribution
+
 A predefined authored document structure that can be inserted, cloned, or scaffolded.
 
 ---
@@ -154,6 +162,7 @@ A predefined authored document structure that can be inserted, cloned, or scaffo
 ## Extension strategy and governance
 
 ## Recommendation
+
 Canvas should default to a **governed extension model**.
 
 That means:
@@ -170,6 +179,7 @@ That means:
 4. Canvas is a library for nova-cloud and should remain runtime-safe and deterministic.
 
 ## Future-compatible path
+
 Later, **nova-cloud** may provide:
 
 - isolate/sandbox-based extension execution
@@ -229,6 +239,7 @@ This enables:
 - safer component restrictions
 
 ### Registry expectations
+
 A scoped registry should be able to include:
 
 - core primitives
@@ -252,6 +263,7 @@ A widget should be able to define:
 - optional presets/defaults
 
 ## Example: Shopify integration
+
 A Shopify extension may contribute widgets like:
 
 - `Shopify.Sales24HoursWidget`
@@ -301,6 +313,7 @@ This is distinct from primitive style editing and is necessary for integration-b
 The dashboard likely spans both app and document layers.
 
 ### As a document
+
 Dashboard layout is a `CanvasDocument`:
 
 - grid structure
@@ -309,6 +322,7 @@ Dashboard layout is a `CanvasDocument`:
 - persisted layout state
 
 ### As an app
+
 Dashboard runtime/editor shell is a `CanvasApp` specialization:
 
 - scoped widget registry
@@ -317,6 +331,7 @@ Dashboard runtime/editor shell is a `CanvasApp` specialization:
 - permissions and app-level config
 
 ## Working recommendation
+
 - **dashboard layout = document**
 - **dashboard runtime/editor experience = app**
 
@@ -325,6 +340,7 @@ Dashboard runtime/editor shell is a `CanvasApp` specialization:
 ## Data-defined vs code-defined extensions
 
 ## Default recommendation: data-defined first
+
 Prefer extension contributions that are primarily:
 
 - typed manifests
@@ -336,6 +352,7 @@ Prefer extension contributions that are primarily:
 This should cover many integrations safely.
 
 ## Code-defined extensions
+
 Reserve true code-defined extensions for cases requiring:
 
 - custom rendering logic
@@ -385,30 +402,36 @@ A stable, governed extension surface is better for agentic generation than arbit
 ## Proposed future type areas
 
 ### Extension core
+
 - `CanvasExtensionManifest`
 - `CanvasExtensionMetadata`
 - `CanvasExtensionContributionSet`
 
 ### Component/widget contributions
+
 - `CanvasComponentContribution`
 - `CanvasWidgetContribution`
 - `CanvasWidgetPreset`
 
 ### Provider contributions
+
 - `CanvasProviderContribution`
 - `CanvasActionContribution`
 - `CanvasIntegrationContribution`
 
 ### Editor contributions
+
 - `CanvasEditorFieldContribution`
 - `CanvasInspectorContribution`
 - `CanvasFieldRendererContribution`
 
 ### Presets/templates
+
 - `CanvasDocumentTemplateContribution`
 - `CanvasAppPresetContribution`
 
 ### Registry assembly
+
 - `CanvasScopedRegistryConfig`
 - `CanvasRegistryAssemblyOptions`
 
@@ -417,11 +440,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ## Proposed phased implementation roadmap
 
 ## Phase 0 — Parallel planning and dependency alignment
+
 - **Start:** 2026-05-17
 - **Target Completion:** 2026-05-17
 - **Status:** Planned
 
 ### Tasks
+
 1. Record extension model assumptions.
 2. Link extension plan to runtime plan.
 3. Record governance strategy and isolate direction.
@@ -429,11 +454,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 1 — Extension manifest design
+
 - **Start:** 2026-05-24
 - **Target Completion:** 2026-05-25
 - **Status:** Planned
 
 ### Tasks
+
 1. Define core extension manifest types.
 2. Define contribution categories and metadata shape.
 3. Define versioning/compatibility notes.
@@ -441,11 +468,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 2 — Scoped registry assembly model
+
 - **Start:** 2026-05-25
 - **Target Completion:** 2026-05-26
 - **Status:** Planned
 
 ### Tasks
+
 1. Define registry assembly rules.
 2. Define allowlist/scoping behavior.
 3. Define extension merge/collision rules.
@@ -453,11 +482,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 3 — Widget contribution model
+
 - **Start:** 2026-05-26
 - **Target Completion:** 2026-05-27
 - **Status:** Planned
 
 ### Tasks
+
 1. Define widget contribution shape.
 2. Define widget/editor/provider relationship.
 3. Define insertion/catalog metadata.
@@ -465,11 +496,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 4 — Editor contribution model
+
 - **Start:** 2026-05-27
 - **Target Completion:** 2026-05-28
 - **Status:** Planned
 
 ### Tasks
+
 1. Define extension-provided editor field schemas.
 2. Define future custom field renderer contribution hooks.
 3. Define editor grouping/inspector conventions.
@@ -477,11 +510,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 5 — Dashboard specialization model
+
 - **Start:** 2026-05-28
 - **Target Completion:** 2026-05-29
 - **Status:** Planned
 
 ### Tasks
+
 1. Define dashboard document conventions.
 2. Define dashboard app/runtime conventions.
 3. Define drag/drop/sort/widget constraints at the planning level.
@@ -489,11 +524,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 6 — Integration example contributions
+
 - **Start:** 2026-05-29
 - **Target Completion:** 2026-05-30
 - **Status:** Planned
 
 ### Tasks
+
 1. Model a Shopify contribution example.
 2. Model at least one additional provider/integration example.
 3. Validate editor schema approach against real widget cases.
@@ -501,11 +538,13 @@ A stable, governed extension surface is better for agentic generation than arbit
 ---
 
 ## Phase 7 — Governance and sandbox handoff notes
+
 - **Start:** 2026-05-30
 - **Target Completion:** 2026-05-31
 - **Status:** Planned
 
 ### Tasks
+
 1. Record the boundary between Canvas and nova-cloud responsibilities.
 2. Record future sandbox/isolate handoff requirements.
 3. Record later packaging/publication concerns.

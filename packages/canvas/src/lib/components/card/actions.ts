@@ -87,11 +87,7 @@ export async function executeCardTapActions({
   }
 }
 
-function navigate(
-  url: string,
-  target: CardRootProps["target"],
-  rel: string | undefined,
-) {
+function navigate(url: string, target: CardRootProps["target"], rel: string | undefined) {
   if (typeof window === "undefined") {
     return;
   }

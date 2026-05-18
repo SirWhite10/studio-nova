@@ -3,7 +3,10 @@ export { TextConfig, type TextProps } from "./text-types.js";
 </script>
 
 <script lang="ts">
-  import type { TextProps } from "./text-types.js";
+  import { getCanvasAppContext } from "$lib/base/canvas-app/context.js";
+  import { createEmptyBreakpointState } from "$lib/base/responsive/breakpoints.js";
+  import { resolveResponsiveValue } from "$lib/base/responsive/resolve-responsive.js";
+  import type { TextAlign, TextProps, TextSize, FontWeight, LineHeight, LetterSpacing } from "./text-types.js";
   import { createTextStyles, createTextCSSVariables } from "./text-styles.svelte.js";
   import { useTextThemeStyles } from "./text-theme.svelte.js";
   import { View } from "../view/index.js";
@@ -62,31 +65,61 @@ export { TextConfig, type TextProps } from "./text-types.js";
     ...restProps
   }: TextProps = $props();
 
+  const canvasAppContext = getCanvasAppContext();
+
+  let responsiveBreakpoints = $derived(
+    canvasAppContext?.responsiveQueryState.breakpoints ?? createEmptyBreakpointState()
+  );
+
+  let responsiveMode = $derived(
+    canvasAppContext?.config.responsive?.defaultMode ?? "viewport"
+  );
+
+  let resolvedSize = $derived(
+    resolveResponsiveValue<TextSize>(size, responsiveBreakpoints, { mode: responsiveMode }).value
+  );
+
+  let resolvedWeight = $derived(
+    resolveResponsiveValue<FontWeight>(weight, responsiveBreakpoints, { mode: responsiveMode }).value
+  );
+
+  let resolvedTextAlign = $derived(
+    resolveResponsiveValue<TextAlign>(textAlign, responsiveBreakpoints, { mode: responsiveMode }).value
+  );
+
+  let resolvedLineHeight = $derived(
+    resolveResponsiveValue<LineHeight>(lineHeight, responsiveBreakpoints, { mode: responsiveMode }).value
+  );
+
+  let resolvedLetterSpacing = $derived(
+    resolveResponsiveValue<LetterSpacing>(letterSpacing, responsiveBreakpoints, { mode: responsiveMode }).value
+  );
+
   // Create text-specific styles using CSS variables
   let textStyles = $derived.by(() => {
     const textProps = {
-      size,
-      weight,
+      size: resolvedSize,
+      weight: resolvedWeight,
       color,
-      textAlign,
+      textAlign: resolvedTextAlign,
       transform,
-      lineHeight,
-      letterSpacing,
+      lineHeight: resolvedLineHeight,
+      letterSpacing: resolvedLetterSpacing,
     };
-    
+
     return createTextStyles(textProps);
   });
 
   // Create CSS variables for text styling
   let textCSSVariables = $derived.by(() => {
     const textProps = {
-      size,
-      weight,
+      size: resolvedSize,
+      weight: resolvedWeight,
       color,
-      lineHeight,
-      letterSpacing,
+      lineHeight: resolvedLineHeight,
+      letterSpacing: resolvedLetterSpacing,
     };
-    
+
     return createTextCSSVariables(textProps);
   });
 
@@ -94,10 +127,6 @@ export { TextConfig, type TextProps } from "./text-types.js";
   let textTheme = $derived.by(() =>
     useTextThemeStyles({
       color,
-      size,
-      weight,
-      lineHeight,
-      letterSpacing,
     })
   );
 

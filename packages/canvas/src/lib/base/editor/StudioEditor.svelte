@@ -31,6 +31,9 @@ let {
 	componentRegistry = $bindable(undefined),
 	componentCatalog = $bindable({}),
 	editorConfig = $bindable(undefined),
+	appConfig = $bindable({}),
+	appEditorConfig = $bindable(undefined),
+	updateAppProperty = undefined,
 	renderComponent,
 	class: className,
 }: EditorProps = $props();
@@ -241,6 +244,9 @@ const mobileMenuItems = $derived([
 				clipboardNode={$store.clipboard as any}
 				{componentCatalog}
 				{editorConfig}
+				{appConfig}
+				{appEditorConfig}
+				updateAppProperty={updateAppProperty}
 				updateProperty={(path, property, value) => {
 					store.addHistoryEntry();
 					store.updateProperty(path, property, value);

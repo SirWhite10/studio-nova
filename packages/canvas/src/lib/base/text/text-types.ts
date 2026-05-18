@@ -1,10 +1,22 @@
+import type { MaybeResponsiveValue } from "$lib/base/responsive/types.js";
 import type { ViewProps } from "../view/view.types.js";
 import type { EditorComponent } from "../editor/types.ts";
 
 /**
  * Text size options mapped to CSS variables
  */
-export type TextSize = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl";
+export type TextSize =
+  | "xs"
+  | "sm"
+  | "base"
+  | "lg"
+  | "xl"
+  | "2xl"
+  | "3xl"
+  | "4xl"
+  | "5xl"
+  | "6xl"
+  | "7xl";
 
 /**
  * Font weight options mapped to CSS variables
@@ -24,28 +36,31 @@ export type TextTransform = "none" | "uppercase" | "lowercase" | "capitalize";
 /**
  * Line height options (can be preset or custom)
  */
-export type LineHeight = "tight" | "normal" | "relaxed" | "loose" | string;
+export type LineHeight = "tight" | "normal" | "relaxed" | "loose" | (string & {});
 
 /**
  * Letter spacing options (can be preset or custom)
  */
-export type LetterSpacing = "tight" | "normal" | "wide" | "wider" | string;
+export type LetterSpacing = "tight" | "normal" | "wide" | "wider" | (string & {});
 
 /**
  * Text component props extending ViewProps
  */
-export interface TextProps extends ViewProps {
+export interface TextProps extends Omit<
+  ViewProps,
+  "textAlign" | "transform" | "children" | "as" | "class" | "style"
+> {
   // Content props
   text?: string;
 
   // Typography props
-  size?: TextSize;
-  weight?: FontWeight;
+  size?: MaybeResponsiveValue<TextSize>;
+  weight?: MaybeResponsiveValue<FontWeight>;
   color?: string;
-  textAlign?: TextAlign;
+  textAlign?: MaybeResponsiveValue<TextAlign>;
   transform?: TextTransform;
-  lineHeight?: LineHeight;
-  letterSpacing?: LetterSpacing;
+  lineHeight?: MaybeResponsiveValue<LineHeight>;
+  letterSpacing?: MaybeResponsiveValue<LetterSpacing>;
 
   // Element props
   as?: keyof HTMLElementTagNameMap;
@@ -199,7 +214,7 @@ export const TextConfig: EditorComponent<TextProps> = {
       size: {
         type: "select",
         label: "Size",
-        options: ["xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl"],
+        options: ["xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl"],
       },
       weight: {
         type: "select",

@@ -1,7 +1,4 @@
-import type {
-  CanvasComponentCatalog,
-  CanvasNodeKind,
-} from "$lib/base/canvas/types.js";
+import type { CanvasComponentCatalog, CanvasNodeKind } from "$lib/base/canvas/types.js";
 import CardRoot from "./card.svelte";
 import CardAction from "./card-action.svelte";
 import CardContent from "./card-content.svelte";
@@ -9,12 +6,7 @@ import CardDescription from "./card-description.svelte";
 import CardFooter from "./card-footer.svelte";
 import CardHeader from "./card-header.svelte";
 import CardTitle from "./card-title.svelte";
-import {
-  cardActionEvents,
-  cardActionTargets,
-  cardSizes,
-  cardVariants,
-} from "./schema.js";
+import { cardActionEvents, cardActionTargets, cardSizes, cardVariants } from "./schema.js";
 
 const componentKind: CanvasNodeKind = "component";
 
@@ -25,8 +17,7 @@ export const cardComponentCatalog = {
     kind: componentKind,
     category: "cards",
     label: "Card",
-    description:
-      "Semantic card shell with reference-backed visuals and data-driven tap actions.",
+    description: "Semantic card shell with reference-backed visuals and data-driven tap actions.",
     defaultProps: {
       size: "default",
       variant: "default",
@@ -57,8 +48,7 @@ export const cardComponentCatalog = {
         href: {
           type: "text",
           label: "Fallback URL",
-          description:
-            "Used when the card is tapped and no navigate action overrides it.",
+          description: "Used when the card is tapped and no navigate action overrides it.",
         },
         target: {
           type: "select",
@@ -92,39 +82,33 @@ export const cardComponentCatalog = {
               url: {
                 type: "text",
                 label: "URL",
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "navigate",
+                showIf: (data: Record<string, unknown>) => data?.type === "navigate",
               },
               target: {
                 type: "select",
                 label: "Target",
                 options: [...cardActionTargets],
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "navigate",
+                showIf: (data: Record<string, unknown>) => data?.type === "navigate",
               },
               rel: {
                 type: "text",
                 label: "Rel",
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "navigate",
+                showIf: (data: Record<string, unknown>) => data?.type === "navigate",
               },
               source: {
                 type: "text",
                 label: "Provider Source",
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "provider",
+                showIf: (data: Record<string, unknown>) => data?.type === "provider",
               },
               action: {
                 type: "text",
                 label: "Provider Action",
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "provider",
+                showIf: (data: Record<string, unknown>) => data?.type === "provider",
               },
               name: {
                 type: "text",
                 label: "Event Name",
-                showIf: (data: Record<string, unknown>) =>
-                  data?.type === "emit",
+                showIf: (data: Record<string, unknown>) => data?.type === "emit",
               },
             },
           },
@@ -137,14 +121,7 @@ export const cardComponentCatalog = {
         },
         behavior: {
           label: "Behavior",
-          fields: [
-            "interactive",
-            "disabled",
-            "href",
-            "target",
-            "rel",
-            "actions",
-          ],
+          fields: ["interactive", "disabled", "href", "target", "rel", "actions"],
         },
       },
     },

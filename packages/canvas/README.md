@@ -36,7 +36,7 @@ A useful conceptual reference is **Puck** (React), mainly because it shows a sch
 - field-schema-driven editing
 - drag/drop visual composition
 
-Canvas should borrow the *ideas*, not the framework or exact structure.
+Canvas should borrow the _ideas_, not the framework or exact structure.
 
 Canvas is intentionally aiming for:
 

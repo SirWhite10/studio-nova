@@ -28,7 +28,10 @@ let {
 	clipboardNode = $bindable(undefined),
 	componentCatalog = $bindable({}),
 	editorConfig = $bindable({}),
+	appConfig = $bindable({}),
+	appEditorConfig = $bindable(undefined),
 	updateProperty = $bindable(() => {}),
+	updateAppProperty = $bindable(() => {}),
 	class: className = "",
 	isDraggable = $bindable(false),
 	activePanel = $bindable("Properties"),
@@ -43,10 +46,10 @@ let isMobile = $state(false);
 const componentConfig = $derived(
 	resolveEditorComponent(selection?.component?.type, componentCatalog, editorConfig),
 );
-
-const componentProps = $derived(selection?.component?.props || {});
-const editorGroups = $derived(componentConfig?.editorConfig?.groups || {});
-const editorFields = $derived(componentConfig?.editorConfig?.fields || {});
+const activeEditorConfig = $derived(componentConfig?.editorConfig ?? appEditorConfig?.editorConfig);
+const activeProps = $derived(selection?.component?.props || appConfig || {});
+const editorGroups = $derived(activeEditorConfig?.groups || {});
+const editorFields = $derived(activeEditorConfig?.fields || {});
 const filteredGroups = $derived(
 	Object.entries(editorGroups)
 		.filter(([_, group]) => group.fields && group.fields.length > 0)
@@ -94,9 +97,12 @@ const clipboardInsertionTargets = $derived(
 const editorContext = getEditorContext();
 
 function handlePropertyChange(propertyName: string, value: object) {
-	if (updateProperty && selection) {
-		updateProperty(selection.path, propertyName, value);
+	if (selection) {
+		updateProperty?.(selection.path, propertyName, value);
+		return;
 	}
+
+	updateAppProperty?.(propertyName, value);
 }
 
 function handleAddComponent(type: string, path?: string[]) {
@@ -284,8 +290,10 @@ $effect(() => {
 			<div class="editor-sidebar-handle" aria-hidden="true"></div>
 		{/if}
 		<h2 class="editor-sidebar-title">
-			{activePanel === "Properties" && selection?.component
-				? formatComponentType(selection.component.type)
+			{activePanel === "Properties"
+				? selection?.component
+					? formatComponentType(selection.component.type)
+					: appEditorConfig?.label ?? "Canvas App"
 				: activePanel}
 		</h2>
 		{#if isMobile}
@@ -302,7 +310,7 @@ $effect(() => {
 
 	<div class="editor-sidebar-content">
 		{#if activePanel === "Properties"}
-			{#if selection && componentConfig}
+			{#if (selection && componentConfig) || (!selection && appEditorConfig)}
 				<div class="editor-sidebar-section-stack">
 					{#if breadcrumbs.length}
 						<section class="editor-sidebar-section">
@@ -338,7 +346,7 @@ $effect(() => {
 										<EditorField
 											name={field.name}
 											config={field.config}
-											value={componentProps[field.name]}
+											value={activeProps[field.name]}
 											onChange={(value) => handlePropertyChange(field.name, value)}
 										/>
 									{/each}
@@ -357,7 +365,7 @@ $effect(() => {
 									<EditorField
 										name={field.name}
 										config={field.config}
-										value={componentProps[field.name]}
+										value={activeProps[field.name]}
 										onChange={(value) => handlePropertyChange(field.name, value)}
 									/>
 								{/each}
@@ -368,7 +376,7 @@ $effect(() => {
 			{:else}
 				<div class="editor-sidebar-empty">
 					<SettingsIcon class="editor-sidebar-empty-icon" />
-					<p>Select a component to edit its properties.</p>
+					<p>Select a component or configure the app root.</p>
 				</div>
 			{/if}
 		{:else if activePanel === "Layers"}

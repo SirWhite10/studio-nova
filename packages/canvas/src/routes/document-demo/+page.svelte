@@ -1,6 +1,6 @@
 <script lang="ts">
 	import {
-		Canvas,
+		CanvasApp,
 		canvasComponentCatalog,
 		type CanvasProviderActions,
 	} from "$lib/index.js";
@@ -61,7 +61,7 @@
 		</p>
 	</div>
 
-	<Canvas
+	<CanvasApp
 		{document}
 		componentCatalog={canvasComponentCatalog}
 		providerData={{ workspace }}

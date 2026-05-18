@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Canvas, canvasComponentCatalog, type CanvasProviderActions } from "$lib/index.js";
+	import { CanvasApp, canvasComponentCatalog, type CanvasProviderActions } from "$lib/index.js";
 	import { formDocument } from "./document.js";
 
 	let formState = $state({
@@ -30,7 +30,7 @@
 	};
 </script>
 
-<Canvas
+<CanvasApp
 	document={formDocument}
 	componentCatalog={canvasComponentCatalog}
 	providerData={{ form: formState }}

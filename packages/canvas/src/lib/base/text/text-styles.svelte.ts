@@ -1,4 +1,21 @@
-import type { TextProps } from "./text-types.js";
+import type {
+  FontWeight,
+  LetterSpacing,
+  LineHeight,
+  TextAlign,
+  TextSize,
+  TextTransform,
+} from "./text-types.js";
+
+export interface ResolvedTextStyleProps {
+  size?: TextSize;
+  weight?: FontWeight;
+  color?: string;
+  textAlign?: TextAlign;
+  transform?: TextTransform;
+  lineHeight?: LineHeight;
+  letterSpacing?: LetterSpacing;
+}
 
 /**
  * Text size mapping to CSS variables
@@ -12,6 +29,9 @@ export const textSizeMap = {
   "2xl": "var(--text-2xl)",
   "3xl": "var(--text-3xl)",
   "4xl": "var(--text-4xl)",
+  "5xl": "var(--text-5xl)",
+  "6xl": "var(--text-6xl)",
+  "7xl": "var(--text-7xl)",
 } as const;
 
 /**
@@ -47,7 +67,7 @@ export const letterSpacingMap = {
 /**
  * Creates text-specific CSS styles from props
  */
-export function createTextStyles(props: Partial<TextProps>) {
+export function createTextStyles(props: Partial<ResolvedTextStyleProps>) {
   const {
     size = "base",
     weight = "normal",
@@ -112,7 +132,7 @@ export function createTextStyles(props: Partial<TextProps>) {
 /**
  * Creates CSS string from text styles
  */
-export function createTextStylesString(props: Partial<TextProps>): string {
+export function createTextStylesString(props: Partial<ResolvedTextStyleProps>): string {
   const styles = createTextStyles(props);
 
   return Object.entries(styles)
@@ -123,7 +143,9 @@ export function createTextStylesString(props: Partial<TextProps>): string {
 /**
  * Creates CSS variables object for text styling
  */
-export function createTextCSSVariables(props: Partial<TextProps>): Record<string, string> {
+export function createTextCSSVariables(
+  props: Partial<ResolvedTextStyleProps>,
+): Record<string, string> {
   const variables: Record<string, string> = {};
 
   // Create component-specific CSS variables for easy theming

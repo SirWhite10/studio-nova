@@ -6,12 +6,7 @@ export { default as CardFooter } from "./card-footer.svelte";
 export { default as CardHeader } from "./card-header.svelte";
 export { default as CardTitle } from "./card-title.svelte";
 export { cardComponentCatalog } from "./catalog.js";
-export {
-  cardActionEvents,
-  cardActionTargets,
-  cardSizes,
-  cardVariants,
-} from "./schema.js";
+export { cardActionEvents, cardActionTargets, cardSizes, cardVariants } from "./schema.js";
 export type {
   CardAction as CardSchemaAction,
   CardActionEvent,
@@ -22,8 +17,4 @@ export type {
   CardVariant,
 } from "./schema.js";
 export { executeCardTapActions, hasCardTapActions } from "./actions.js";
-export {
-  cardShowcaseDocument,
-  cardShowcaseJson,
-  cardShowcaseProviderActions,
-} from "./examples.js";
+export { cardShowcaseDocument, cardShowcaseJson, cardShowcaseProviderActions } from "./examples.js";

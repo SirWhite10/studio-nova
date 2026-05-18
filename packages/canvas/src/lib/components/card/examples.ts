@@ -10,21 +10,24 @@ export const cardShowcaseDocument = {
         social: {
           eyebrow: "Social / creator",
           title: "Creator post card",
-          description: "Reference-backed visuals with Canvas-owned schema, bindings, and tap actions.",
+          description:
+            "Reference-backed visuals with Canvas-owned schema, bindings, and tap actions.",
           statLabel: "Engagement",
           statValue: "311 likes",
         },
         product: {
           eyebrow: "Commerce / fashion",
           title: "Product highlight card",
-          description: "Semantic card props let the editor change structure and behavior without exposing Tailwind.",
+          description:
+            "Semantic card props let the editor change structure and behavior without exposing Tailwind.",
           priceLabel: "Price",
           priceValue: "$148",
         },
         ops: {
           eyebrow: "Operations / inventory",
           title: "Inventory summary card",
-          description: "Cards can mix data-bound copy, nested layout primitives, and runtime actions.",
+          description:
+            "Cards can mix data-bound copy, nested layout primitives, and runtime actions.",
           statLabel: "In stock",
           statValue: "1,284 units",
         },

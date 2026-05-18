@@ -126,6 +126,7 @@ Important clarification:
 ## Architecture Decisions
 
 ### 1. Canvas runtime root
+
 Every rendered canvas should flow through a `CanvasApp` root component.
 
 Responsibilities:
@@ -137,10 +138,12 @@ Responsibilities:
 - host future app-level capabilities
 
 ### 2. Document vs app boundary
+
 - `CanvasDocument` remains a portable, serializable artifact.
 - `CanvasApp` owns runtime behavior and environment.
 
 ### 2a. Editor boundary
+
 - The generic editor in this package should evolve toward **`CanvasEditor`**.
 - `CanvasEditor` should treat `CanvasApp` as the editable root selection target for app-level fields.
 - A studio/workspace-specific editor such as **`StudioEditor`** should live in **nova-cloud**, where workspace-specific behavior can expand independently of the Canvas library.
@@ -152,6 +155,7 @@ Responsibilities:
 - nova-cloud may expose a different or larger editor configuration surface than the base Canvas editor because it is a product layer, not the library layer.
 
 ### 2b. Why the editor split matters
+
 - The Canvas package should provide the reusable editor contract, runtime contract, and render contract.
 - nova-cloud should be free to build a richer workspace/studio experience on top without forcing all product-specific choices back into the library.
 - This helps future handoff because a developer can reason about the system in layers:
@@ -162,6 +166,7 @@ Responsibilities:
   - **StudioEditor** = nova-cloud-specific authoring product
 
 ### 3. Responsive model
+
 Responsive values should:
 
 - support `viewport` and `container` modes
@@ -170,9 +175,11 @@ Responsive values should:
 - store sparse overrides only for breakpoints explicitly added by the user
 
 ### 4. Breakpoint ownership
+
 Breakpoint definitions should be editable at the app/root level and default to Tailwind-like values.
 
 ### 5. Text ownership of typography
+
 `Text` should own:
 
 - font size
@@ -195,6 +202,7 @@ Tailwind classes on `Text` should remain available for:
 ## Proposed Breakpoint Scale
 
 ### Default viewport breakpoints
+
 - `base`: fallback/default
 - `xs`: 240px
 - `sm`: 320px
@@ -207,6 +215,7 @@ Tailwind classes on `Text` should remain available for:
 - `5xl`: 2560px
 
 ### Default container breakpoints
+
 Initial recommendation: start with the same key scale as viewport, but allow separate root definitions later.
 
 ---
@@ -214,6 +223,7 @@ Initial recommendation: start with the same key scale as viewport, but allow sep
 ## Proposed Runtime/Data Model
 
 ### Core concepts
+
 - `CanvasDocument`
 - `CanvasApp`
 - `CanvasAppConfig`
@@ -224,6 +234,7 @@ Initial recommendation: start with the same key scale as viewport, but allow sep
 - `CanvasSplashConfig`
 
 ### Responsive behavior
+
 Each responsive field stores:
 
 - active mode (`viewport` or `container`)
@@ -232,6 +243,7 @@ Each responsive field stores:
 - sparse breakpoint overrides per branch
 
 ### Root breakpoint behavior
+
 The app/root runtime provides:
 
 - viewport breakpoint definitions
@@ -243,16 +255,19 @@ The app/root runtime provides:
 ## Phase Plan
 
 ## Phase 0 — Planning and alignment
+
 - **Start:** 2026-05-17
 - **Target Completion:** 2026-05-17
 - **Status:** Planned
 
 ### Objectives
+
 - finalize architecture direction
 - lock terminology
 - write implementation plan
 
 ### Tasks
+
 1. Confirm `CanvasDocument` vs `CanvasApp` split.
 2. Confirm viewport/container responsive model.
 3. Confirm root-level breakpoint ownership.
@@ -260,24 +275,29 @@ The app/root runtime provides:
 5. Record final plan in `packages/canvas/planning`.
 
 ### Deliverables
+
 - this planning file
 
 ### Review Notes
+
 - validate naming before implementation begins
 - validate whether `CanvasApp` is required for all render paths or temporarily optional behind a compatibility wrapper
 
 ---
 
 ## Phase 1 — Introduce responsive types and breakpoint definitions
+
 - **Start:** 2026-05-17
 - **Target Completion:** 2026-05-18
 - **Status:** Planned
 
 ### Objectives
+
 - establish shared responsive type system
 - establish configurable breakpoint definitions
 
 ### Tasks
+
 1. Add `src/lib/base/responsive/types.ts`.
 2. Add `src/lib/base/responsive/breakpoints.ts`.
 3. Define Tailwind-like default viewport breakpoints.
@@ -286,32 +306,38 @@ The app/root runtime provides:
 6. Add helper signatures and pure resolver utilities.
 
 ### File Targets
+
 - `src/lib/base/responsive/types.ts`
 - `src/lib/base/responsive/breakpoints.ts`
 - `src/lib/base/responsive/resolve-responsive.ts`
 - possibly `src/lib/index.ts` exports
 
 ### Deliverables
+
 - reusable responsive type system
 - default breakpoint definitions
 - pure resolution helpers
 
 ### Review Notes
+
 - confirm breakpoint names and widths feel right on tiny screens and 4K+ displays
 - confirm container breakpoints should start equal to viewport defaults or immediately diverge
 
 ---
 
 ## Phase 2 — Build responsive runtime layer
+
 - **Start:** 2026-05-18
 - **Target Completion:** 2026-05-19
 - **Status:** Planned
 
 ### Objectives
+
 - build reactive responsive runtime support
 - support viewport and container modes
 
 ### Tasks
+
 1. Add `src/lib/base/responsive/media-query.svelte.ts`.
 2. Use Svelte `MediaQuery` for viewport breakpoint matching.
 3. Design container-width observation helper for container mode.
@@ -320,15 +346,18 @@ The app/root runtime provides:
 6. Ensure safe default/base behavior before hydration.
 
 ### File Targets
+
 - `src/lib/base/responsive/media-query.svelte.ts`
 - any supporting container observer utilities
 
 ### Deliverables
+
 - runtime responsive query helper layer
 - active breakpoint state calculation
 - root-config-driven breakpoint matching
 
 ### Review Notes
+
 - verify no hardcoded breakpoint values remain in runtime consumers
 - verify client hydration behavior remains stable
 - review whether container mode should rely on `ResizeObserver`, container registration, or both
@@ -336,15 +365,18 @@ The app/root runtime provides:
 ---
 
 ## Phase 3 — Introduce `CanvasApp` runtime root
+
 - **Start:** 2026-05-19
 - **Target Completion:** 2026-05-20
 - **Status:** Planned
 
 ### Objectives
+
 - create a first-class runtime boundary for Canvas
 - move app-level concerns out of ad hoc render paths
 
 ### Tasks
+
 1. Define `CanvasApp` component API.
 2. Define `CanvasAppConfig` type family.
 3. Define `CanvasResponsiveConfig` root config.
@@ -356,31 +388,37 @@ The app/root runtime provides:
 9. Plan the editor-facing app/document selection model so root selection maps to `CanvasApp`, not an empty document root.
 
 ### File Targets
+
 - `src/lib/base/canvas-app/` or similar new runtime folder
 - `src/lib/index.ts`
 - existing canvas render entry files
 
 ### Deliverables
+
 - `CanvasApp` root component
 - app-level runtime context
 - root-level responsive config delivery
 
 ### Review Notes
+
 - decide whether `Canvas` becomes a thin wrapper around `CanvasApp`
 - review app config surface for overreach vs staged rollout
 
 ---
 
 ## Phase 4 — Provider/runtime foundation
+
 - **Start:** 2026-05-20
 - **Target Completion:** 2026-05-21
 - **Status:** Planned
 
 ### Objectives
+
 - formalize provider and action runtime surface
 - let `CanvasApp` own runtime data delivery
 
 ### Tasks
+
 1. Audit current provider data/action types.
 2. Define app-level provider registry/config shape.
 3. Connect provider data and actions through `CanvasApp` context.
@@ -388,30 +426,36 @@ The app/root runtime provides:
 5. Add examples for runtime-driven data delivery.
 
 ### File Targets
+
 - canvas runtime types
 - provider-related type files
 - render pipeline integration files
 
 ### Deliverables
+
 - formal provider runtime pipeline
 - app-level provider registration model
 
 ### Review Notes
+
 - ensure existing demos do not break
 - decide later whether providers are document-owned, app-owned, or both with merge precedence
 
 ---
 
 ## Phase 5 — Responsive `Text` implementation
+
 - **Start:** 2026-05-21
 - **Target Completion:** 2026-05-22
 - **Status:** Planned
 
 ### Objectives
+
 - make `Text` own responsive typography
 - preserve Tailwind class use for non-typography utilities
 
 ### Tasks
+
 1. Extend `TextSize` scale to include at least `5xl`, `6xl`, `7xl`.
 2. Update `TextProps` to support responsive values for:
    - `size`
@@ -425,6 +469,7 @@ The app/root runtime provides:
 6. Update example hero/title content to use responsive `Text` props instead of typography Tailwind classes.
 
 ### File Targets
+
 - `src/lib/base/text/text-types.ts`
 - `src/lib/base/text/text-styles.svelte.ts`
 - `src/lib/base/text/text-theme.svelte.ts`
@@ -432,11 +477,13 @@ The app/root runtime provides:
 - `src/routes/landing-canvas/document.ts`
 
 ### Deliverables
+
 - responsive text primitive
 - hero title/paragraph rendered correctly
 - clean separation of typography props vs utility classes
 
 ### Review Notes
+
 - validate if `color` should remain non-responsive in phase 1
 - validate if transform should stay scalar-only initially
 - check if editor field schema needs placeholder support before full responsive UI lands
@@ -444,45 +491,54 @@ The app/root runtime provides:
 ---
 
 ## Phase 6 — Root breakpoint config in app/document flows
+
 - **Start:** 2026-05-22
 - **Target Completion:** 2026-05-22
 - **Status:** Planned
 
 ### Objectives
+
 - make breakpoints editable/configurable at the root app level
 - connect root config to runtime resolution
 
 ### Tasks
+
 1. Add root responsive config to example app/document.
 2. Wire root breakpoint config into responsive runtime helper creation.
 3. Add default fallback behavior when no custom config exists.
 4. Ensure child responsive fields only reference semantic keys.
 
 ### File Targets
+
 - `CanvasApp` config files
 - example document/app files
 - route demos using Canvas
 
 ### Deliverables
+
 - root-defined breakpoint runtime support
 - default fallback behavior preserved
 
 ### Review Notes
+
 - later editor work should expose these root breakpoints in the app/document inspector
 - review whether custom labels per breakpoint are useful in the first editor pass
 
 ---
 
 ## Phase 7 — Demo and migration pass
+
 - **Start:** 2026-05-22
 - **Target Completion:** 2026-05-23
 - **Status:** Planned
 
 ### Objectives
+
 - validate architecture with real Canvas examples
 - reduce drift between reference hero and Canvas hero
 
 ### Tasks
+
 1. Migrate landing canvas demo to `CanvasApp` runtime.
 2. Update hero block to match reference landing hero where intended.
 3. Add at least one responsive `Text` example beyond hero.
@@ -490,25 +546,30 @@ The app/root runtime provides:
 5. Add at least one example placeholder or proof for container mode.
 
 ### Deliverables
+
 - updated landing canvas demo
 - runtime-backed example coverage
 
 ### Review Notes
+
 - explicitly compare reference hero vs Canvas hero classes and behavior after migration
 - verify base/default-safe rendering before hydration
 
 ---
 
 ## Phase 8 — Editor planning hooks and future-proofing
+
 - **Start:** 2026-05-23
 - **Target Completion:** 2026-05-23
 - **Status:** Planned
 
 ### Objectives
+
 - leave implementation hooks for responsive editor UI
 - avoid refactors later
 
 ### Tasks
+
 1. Define field-state shapes that support sparse responsive values.
 2. Define intended editor behavior for mode tabs/toggles.
 3. Define add/remove breakpoint override behavior.
@@ -516,25 +577,30 @@ The app/root runtime provides:
 5. Mark follow-up work for container query field support across other components.
 
 ### Deliverables
+
 - stable data shape for future editor work
 - notes for responsive field UX
 
 ### Review Notes
+
 - editor should preserve inactive mode data
 - field controls should not force all breakpoints to be filled
 
 ---
 
 ## Phase 9 — Documentation and landing follow-up preparation
+
 - **Start:** 2026-05-23
 - **Target Completion:** 2026-05-24
 - **Status:** Planned
 
 ### Objectives
+
 - prepare implementation outputs to feed docs and README later
 - leave a clean record for landing/docs work
 
 ### Tasks
+
 1. Record final type exports and public API surfaces.
 2. Note example snippets worth reusing in README/docs.
 3. Note landing page messaging points for:
@@ -545,10 +611,12 @@ The app/root runtime provides:
 4. Note docs sections required after implementation.
 
 ### Deliverables
+
 - implementation notes for README and docs buildout
 - stable checklist for follow-up documentation pass
 
 ### Review Notes
+
 - docs should include both conceptual architecture and concrete API examples
 - landing/docs should show the difference between document data and app runtime
 
@@ -557,6 +625,7 @@ The app/root runtime provides:
 ## Proposed Type Areas to Add
 
 ### Responsive foundation
+
 - `ResponsiveBreakpoint`
 - `ResponsiveMode`
 - `ResponsiveModeValue<T>`
@@ -567,6 +636,7 @@ The app/root runtime provides:
 - `CanvasBreakpointSet`
 
 ### Canvas app runtime
+
 - `CanvasAppProps`
 - `CanvasAppConfig`
 - `CanvasSplashConfig`
@@ -574,6 +644,7 @@ The app/root runtime provides:
 - `CanvasActionRegistry`
 
 ### Text updates
+
 - responsive-aware `TextProps`
 - extended text sizing scale
 

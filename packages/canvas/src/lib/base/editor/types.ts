@@ -323,6 +323,9 @@ export interface EditorProps {
   componentRegistry?: Record<string, Component>;
   componentCatalog?: CanvasComponentCatalog;
   editorConfig?: Record<string, any>;
+  appConfig?: Record<string, any>;
+  appEditorConfig?: EditorComponent<any>;
+  updateAppProperty?: (property: string, value: any) => void;
   renderComponent?: (component: CanvasNode) => Snippet;
   class?: string;
 }
@@ -338,7 +341,10 @@ export interface EditorSidebarProps {
   clipboardNode?: CanvasNode;
   componentCatalog?: CanvasComponentCatalog;
   editorConfig?: Record<string, EditorComponent<any>>;
+  appConfig?: Record<string, any>;
+  appEditorConfig?: EditorComponent<any>;
   updateProperty?: (path: string[], property: string, value: any) => void;
+  updateAppProperty?: (property: string, value: any) => void;
   class?: string;
   isDraggable?: boolean;
   activePanel?: EditorPanel; // Added activePanel prop

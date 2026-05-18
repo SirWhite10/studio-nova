@@ -4,7 +4,7 @@ import type { TextProps } from "./text-types.js";
  * Text theme-aware styling manager
  */
 export function useTextThemeStyles(props: Partial<TextProps>) {
-  const { color, size, weight, lineHeight, letterSpacing } = props;
+  const { color } = props;
 
   // Theme-aware color resolution
   const resolveColor = $derived.by(() => {
@@ -41,30 +41,8 @@ export function useTextThemeStyles(props: Partial<TextProps>) {
   const themeVariables = $derived.by(() => {
     const variables: Record<string, string> = {};
 
-    // Set theme-aware color
     if (resolveColor) {
       variables["--text-theme-color"] = resolveColor;
-    }
-
-    // Set other theme variables
-    if (size) {
-      variables["--text-theme-size"] = `var(--text-${size})`;
-    }
-
-    if (weight) {
-      variables["--text-theme-weight"] = `var(--font-${weight})`;
-    }
-
-    if (lineHeight && lineHeight !== "normal") {
-      variables["--text-theme-line-height"] = lineHeight.startsWith("var(")
-        ? lineHeight
-        : `var(--leading-${lineHeight})`;
-    }
-
-    if (letterSpacing && letterSpacing !== "normal") {
-      variables["--text-theme-letter-spacing"] = letterSpacing.startsWith("var(")
-        ? letterSpacing
-        : `var(--tracking-${letterSpacing})`;
     }
 
     return variables;
@@ -74,35 +52,8 @@ export function useTextThemeStyles(props: Partial<TextProps>) {
   const themeCSSString = $derived.by(() => {
     const styles: string[] = [];
 
-    // Apply theme-aware color
     if (resolveColor) {
       styles.push(`color: ${resolveColor}`);
-    }
-
-    // Apply theme-aware size
-    if (size) {
-      styles.push(`font-size: var(--text-${size})`);
-    }
-
-    // Apply theme-aware weight
-    if (weight) {
-      styles.push(`font-weight: var(--font-${weight})`);
-    }
-
-    // Apply theme-aware line height
-    if (lineHeight && lineHeight !== "normal") {
-      const lineHeightValue = lineHeight.startsWith("var(")
-        ? lineHeight
-        : `var(--leading-${lineHeight})`;
-      styles.push(`line-height: ${lineHeightValue}`);
-    }
-
-    // Apply theme-aware letter spacing
-    if (letterSpacing && letterSpacing !== "normal") {
-      const letterSpacingValue = letterSpacing.startsWith("var(")
-        ? letterSpacing
-        : `var(--tracking-${letterSpacing})`;
-      styles.push(`letter-spacing: ${letterSpacingValue}`);
     }
 
     return styles.join("; ");

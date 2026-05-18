@@ -1,6 +1,18 @@
 <script lang="ts">
-	import { Canvas, canvasComponentCatalog } from "$lib/index.js";
+	import { CanvasApp, canvasComponentCatalog, type CanvasAppConfig } from "$lib/index.js";
 	import { landingCanvasDocument } from "./document.js";
+
+	const appConfig: CanvasAppConfig = {
+		responsive: {
+			defaultMode: "viewport",
+			breakpoints: {
+				viewport: {
+					md: { minWidth: 720, label: "MD" },
+					lg: { minWidth: 1040, label: "LG" },
+				},
+			},
+		},
+	};
 </script>
 
 <svelte:head>
@@ -11,8 +23,4 @@
 	/>
 </svelte:head>
 
-<div class="min-h-dvh bg-background text-foreground">
-	<div class="mx-auto flex w-full max-w-7xl flex-col gap-12 px-6 py-6 md:px-10 md:py-8">
-		<Canvas document={landingCanvasDocument} componentCatalog={canvasComponentCatalog} />
-	</div>
-</div>
+<CanvasApp document={landingCanvasDocument} componentCatalog={canvasComponentCatalog} config={appConfig} class="min-h-dvh bg-background text-foreground" />

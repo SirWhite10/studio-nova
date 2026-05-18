@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { StudioEditor } from "$lib/base/editor/index.js";
-	import { canvasComponentCatalog, type CanvasNode } from "$lib/index.js";
+	import { CanvasEditor } from "$lib/base/editor/index.js";
+	import { canvasComponentCatalog, type CanvasNode, type EditorComponent } from "$lib/index.js";
 
 	const components: CanvasNode[] = [
 		{
@@ -47,11 +47,46 @@
 			],
 		},
 	];
+
+	let appConfig = $state({
+		name: "Auth Demo App",
+		description: "Canvas editor root settings for the auth demo.",
+		breakpointPreset: "tailwind",
+	});
+
+	const appEditorConfig: EditorComponent<Record<string, unknown>> = {
+		label: "Canvas App",
+		editorConfig: {
+			fields: {
+				name: { type: "text", label: "App Name" },
+				description: { type: "text", label: "Description", multiline: true },
+				breakpointPreset: {
+					type: "select",
+					label: "Breakpoint Preset",
+					options: ["tailwind", "wide-screen"],
+				},
+			},
+			groups: {
+				general: {
+					label: "App Settings",
+					fields: ["name", "description", "breakpointPreset"],
+				},
+			},
+		},
+	};
 </script>
 
-<StudioEditor
+<CanvasEditor
 	{components}
 	componentCatalog={canvasComponentCatalog}
+	{appConfig}
+	{appEditorConfig}
+	updateAppProperty={(property, value) => {
+		appConfig = {
+			...appConfig,
+			[property]: value,
+		};
+	}}
 	sidebarMode="docked"
 	class="auth-editor-page"
 />

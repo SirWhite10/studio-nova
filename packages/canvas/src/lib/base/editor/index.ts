@@ -1,3 +1,4 @@
+import CanvasEditor from "./CanvasEditor.svelte";
 import StudioEditor from "./StudioEditor.svelte";
 import EditorCanvas from "./EditorCanvas.svelte";
 import EditorSidebar from "./EditorSidebar.svelte";
@@ -35,6 +36,7 @@ export {
 export { editorCodeTemplates } from "./code-templates.js";
 export * from "./types.js";
 export {
+  CanvasEditor,
   StudioEditor,
   EditorCanvas,
   EditorSidebar,
@@ -43,4 +45,4 @@ export {
   EditorField,
 };
 
-export default StudioEditor;
+export default CanvasEditor;
