@@ -80,14 +80,14 @@
 	} from "@tanstack/table-core";
 	import type { Schema } from "./schemas.js";
 	import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
-	import { createSvelteTable } from "$lib/components/ui/data-table/data-table.svelte.js";
-	import * as Tabs from "$lib/components/ui/tabs/index.js";
-	import * as Table from "$lib/components/ui/table/index.js";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import * as Select from "$lib/components/ui/select/index.js";
-	import { Label } from "$lib/components/ui/label/index.js";
-	import { FlexRender, renderComponent } from "$lib/components/ui/data-table/index.js";
+	import { createSvelteTable } from "./ui/data-table/data-table.svelte.js";
+	import * as Tabs from "./ui/tabs/index.js";
+	import * as Table from "./ui/table/index.js";
+	import * as DropdownMenu from "./ui/dropdown-menu/index.js";
+	import { Button } from "./ui/button/index.js";
+	import * as Select from "./ui/select/index.js";
+	import { Label } from "./ui/label/index.js";
+	import { FlexRender, renderComponent } from "./ui/data-table/index.js";
 	import LayoutColumnsIcon from "@tabler/icons-svelte/icons/layout-columns";
 	import ChevronDownIcon from "@tabler/icons-svelte/icons/chevron-down";
 	import PlusIcon from "@tabler/icons-svelte/icons/plus";
@@ -109,7 +109,7 @@
 	import { DragDropProvider } from "@dnd-kit-svelte/svelte";
 	import { move } from "@dnd-kit/helpers";
 	import { useSortable } from "@dnd-kit-svelte/svelte/sortable";
-	import { Badge } from "$lib/components/ui/badge/index.js";
+	import { Badge } from "./ui/badge/index.js";
 
 	let { data }: { data: Schema[] } = $props();
 	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });

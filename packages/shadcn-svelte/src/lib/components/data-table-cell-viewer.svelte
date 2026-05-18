@@ -4,14 +4,14 @@
 	import { scaleUtc } from "d3-scale";
 	import { curveNatural } from "d3-shape";
 
-	import * as Drawer from "$lib/components/ui/drawer/index.js";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import * as Chart from "$lib/components/ui/chart/index.js";
-	import { IsMobile } from "$lib/hooks/is-mobile.svelte.js";
-	import { Label } from "$lib/components/ui/label/index.js";
-	import { Input } from "$lib/components/ui/input/index.js";
-	import * as Select from "$lib/components/ui/select/index.js";
-	import { Separator } from "$lib/components/ui/separator/index.js";
+	import * as Drawer from "./ui/drawer/index.js";
+	import { Button } from "./ui/button/index.js";
+	import * as Chart from "./ui/chart/index.js";
+	import { IsMobile } from "../hooks/is-mobile.svelte.js";
+	import { Label } from "./ui/label/index.js";
+	import { Input } from "./ui/input/index.js";
+	import * as Select from "./ui/select/index.js";
+	import { Separator } from "./ui/separator/index.js";
 	import type { Schema } from "./schemas.js";
 
 	const chartData = [

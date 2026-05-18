@@ -1,65 +1,148 @@
-# Svelte library
+# Canvas
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+Canvas is a data-driven composition and rendering system for reusable app surfaces, editors, and page-like documents.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+## Why this architecture is being introduced
 
-## Creating a project
+This direction grew out of a concrete rendering problem in the landing hero work:
 
-If you're seeing this, you've probably already done this step. Congrats!
+- the hero was moved into a data-driven Canvas block
+- its title and paragraph were modeled as Canvas `Text` nodes
+- `Text` applies inline typography styles
+- Tailwind typography classes on those nodes were therefore being overridden
 
-```sh
-# create a new project in the current directory
-npx sv create
+That exposed a larger architectural need:
 
-# create a new project in my-app
-npx sv create my-app
-```
+1. typography and responsiveness should be owned by Canvas primitives themselves
+2. responsive behavior should not be hardcoded ad hoc inside individual components
+3. app-level concerns such as breakpoints, providers, splash/loading behavior, and future integration/runtime state need a dedicated root above the renderer
+4. the editor should have a meaningful root object to select and inspect
 
-To recreate this project with the same configuration:
+That is why the package is moving toward a clearer split between:
 
-```sh
-# recreate this project
-pnpm dlx sv@0.15.3 create --template library --types ts --install pnpm canvas
-```
+- `CanvasApp` as runtime root
+- `CanvasDocument` as authored model
+- `Canvas` as renderer
+- `CanvasEditor` as the generic editor surface
 
-## Developing
+The immediate trigger was a text sizing/responsiveness issue, but the solution necessarily expands into the broader runtime and editor model.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Useful reference point
+
+A useful conceptual reference is **Puck** (React), mainly because it shows a schema-driven visual editor model built around:
+
+- a component registry
+- serialized authored data
+- field-schema-driven editing
+- drag/drop visual composition
+
+Canvas should borrow the *ideas*, not the framework or exact structure.
+
+Canvas is intentionally aiming for:
+
+- stronger separation of runtime/document/renderer/editor concerns
+- support for app surfaces and provider-backed widgets, not only page-builder blocks
+- a generic/default editor, not a mandatory single editor UI
+- contracts that are easy for **LLMs, agents, and code harnesses** to understand from types and manifests
+
+## Core model
+
+Canvas is organized around three distinct layers:
+
+1. **`CanvasApp`**
+   - the top-level runtime shell
+   - owns app-wide runtime concerns like responsive breakpoints, providers, splash/loading behavior, and future app/runtime configuration
+
+2. **`CanvasDocument`**
+   - the authored, serializable composition model
+   - describes the nodes, props, slots, and structure being rendered
+   - can represent a page, screen, route, section, or other reusable surface
+
+3. **`Canvas`**
+   - the renderer
+   - receives a document, component registry, and runtime inputs
+   - renders exactly what its parent gives it
+
+## Runtime hierarchy
+
+The intended runtime hierarchy is:
+
+- `CanvasApp`
+  - `CanvasDocument` (data/model)
+  - `Canvas` (renderer)
+
+Important:
+
+- `CanvasApp` is **not** the first child in the document tree.
+- `CanvasApp` wraps the Canvas render system from above.
+- `Canvas` should stay a rendering primitive, not an app/runtime shell.
+- `CanvasDocument` is conceptually above `Canvas`, even when represented as JSON/TypeScript data instead of a Svelte component.
+
+## Editor direction
+
+The generic editor surface in this package should evolve toward **`CanvasEditor`**.
+
+- `CanvasEditor` should treat `CanvasApp` as the editable root selection target.
+- Selecting the root in the editor should expose app/runtime fields rather than a no-op root selection.
+- A product/workspace-specific editor such as **`StudioEditor`** should live in **nova-cloud**, where workspace-specific behavior can grow independently.
+- The current package-level `StudioEditor` implementation is best treated as the starting point to generalize into `CanvasEditor`.
+- Planned rename direction in this package:
+  - `StudioEditor.svelte` → `CanvasEditor.svelte`
+  - package exports and examples should follow the generic `CanvasEditor` naming
+  - a temporary compatibility alias may be kept during migration if needed
+- The studio/workspace editor may expose a different or expanded configuration surface than the base library editor, because nova-cloud can compose additional product-level behavior on top of the generic Canvas editor contract.
+
+### Thought process for another developer
+
+If this work is handed off, the intended layering is:
+
+1. **Canvas library**
+   - owns the generic rendering/runtime/editor contracts
+   - should stay portable, typed, and reusable
+   - should not become tightly coupled to one workspace product
+
+2. **nova-cloud / Studio**
+   - owns workspace-specific UX and product behavior
+   - can wrap the generic editor and expose additional settings, flows, or controls
+   - can decide which parts of the generic config to show, hide, constrain, or extend
+
+In other words:
+
+- `CanvasEditor` is the platform/editor primitive
+- `StudioEditor` is the product/editor experience
+
+This separation is intentional so the library can remain stable while the nova-cloud studio grows faster and more specifically.
+
+## Responsive direction
+
+Responsive behavior is planned to be data-driven and app-defined:
+
+- root/app-level breakpoint definitions with sensible Tailwind-like defaults
+- viewport and container responsive modes
+- sparse responsive field overrides
+- responsive values resolved by runtime configuration provided from `CanvasApp`
+
+## Planning
+
+Current implementation planning lives in:
+
+- `planning/26-05-17-canvas-app-runtime-and-responsive-foundation.md`
+- `planning/26-05-17-canvas-extension-contribution-model.md`
+
+## Development
 
 ```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
-
-## Building
-
-To build your library:
+## Checks
 
 ```sh
-npm pack
+npm run check
 ```
 
-To create a production version of your showcase app:
+## Build
 
 ```sh
 npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-
-## Publishing
-
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
-
-To publish your library to [npm](https://www.npmjs.com):
-
-```sh
-npm publish
 ```

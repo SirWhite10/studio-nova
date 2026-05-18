@@ -1,6 +1,6 @@
 <script lang="ts">
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import type { WithoutChildren } from "$lib/utils.js";
+	import * as Sidebar from "./ui/sidebar/index.js";
+	import type { WithoutChildren } from "../utils.js";
 	import type { ComponentProps } from "svelte";
 	import type { Icon } from "@tabler/icons-svelte";
 

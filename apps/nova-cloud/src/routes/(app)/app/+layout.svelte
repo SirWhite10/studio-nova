@@ -15,6 +15,10 @@
   let { children, data }: { children?: any; data?: { data?: StudioSidebarState | null } } = $props();
 
   let sidebarData = $state.raw<StudioSidebarState | null>(null);
+  type BreadcrumbItem = {
+    label: string;
+    href?: string;
+  };
 
   const breadcrumbLabelMap: Record<string, string> = {
     agents: 'Agents',
@@ -37,6 +41,74 @@
 
   function formatSegmentLabel(segment: string) {
     return breadcrumbLabelMap[segment] ?? segment.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  function normalizeBreadcrumbItem(item: unknown): BreadcrumbItem | null {
+    if (typeof item === 'string') {
+      return item.trim() ? { label: item } : null;
+    }
+
+    if (!isRecord(item) || typeof item.label !== 'string' || !item.label.trim()) {
+      return null;
+    }
+
+    const breadcrumb: BreadcrumbItem = { label: item.label };
+    if (typeof item.href === 'string' && item.href.trim()) {
+      breadcrumb.href = item.href;
+    }
+
+    return breadcrumb;
+  }
+
+  function getExplicitBreadcrumbs(): BreadcrumbItem[] | null {
+    if (!isRecord(page.data) || !Array.isArray(page.data.breadcrumbs)) {
+      return null;
+    }
+
+    const breadcrumbs = page.data.breadcrumbs
+      .map((item) => normalizeBreadcrumbItem(item))
+      .filter((item): item is BreadcrumbItem => item !== null);
+
+    return breadcrumbs.length > 0 ? breadcrumbs : null;
+  }
+
+  function getDetailLabel(section: string, pageData: Record<string, unknown>) {
+    if (section === 'chat' && typeof pageData.chatTitle === 'string' && pageData.chatTitle.trim()) {
+      return pageData.chatTitle;
+    }
+
+    const integration = pageData.integration;
+    if (section === 'integrations' && isRecord(integration) && typeof integration.title === 'string' && integration.title.trim()) {
+      return integration.title;
+    }
+
+    if (section === 'agents') {
+      if (typeof pageData.agentTitle === 'string' && pageData.agentTitle.trim()) {
+        return pageData.agentTitle;
+      }
+
+      const agent = pageData.agent;
+      if (isRecord(agent) && typeof agent.title === 'string' && agent.title.trim()) {
+        return agent.title;
+      }
+    }
+
+    if (section === 'jobs') {
+      if (typeof pageData.jobTitle === 'string' && pageData.jobTitle.trim()) {
+        return pageData.jobTitle;
+      }
+
+      const job = pageData.job;
+      if (isRecord(job) && typeof job.title === 'string' && job.title.trim()) {
+        return job.title;
+      }
+    }
+
+    return null;
   }
 
   async function refreshSidebarState() {
@@ -107,43 +179,70 @@
   );
 
   const headerBreadcrumbs = $derived.by(() => {
+    const explicitBreadcrumbs = getExplicitBreadcrumbs();
+    if (explicitBreadcrumbs) {
+      return explicitBreadcrumbs;
+    }
+
     const studioId = page.params.studioId ?? page.url.searchParams.get('studio') ?? sidebarData?.currentStudio?.id ?? null;
+    const pageData = isRecord(page.data) ? page.data : {};
     const pathSegments = page.url.pathname.split('/').filter(Boolean);
-    const breadcrumbs: Array<{ label: string; href?: string }> = [{ label: 'App', href: '/app' }];
+
+    if (pathSegments[0] !== 'app') {
+      return [];
+    }
+
+    if (pathSegments.length === 1) {
+      return [];
+    }
 
     if (pathSegments[1] === 'chats') {
-      breadcrumbs.push({ label: 'Chats' });
-      return breadcrumbs;
+      return [
+        {
+          label: formatSegmentLabel('chats'),
+          href: pathSegments.length > 2 ? '/app/chats' : undefined,
+        },
+      ];
     }
 
     if (pathSegments[1] === 'studios') {
       const studioLabel = sidebarData?.currentStudio?.name ?? 'Studio';
       const studioHref = studioId ? `/app/studios/${studioId}` : undefined;
-      breadcrumbs.push({ label: studioLabel, href: studioHref });
+      const remaining = pathSegments.slice(3);
 
-      const remaining = pathSegments.slice(3).filter((segment) => segment !== 'chat');
-      for (let index = 0; index < remaining.length; index += 1) {
-        const segment = remaining[index];
-        const last = index === remaining.length - 1;
-        breadcrumbs.push({
-          label: formatSegmentLabel(segment),
-          href: last || !studioHref ? undefined : `${studioHref}/${remaining.slice(0, index + 1).join('/')}`,
-        });
+      if (remaining.length === 0) {
+        return [
+          {
+            label: studioLabel,
+          },
+        ];
       }
 
-      return breadcrumbs;
-    }
+      const studioSegments = remaining[0] === 'chat' && remaining.length > 1 ? remaining.slice(1) : remaining;
+      const section = studioSegments[0];
 
-    for (let index = 1; index < pathSegments.length; index += 1) {
-      const segment = pathSegments[index];
-      const last = index === pathSegments.length - 1;
-      breadcrumbs.push({
-        label: formatSegmentLabel(segment),
-        href: last ? undefined : `/${pathSegments.slice(0, index + 1).join('/')}`,
+      return studioSegments.map((segment, index) => {
+        const isLast = index === studioSegments.length - 1;
+        const label =
+          isLast
+            ? getDetailLabel(section, pageData) ?? formatSegmentLabel(segment)
+            : formatSegmentLabel(segment);
+        const href =
+          !isLast && studioHref
+            ? `${studioHref}/${studioSegments.slice(0, index + 1).join('/')}`
+            : undefined;
+
+        return { label, href };
       });
     }
 
-    return breadcrumbs;
+    return pathSegments.slice(1).map((segment, index) => {
+      const last = index === pathSegments.length - 2;
+      return {
+        label: formatSegmentLabel(segment),
+        href: last ? undefined : `/${pathSegments.slice(0, index + 2).join('/')}`,
+      };
+    });
   });
 
   $effect(() => {
@@ -192,37 +291,43 @@
 
 <Sidebar.Provider>
   <AppSidebar data={sidebarData} oncreate={() => studioCreateDialog.openDialog()} />
-  <Sidebar.Inset title="title" class="relative min-h-[100dvh] overflow-x-hidden">
-    {#if showLayoutHeader}
-      <header class="studio-shell-header sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-4 backdrop-blur">
-        <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-          <Sidebar.Trigger class="-ms-1" />
-          <Separator
-            orientation="vertical"
-            class="me-2 data-[orientation=vertical]:h-4"
-          />
-          <div class="min-w-0 flex-1 overflow-x-auto">
-            <Breadcrumb.Root>
-              <Breadcrumb.List class="flex-nowrap whitespace-nowrap">
-                {#each headerBreadcrumbs as crumb, index (index)}
-                  <Breadcrumb.Item>
-                    {#if crumb.href}
-                      <Breadcrumb.Link href={crumb.href}>{crumb.label}</Breadcrumb.Link>
-                    {:else}
-                      <Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
-                    {/if}
-                  </Breadcrumb.Item>
-                  {#if index < headerBreadcrumbs.length - 1}
-                    <Breadcrumb.Separator />
-                  {/if}
-                {/each}
-              </Breadcrumb.List>
-            </Breadcrumb.Root>
+  <Sidebar.Inset class="relative flex h-dvh min-h-[100dvh] w-full flex-1 flex-col overflow-hidden overflow-x-hidden bg-background md:peer-data-[variant=inset]:!m-0 md:peer-data-[variant=inset]:!rounded-none md:peer-data-[variant=inset]:!shadow-none">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      {#if showLayoutHeader}
+        <header class="studio-shell-header sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-4">
+          <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            <Sidebar.Trigger class="-ms-1" />
+            {#if headerBreadcrumbs.length > 0}
+              <Separator
+                orientation="vertical"
+                class="me-2 data-[orientation=vertical]:h-4"
+              />
+              <div class="min-w-0 flex-1 overflow-x-auto">
+                <Breadcrumb.Root>
+                  <Breadcrumb.List class="flex-nowrap whitespace-nowrap">
+                    {#each headerBreadcrumbs as crumb, index (index)}
+                      <Breadcrumb.Item>
+                        {#if crumb.href}
+                          <Breadcrumb.Link href={crumb.href}>{crumb.label}</Breadcrumb.Link>
+                        {:else}
+                          <Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
+                        {/if}
+                      </Breadcrumb.Item>
+                      {#if index < headerBreadcrumbs.length - 1}
+                        <Breadcrumb.Separator />
+                      {/if}
+                    {/each}
+                  </Breadcrumb.List>
+                </Breadcrumb.Root>
+              </div>
+            {/if}
           </div>
-        </div>
-      </header>
-    {/if}
-    {@render children()}
+        </header>
+      {/if}
+      <div class="flex min-h-0 flex-1 flex-col">
+        {@render children()}
+      </div>
+    </div>
   </Sidebar.Inset>
 </Sidebar.Provider>
 

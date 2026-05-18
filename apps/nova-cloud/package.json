@@ -62,6 +62,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/table-core": "^8.21.3",
+    "@types/gsap": "^3.0.0",
     "@types/node": "^25.4.0",
     "bits-ui": "^2.16.0",
     "clsx": "^2.1.1",

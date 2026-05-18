@@ -18,7 +18,7 @@
 	import NavMain from "./nav-main.svelte";
 	import NavSecondary from "./nav-secondary.svelte";
 	import NavUser from "./nav-user.svelte";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
+	import * as Sidebar from "./ui/sidebar/index.js";
 	import type { ComponentProps } from "svelte";
 
 	const data = {

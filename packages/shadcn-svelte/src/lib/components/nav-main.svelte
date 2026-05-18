@@ -1,8 +1,8 @@
 <script lang="ts">
 	import CirclePlusFilledIcon from "@tabler/icons-svelte/icons/circle-plus-filled";
 	import MailIcon from "@tabler/icons-svelte/icons/mail";
-	import { Button } from "$lib/components/ui/button/index.js";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
+	import { Button } from "./ui/button/index.js";
+	import * as Sidebar from "./ui/sidebar/index.js";
 	import type { Icon } from "@tabler/icons-svelte";
 
 	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
