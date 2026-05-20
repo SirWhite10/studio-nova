@@ -1,0 +1,16 @@
+.HeadingAnalyzer {
+  display: block;
+  padding: 16px;
+}
+
+.HeadingAnalyzer-cssWarning {
+  display: none !important;
+}
+
+.HeadingAnalyzerItem {
+  display: inline;
+}
+
+.HeadingAnalyzerItem--missing {
+  color: var(--puck-color-red-04);
+}
