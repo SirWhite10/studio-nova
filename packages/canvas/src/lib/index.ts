@@ -1,6 +1,15 @@
 export { default as Canvas } from "./base/canvas/canvas.svelte";
 export { default as CanvasApp } from "./base/canvas-app/CanvasApp.svelte";
 export { getCanvasAppContext, setCanvasAppContext } from "./base/canvas-app/index.js";
+export { default as CanvasThemeModeSwitcher } from "./base/theme/CanvasThemeModeSwitcher.svelte";
+export { default as GlobalModeSwitcher } from "./base/theme/GlobalModeSwitcher.svelte";
+export { default as ThemeProvider } from "./base/theme/ThemeProvider.svelte";
+export {
+  defaultCanvasTheme,
+  generateThemeVariables,
+  resolveCanvasTheme,
+} from "./base/theme/index.js";
+export { getThemeContext, setThemeContext } from "./base/theme/index.js";
 export { canvasCodeTemplates } from "./base/canvas/index.js";
 export {
   CONTAINER_BREAKPOINTS,
@@ -73,6 +82,12 @@ export type {
   CanvasAppProps,
   CanvasSplashConfig,
 } from "./base/canvas-app/types.js";
+export type {
+  CanvasResolvedThemeMode,
+  CanvasThemeConfig,
+  CanvasThemeMode,
+  CanvasThemeVariables,
+} from "./base/theme/index.js";
 export type {
   EditorComponent,
   EditorConfig,

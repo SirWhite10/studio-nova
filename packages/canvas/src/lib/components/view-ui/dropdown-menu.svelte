@@ -175,14 +175,14 @@ const contentStyles = $derived.by(() => {
 		gap: 0.45rem;
 		min-height: 2rem;
 		padding: 0.45rem 0.7rem;
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 999px;
-		background: #fff;
+		background: var(--background);
 		color: inherit;
 		font: inherit;
 		font-size: 0.8rem;
 		font-weight: 600;
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+		box-shadow: 0 8px 20px color-mix(in oklab, var(--foreground), transparent 92%);
 	}
 
 	.canvas-dropdown-trigger-icon-only {
@@ -196,10 +196,11 @@ const contentStyles = $derived.by(() => {
 		display: grid;
 		gap: 0.2rem;
 		padding: 0.35rem;
-		border: 1px solid rgba(15, 23, 42, 0.1);
+		border: 1px solid var(--border);
 		border-radius: 0.9rem;
-		background: rgba(255, 255, 255, 0.98);
-		box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+		background: color-mix(in oklab, var(--background), transparent 4%);
+		color: var(--foreground);
+		box-shadow: 0 18px 40px color-mix(in oklab, var(--foreground), transparent 84%);
 		backdrop-filter: blur(12px);
 	}
 
@@ -221,7 +222,7 @@ const contentStyles = $derived.by(() => {
 	}
 
 	.canvas-dropdown-item:hover {
-		background: rgba(15, 23, 42, 0.05);
+		background: color-mix(in oklab, var(--background), var(--muted) 42%);
 	}
 
 	.canvas-dropdown-item:disabled {

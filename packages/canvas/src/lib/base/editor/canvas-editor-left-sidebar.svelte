@@ -5,7 +5,7 @@
 	import { cn } from "$lib/utils.js";
 	import { getEditorContext } from "./context.js";
 	import CanvasEditorLeftRail from "./canvas-editor-left-rail.svelte";
-	import type { ComponentSelection, EditorLeftPanel } from "./types.js";
+	import type { ComponentSelection, EditorAppSection, EditorLeftPanel } from "./types.js";
 	import {
 		buildEditorLayerTree,
 		createNodeFromCatalogEntry,
@@ -19,7 +19,11 @@
 		selection = undefined,
 		componentCatalog = {},
 		activePanel = "Outline",
+		appName = "Canvas App",
 		onPanelChange = undefined,
+		onSelectAppSection = undefined,
+		onOpenPages = undefined,
+		onOpenEditorSettings = undefined,
 		leftSidebar = undefined,
 		shell = "desktop",
 	}: {
@@ -27,7 +31,11 @@
 		selection?: ComponentSelection;
 		componentCatalog?: CanvasComponentCatalog;
 		activePanel?: EditorLeftPanel;
+		appName?: string;
 		onPanelChange?: (panel: EditorLeftPanel) => void;
+		onSelectAppSection?: (section: EditorAppSection) => void;
+		onOpenPages?: () => void;
+		onOpenEditorSettings?: () => void;
 		leftSidebar?: Snippet;
 		shell?: "desktop" | "body";
 	} = $props();
@@ -144,15 +152,6 @@
 					</section>
 				{/each}
 			</div>
-		{:else if activePanel === "Settings"}
-			<div class="canvas-editor-left-sidebar-scroll">
-				<section class="canvas-editor-left-sidebar-section">
-					<h3 class="canvas-editor-left-sidebar-section-title">App Settings</h3>
-					<p class="canvas-editor-left-sidebar-component-description">
-						Manage app and runtime settings from the right inspector.
-					</p>
-				</section>
-			</div>
 		{/if}
 	</div>
 {/snippet}
@@ -163,7 +162,7 @@
 	<div class="canvas-editor-left-sidebar-root">
 		<div class="canvas-editor-left-sidebar-shell">
 			<div class="canvas-editor-left-sidebar-rail-column">
-				<CanvasEditorLeftRail {activePanel} onSelect={onPanelChange} />
+				<CanvasEditorLeftRail {activePanel} {appName} onSelect={onPanelChange} onSelectAppSection={onSelectAppSection} {onOpenPages} {onOpenEditorSettings} />
 			</div>
 			<div class="canvas-editor-left-sidebar-panel-column">
 				<Sidebar.Header class="border-b border-black/8 px-0 py-0">
@@ -182,8 +181,9 @@
 		height: 100%;
 		min-height: 0;
 		width: 100%;
-		background: rgba(248, 250, 252, 0.96);
-		box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.08);
+		background: color-mix(in oklab, var(--background), var(--muted) 28%);
+		color: var(--foreground);
+		box-shadow: inset -1px 0 0 var(--border);
 	}
 
 	.canvas-editor-left-sidebar-shell {
@@ -196,7 +196,7 @@
 	.canvas-editor-left-sidebar-rail-column {
 		height: 100%;
 		min-height: 0;
-		background: rgba(241, 245, 249, 0.92);
+		background: color-mix(in oklab, var(--background), var(--muted) 40%);
 	}
 
 	.canvas-editor-left-sidebar-panel-column {
@@ -204,8 +204,8 @@
 		min-width: 0;
 		min-height: 0;
 		flex-direction: column;
-		border-left: 1px solid rgba(15, 23, 42, 0.08);
-		background: rgba(248, 250, 252, 0.96);
+		border-left: 1px solid var(--border);
+		background: color-mix(in oklab, var(--background), var(--muted) 28%);
 	}
 
 	.canvas-editor-left-sidebar-title {
@@ -213,12 +213,12 @@
 		align-items: center;
 		min-height: 3.25rem;
 		padding: 0 1rem;
-		background: rgba(248, 250, 252, 0.92);
+		background: color-mix(in oklab, var(--background), var(--muted) 24%);
 		font-size: 0.82rem;
 		font-weight: 700;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
+		color: color-mix(in oklab, var(--foreground), transparent 28%);
 	}
 
 	.canvas-editor-left-sidebar-body,
@@ -257,22 +257,22 @@
 		font-weight: 700;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
+		color: color-mix(in oklab, var(--foreground), transparent 28%);
 	}
 
 	.canvas-editor-left-sidebar-empty,
 	.canvas-editor-left-sidebar-disabled {
 		font-size: 0.78rem;
-		color: rgba(15, 23, 42, 0.52);
+		color: color-mix(in oklab, var(--foreground), transparent 48%);
 	}
 
 	.canvas-editor-left-sidebar-component-card {
 		display: grid;
 		gap: 0.75rem;
 		padding: 0.875rem;
-		border: 1px solid rgba(15, 23, 42, 0.1);
+		border: 1px solid var(--border);
 		border-radius: 1rem;
-		background: rgba(255, 255, 255, 0.92);
+		background: color-mix(in oklab, var(--background), transparent 8%);
 		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 	}
 
@@ -285,13 +285,14 @@
 		margin: 0.25rem 0 0;
 		font-size: 0.78rem;
 		line-height: 1.45;
-		color: rgba(15, 23, 42, 0.64);
+		color: color-mix(in oklab, var(--foreground), transparent 36%);
 	}
 
 	.canvas-editor-left-sidebar-button {
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 0.75rem;
-		background: #fff;
+		background: var(--background);
+		color: var(--foreground);
 		padding: 0.5rem 0.75rem;
 		font: inherit;
 		font-size: 0.78rem;
@@ -308,7 +309,7 @@
 		gap: 0.375rem;
 		margin-left: 0.75rem;
 		padding-left: 0.75rem;
-		border-left: 1px solid rgba(15, 23, 42, 0.08);
+		border-left: 1px solid var(--border);
 	}
 
 	.canvas-editor-layer-slot {
@@ -321,7 +322,7 @@
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: rgba(15, 23, 42, 0.55);
+		color: color-mix(in oklab, var(--foreground), transparent 45%);
 	}
 
 	.canvas-editor-layer-button {
@@ -330,9 +331,10 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		border: 1px solid rgba(15, 23, 42, 0.1);
+		border: 1px solid var(--border);
 		border-radius: 0.75rem;
-		background: rgba(255, 255, 255, 0.9);
+		background: color-mix(in oklab, var(--background), transparent 10%);
+		color: var(--foreground);
 		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 		padding: 0.5rem 0.75rem;
 		font: inherit;
@@ -342,9 +344,9 @@
 	}
 
 	.canvas-editor-layer-button-active {
-		border-color: #111827;
-		background: #111827;
-		color: #fff;
+		border-color: var(--foreground);
+		background: var(--foreground);
+		color: var(--background);
 	}
 
 	.canvas-editor-layer-label {

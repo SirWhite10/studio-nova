@@ -27,7 +27,9 @@ export type EditorSidebarMode = "docked" | "floating" | "hidden" | "auto";
  */
 export type EditorPanel = "Properties" | "Settings";
 
-export type EditorLeftPanel = "Outline" | "Components" | "Settings";
+export type EditorLeftPanel = "Outline" | "Components";
+
+export type EditorAppSection = "app-settings" | "theme" | "providers" | "seo" | "metadata";
 
 /**
  * Editor field types
@@ -335,6 +337,9 @@ export interface EditorProps {
   componentRegistry?: Record<string, Component>;
   componentCatalog?: CanvasComponentCatalog;
   editorConfig?: Record<string, any>;
+  documentConfig?: Record<string, any>;
+  documentEditorConfig?: EditorComponent<any>;
+  updateDocumentProperty?: (property: string, value: any) => void;
   appConfig?: Record<string, any>;
   appEditorConfig?: EditorComponent<any>;
   updateAppProperty?: (property: string, value: any) => void;
@@ -351,14 +356,16 @@ export interface EditorSidebarProps {
   mode?: EditorSidebarMode;
   components?: CanvasNode[];
   selection?: ComponentSelection;
-  documentSelection?: ComponentSelection;
   clipboardAvailable?: boolean;
   clipboardNode?: CanvasNode;
   componentCatalog?: CanvasComponentCatalog;
   editorConfig?: Record<string, EditorComponent<any>>;
+  documentConfig?: Record<string, any>;
+  documentEditorConfig?: EditorComponent<any>;
   appConfig?: Record<string, any>;
   appEditorConfig?: EditorComponent<any>;
   updateProperty?: (path: string[], property: string, value: any) => void;
+  updateDocumentProperty?: (property: string, value: any) => void;
   updateAppProperty?: (property: string, value: any) => void;
   class?: string;
   isDraggable?: boolean;

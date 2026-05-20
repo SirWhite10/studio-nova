@@ -525,6 +525,461 @@ For `landing-canvas` specifically:
 
 ---
 
+## Theme integration follow-up plan
+
+### Why this follow-up exists
+
+The current editor/runtime work exposed a theme ownership gap:
+
+- `app.css` is currently the real live theme contract for the package
+- some runtime surfaces already consume CSS variables like `var(--primary)` and `var(--background)`
+- some older component paths still consume static token objects instead of the live CSS-variable theme
+- `CanvasApp` does not yet fully own or apply an app-scoped theme provider/runtime contract
+
+This creates visible mismatches like the primary button using a static dark token instead of the app theme color.
+
+### Theme architecture decision
+
+Canvas should support **two theme layers**:
+
+#### 1. Global/site theme layer
+
+Used for preview/deployment and app-shell SSR.
+
+Responsibilities:
+
+- resolve theme from cookies or route/server state
+- inject the correct theme variables into the initial HTML response
+- avoid client-side theme flicker on first paint
+- optionally set dark/light classes or data attributes for SSR parity
+
+#### 2. `CanvasApp` scoped theme layer
+
+Used for embedded runtime/editor use and app-local previewing.
+
+Responsibilities:
+
+- accept app-level theme config from `CanvasApp`
+- apply theme variables at the `CanvasApp` root instead of always mutating global document state
+- support live editor updates without requiring full page reloads
+- inherit from the global SSR theme when no explicit app override is provided
+
+### Canonical theme contract
+
+The canonical default theme contract should be based on the current live variables in:
+
+- `packages/canvas/src/app.css`
+
+That contract currently includes at least:
+
+- `background`
+- `foreground`
+- `card`
+- `card-foreground`
+- `popover`
+- `popover-foreground`
+- `primary`
+- `primary-foreground`
+- `secondary`
+- `secondary-foreground`
+- `muted`
+- `muted-foreground`
+- `accent`
+- `accent-foreground`
+- `destructive`
+- `border`
+- `input`
+- `ring`
+- `chart-1` through `chart-5`
+- `radius`
+- `sidebar`
+- `sidebar-foreground`
+- `sidebar-primary`
+- `sidebar-primary-foreground`
+- `sidebar-accent`
+- `sidebar-accent-foreground`
+- `sidebar-border`
+- `sidebar-ring`
+
+The existing earlier theme design also includes richer optional fields such as:
+
+- `destructive-foreground`
+- `font-sans`
+- `font-serif`
+- `font-mono`
+- `shadow-*`
+- `letter-spacing`
+- `spacing`
+
+Decision:
+
+- use the current `app.css` variables as the required first-pass baseline
+- allow the richer preset/theme model to extend beyond that baseline later
+- update the default/base theme values so they match the current `app.css`, not the older static monochrome defaults
+
+### Existing theme code to reuse or consolidate
+
+Potentially reusable earlier theme pieces already exist conceptually in the user-provided design:
+
+- `ThemeProvider`
+- `ThemePreset`
+- `defaultPresets`
+- `generateThemeVariables(...)`
+- cookie-based SSR theme handling
+- theme context/store utilities
+
+However, the earlier design contains overlapping models:
+
+- preset-based theme shape
+- `theme-config.ts` style `ThemeOption` / `Theme` split
+- multiple context/store files
+
+Decision:
+
+- consolidate to **one** runtime theme model
+- prefer the simpler preset-style model with:
+  - `themeId`
+  - `colorMode`
+  - `styles.light`
+  - `styles.dark`
+- avoid carrying forward multiple parallel theme abstractions
+
+### `CanvasApp` theme ownership requirements
+
+`CanvasApp` should ultimately:
+
+- accept theme configuration as part of app/runtime config
+- provide theme context to runtime/editor consumers
+- apply CSS variables at the app root container
+- support live editing in the inspector
+- remain compatible with SSR-provided theme values for deployed preview
+
+This means the theme provider should be integrated into `CanvasApp`, not left only as route-global CSS behavior.
+
+### Inspector requirements
+
+Theme editing should live under app Settings, not document Properties.
+
+Recommended first-pass inspector groups:
+
+#### Theme General
+
+- preset
+- color mode
+
+#### Theme Core Colors
+
+- background
+- foreground
+- card
+- card-foreground
+- popover
+- popover-foreground
+- primary
+- primary-foreground
+- secondary
+- secondary-foreground
+- muted
+- muted-foreground
+- accent
+- accent-foreground
+- destructive
+- border
+- input
+- ring
+
+#### Theme Sidebar
+
+- sidebar
+- sidebar-foreground
+- sidebar-primary
+- sidebar-primary-foreground
+- sidebar-accent
+- sidebar-accent-foreground
+- sidebar-border
+- sidebar-ring
+
+#### Theme Advanced / Later
+
+- chart-1 through chart-5
+- radius
+- optional font vars
+- optional shadow vars
+- optional spacing / letter-spacing vars
+
+### SSR and flicker-prevention requirements
+
+This theme work must support SSR for preview/deployment.
+
+Requirements:
+
+- the correct theme variables must be available in the initial HTML response
+- the browser must not wait for client hydration to determine the theme
+- server-side cookie/theme resolution should set the correct mode and variables before first paint
+- client runtime updates should preserve the same variable contract so preview and deployed SSR stay aligned
+
+This is required to avoid:
+
+- light/dark flash
+- wrong initial primary color
+- preview mismatch between SSR and hydrated runtime
+
+### Component consumption rule
+
+All Canvas components should converge on consuming the live CSS-variable theme contract.
+
+Decision:
+
+- prefer `var(--primary)`, `var(--background)`, etc.
+- stop relying on static hardcoded token objects for runtime color ownership where possible
+- audit known mismatches such as the current `view-ui/button` path
+
+### File-by-file implementation direction for the next pass
+
+#### Phase A — Theme audit and normalization
+
+- audit `app.css` as the live contract baseline
+- identify which earlier theme files should be restored, adapted, or consolidated
+- define the normalized runtime theme type for Canvas
+
+#### Phase B — SSR theme path
+
+- add or adapt a server theme handler for cookie-based SSR theme resolution
+- inject theme variables into the initial HTML for preview/deployment
+- ensure the default SSR theme matches `app.css`
+
+#### Phase C — `CanvasApp` provider integration
+
+- mount a scoped `ThemeProvider` or equivalent in `CanvasApp`
+- apply theme variables to the `CanvasApp` root container
+- allow app config to control theme preset, mode, and overrides
+
+#### Phase D — Inspector integration
+
+- add app Settings fields/groups for Theme
+- support theme preset selection, mode changes, and direct variable editing
+- make sure editor updates are reflected live in the preview canvas
+
+#### Phase E — Component cleanup
+
+- audit components still reading static theme tokens
+- migrate them to the live CSS variable/theme-provider contract
+- specifically fix primary button color ownership so it matches the app theme
+
+### Success criteria for the next pass
+
+The theme integration follow-up is considered successful when:
+
+- `CanvasApp` owns a theme provider/runtime contract
+- the default app theme matches `app.css`
+- SSR preview/deployment can render the correct theme without flicker
+- app Settings exposes Theme controls in the inspector
+- theme edits update the preview live
+- core components like buttons consume the same live theme variables as the rest of the app
+
+## Editor theme and app-workspace follow-up plan
+
+The recent editor iterations clarified that Canvas should stop mixing editor chrome styling and app/runtime styling into one token system.
+
+### New architecture decision
+
+Canvas should use the same token contract as `packages/canvas/src/app.css`, but theme ownership should be separated by **scoped providers**, not by ad-hoc prefixed token systems.
+
+#### 1. Project/package-level theme layer
+
+The package-level site/editor shell should continue to use the canonical `app.css` token contract.
+
+This layer should support:
+
+- the package landing page
+- docs/demo routes
+- shadcn-svelte primitives
+- editor chrome defaults when no narrower editor theme scope is applied
+
+#### 2. Editor shell theme layer
+
+`CanvasEditor` should get its own scoped theme provider/preset using the same `app.css` token names:
+
+- `--background`
+- `--foreground`
+- `--card`
+- `--muted`
+- `--border`
+- `--primary`
+- etc.
+
+This editor shell theme should:
+
+- style header, rail, left panel, right inspector, mobile sheet, dialog, and editor overlays
+- use a branded preset derived from `packages/design/DESIGN.md`
+- support editor-only light/dark modes later through editor settings
+- avoid a separate long-term `--editor-*` token contract
+
+The short-lived prefixed editor token layer was useful to prove the separation model, but it creates avoidable drift from the shadcn/app token contract and increases portal/dialog complexity.
+
+#### 3. `CanvasApp` theme layer
+
+Each `CanvasApp` should continue to own a separate scoped theme provider nested inside the editor shell or project shell.
+
+This app theme layer should:
+
+- use the same `app.css` / shadcn token names
+- support app-authored `system | light | dark`
+- support SSR preview/deployment
+- remain editable under app settings in the inspector
+- support future nested theme wrappers for documents/components/sections
+
+### Encapsulation strategy
+
+Theme encapsulation should come from **DOM scoping via nested theme providers**, not token-prefix duplication.
+
+Target composition:
+
+- project shell/site theme provider
+  - editor shell theme provider
+    - `CanvasEditor`
+      - app workspace / dialogs / inspector
+      - nested `CanvasApp` theme provider
+        - document
+        - blocks/components
+        - future nested theme overrides
+
+This keeps:
+
+- shadcn compatibility
+- portal/dialog behavior predictable when themed scopes are chosen intentionally
+- nested app/document/component theming possible without inventing parallel token contracts
+
+### Editor shell theming requirements
+
+The editor shell should be treated as a stable product UI, distinct from authored app preview.
+
+Requirements:
+
+- editor chrome should not visually inherit app preview theme changes
+- app preview mode toggle in the header should control only `CanvasApp`
+- editor dialogs should visually match the editor shell theme
+- editor dialogs should not accidentally inherit the authored app preview theme
+- editor shell light/dark preferences should live in editor settings, not app settings
+
+### App workspace IA requirements
+
+Editor/tool settings and app/runtime settings should be clearly separated.
+
+#### App workspace entry point
+
+The top-left app identity/logo trigger should open a dropdown menu for app-level concerns.
+
+Initial dropdown items:
+
+- App Settings
+- Theme
+- Providers
+- SEO
+- Metadata
+- Pages
+
+Routing rules:
+
+- `App Settings`, `Theme`, `Providers`, `SEO`, and `Metadata` should route the right inspector into app-scoped editing surfaces
+- `Pages` should open a dedicated dialog rather than reusing the right inspector
+
+#### Editor settings entry point
+
+The bottom-left gear/button should open an editor-only settings dialog.
+
+Editor settings should cover only tool concerns such as:
+
+- editor appearance/theme mode
+- density/panel preferences
+- workflow/help/debug controls
+
+It should not contain:
+
+- app theme
+- providers
+- SEO
+- metadata
+- pages
+
+### Page management requirements
+
+Pages should be managed through a dedicated dialog using shadcn-svelte list/items/command-style primitives rather than forcing page management into the right inspector.
+
+The pages dialog should evolve toward:
+
+- listing all pages in the app
+- create page
+- rename page
+- duplicate page
+- delete page
+- select/switch active page
+- route/slug management
+- home page designation
+
+### Inspector routing requirements
+
+The right inspector should resolve state in this order:
+
+1. active app section from the app dropdown
+2. selected canvas node
+3. document root/default document inspector
+
+This preserves the earlier agreed model that the document is the default properties target when no node is selected, while still allowing app-scoped inspector modes to take precedence when explicitly invoked.
+
+### Dialog and portal theming follow-up
+
+Dialog/menu theming must account for portal boundaries.
+
+Implementation plan should explicitly decide one of:
+
+- keep themed portal content inside the intended provider scope, or
+- ensure the appropriate scoped theme variables are available where the portal mounts
+
+The important requirement is not the mechanism, but the guarantee that:
+
+- editor dialogs match editor shell theme
+- app dialogs match editor shell or app/runtime theme intentionally rather than accidentally
+- portal mounting does not silently break scoped theme variables
+
+### Implementation phases
+
+#### Phase 1 — unify on provider-scoped `app.css` tokens
+
+- keep `app.css` as the canonical token contract
+- remove the long-term dependency on prefixed editor-only token names
+- adapt `ThemeProvider.svelte` so it is the main scoped theming primitive
+
+#### Phase 2 — editor shell theme provider
+
+- add an editor shell theme preset/provider around `CanvasEditor`
+- migrate shell surfaces, inspector, menus, dialogs, and mobile sheets to the shared `app.css` token contract
+- ensure editor shell and dialogs visually match in both editor theme modes
+
+#### Phase 3 — nested app runtime provider
+
+- keep `CanvasApp` as a nested scoped theme provider
+- ensure the preview-mode toggle only affects `CanvasApp`
+- preserve SSR/runtime requirements for deployment and preview
+
+#### Phase 4 — app workspace and page management
+
+- formalize app dropdown routing for app settings/theme/providers/SEO/metadata
+- implement pages dialog as the structural page-management surface
+- implement editor settings dialog as a tool-only settings surface
+
+### Success criteria
+
+This follow-up is successful when:
+
+- editor shell and `CanvasApp` no longer share one ambiguous theme surface
+- editor shell uses the same `app.css` / shadcn token contract through scoped theming
+- app preview theme changes do not recolor editor chrome
+- editor dialogs visually match editor chrome
+- app settings and editor settings are clearly separated in the IA
+- pages are managed in a dedicated dialog rather than overloaded into the inspector
+- future nested document/component theme overrides remain possible through additional theme-provider scopes
+
 ## Additional interaction decisions
 
 ### Selected chrome

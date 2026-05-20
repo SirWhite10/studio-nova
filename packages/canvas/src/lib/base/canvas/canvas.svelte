@@ -39,6 +39,13 @@ let {
 
 let resolvedComponents = $derived(document?.components ?? components);
 let resolvedProviders = $derived(document?.providers ?? providers);
+let resolvedDocumentProps = $derived(document?.props ?? {});
+let resolvedDocumentClassName = $derived((resolvedDocumentProps as { class?: string }).class ?? "");
+let resolvedDocumentStyle = $derived((resolvedDocumentProps as { style?: string }).style);
+let resolvedDocumentRestProps = $derived.by(() => {
+	const { class: _className, style: _style, ...documentRestProps } = resolvedDocumentProps as Record<string, unknown>;
+	return documentRestProps;
+});
 let resolvedProviderData = $derived.by(() => {
 	const entries = resolvedProviders.map((provider) => [provider.name, provider.props ?? {}] as const);
 	return {
@@ -49,14 +56,21 @@ let resolvedProviderData = $derived.by(() => {
 </script>
 
 <div class={["canvas", className]} data-component="canvas" {...restProps}>
-	<CanvasRenderNodes
-		nodes={resolvedComponents}
-		{componentCatalog}
-		{customComponents}
-		providerData={resolvedProviderData}
-		{providerActions}
-		{renderComponent}
-	/>
+	<div
+		class={["canvas-document", resolvedDocumentClassName]}
+		data-canvas-document
+		style={resolvedDocumentStyle}
+		{...resolvedDocumentRestProps}
+	>
+		<CanvasRenderNodes
+			nodes={resolvedComponents}
+			{componentCatalog}
+			{customComponents}
+			providerData={resolvedProviderData}
+			{providerActions}
+			{renderComponent}
+		/>
+	</div>
 </div>
 
 <style>

@@ -212,19 +212,19 @@ function removeArrayItem(index: number) {
 	.editor-field-description {
 		margin: 0;
 		font-size: 0.75rem;
-		color: rgba(15, 23, 42, 0.65);
+		color: color-mix(in oklab, var(--foreground), transparent 35%);
 	}
 
 	.editor-field-control,
 	.editor-field-textarea,
 	.editor-field select {
 		width: 100%;
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 0.75rem;
 		padding: 0.625rem 0.75rem;
 		font: inherit;
-		background: #fff;
-		color: #0f172a;
+		background: var(--background);
+		color: var(--foreground);
 		box-sizing: border-box;
 	}
 
@@ -245,9 +245,9 @@ function removeArrayItem(index: number) {
 		display: grid;
 		gap: 0.75rem;
 		padding: 0.75rem;
-		border: 1px solid rgba(15, 23, 42, 0.08);
+		border: 1px solid var(--border);
 		border-radius: 0.875rem;
-		background: rgba(248, 250, 252, 0.65);
+		background: color-mix(in oklab, var(--background), var(--muted) 30%);
 	}
 
 	.editor-field-array-item {
@@ -257,10 +257,11 @@ function removeArrayItem(index: number) {
 
 	.editor-field-array-add,
 	.editor-field-array-remove {
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 0.75rem;
 		padding: 0.5rem 0.75rem;
-		background: #fff;
+		background: var(--background);
+		color: var(--foreground);
 		font: inherit;
 		cursor: pointer;
 	}

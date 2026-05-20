@@ -10,7 +10,8 @@
 		mode = $bindable("docked"),
 		components = $bindable([]),
 		selection = $bindable(undefined),
-		documentSelection = $bindable(undefined),
+		documentConfig = $bindable({}),
+		documentEditorConfig = $bindable(undefined),
 		clipboardAvailable = $bindable(false),
 		clipboardNode = $bindable(undefined),
 		componentCatalog = $bindable({}),
@@ -18,6 +19,7 @@
 		appConfig = $bindable({}),
 		appEditorConfig = $bindable(undefined),
 		updateProperty = $bindable(() => {}),
+		updateDocumentProperty = $bindable(() => {}),
 		updateAppProperty = $bindable(() => {}),
 		class: className = "",
 		isDraggable = $bindable(false),
@@ -84,24 +86,28 @@
 			<CanvasEditorInspector
 				{components}
 				{selection}
-				documentSelection={documentSelection}
+				{documentConfig}
+				{documentEditorConfig}
 				{componentCatalog}
 				{editorConfig}
 				{appConfig}
 				{appEditorConfig}
 				{updateProperty}
+				{updateDocumentProperty}
 				{updateAppProperty}
 			/>
 		{:else}
 			<CanvasEditorInspector
 				{components}
 				selection={undefined}
-				documentSelection={undefined}
+				{documentConfig}
+				{documentEditorConfig}
 				{componentCatalog}
 				{editorConfig}
 				{appConfig}
 				{appEditorConfig}
 				{updateProperty}
+				{updateDocumentProperty}
 				{updateAppProperty}
 			/>
 		{/if}
@@ -114,7 +120,8 @@
 		flex-direction: column;
 		height: 100%;
 		width: 100%;
-		background: #ffffff;
+		background: var(--background);
+		color: var(--foreground);
 	}
 
 	.editor-sidebar-mobile {
@@ -123,10 +130,10 @@
 
 	.editor-sidebar-header {
 		padding: 1rem 1rem 0.75rem;
-		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+		border-bottom: 1px solid var(--border);
 		position: sticky;
 		top: 0;
-		background: #ffffff;
+		background: var(--background);
 		z-index: 2;
 	}
 
@@ -154,9 +161,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 999px;
-		background: #fff;
+		background: var(--background);
 		width: 2.25rem;
 		height: 2.25rem;
 		padding: 0;
@@ -167,23 +174,24 @@
 	}
 
 	.editor-sidebar-tab-active {
-		background: #111827;
-		color: #fff;
-		border-color: #111827;
+		background: var(--foreground);
+		color: var(--background);
+		border-color: var(--foreground);
 	}
 
 	.editor-sidebar-handle {
 		width: 3rem;
 		height: 0.3125rem;
 		border-radius: 999px;
-		background: rgba(15, 23, 42, 0.16);
+		background: color-mix(in oklab, var(--foreground), transparent 84%);
 		margin: 0 auto 0.75rem;
 	}
 
 	.editor-sidebar-close {
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 999px;
-		background: #fff;
+		background: var(--background);
+		color: var(--foreground);
 		width: 2.25rem;
 		height: 2.25rem;
 		display: inline-flex;

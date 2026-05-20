@@ -2,17 +2,21 @@
 	import { onDestroy, onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
 	import * as Sidebar from "$lib/shadcn-components/ui/sidebar/index.js";
+	import "./editor-theme.css";
 	import { cn } from "$lib/utils.js";
 	import { setEditorContext } from "./context.js";
 	import CanvasEditorHeader from "./canvas-editor-header.svelte";
 	import CanvasEditorLeftSidebar from "./canvas-editor-left-sidebar.svelte";
 	import CanvasEditorRightSidebar from "./canvas-editor-right-sidebar.svelte";
+	import CanvasEditorPagesDialog from "./canvas-editor-pages-dialog.svelte";
 	import CanvasEditorSurface from "./canvas-editor-surface.svelte";
 	import CanvasEditorTrigger from "./canvas-editor-trigger.svelte";
 	import EditorSidebar from "./EditorSidebar.svelte";
+	import EditorSettings from "./editor-settings.svelte";
 	import { createEditorStore } from "./store.js";
 	import type {
 		ComponentSelection,
+		EditorAppSection,
 		EditorLeftPanel,
 		EditorProps,
 	} from "./types.js";
@@ -34,6 +38,9 @@
 		componentRegistry = $bindable(undefined),
 		componentCatalog = $bindable({}),
 		editorConfig = $bindable(undefined),
+		documentConfig = $bindable({}),
+		documentEditorConfig = $bindable(undefined),
+		updateDocumentProperty = undefined,
 		appConfig = $bindable({}),
 		appEditorConfig = $bindable(undefined),
 		updateAppProperty = undefined,
@@ -60,15 +67,15 @@
 	let rightSidebarOpen = $state(true);
 	let mobileSheetOpen = $state(false);
 	let activeWorkspace = $state<EditorLeftPanel>("Outline");
+	let activeAppSection = $state<EditorAppSection | undefined>(undefined);
 	let activeMobilePanel = $state<MobileEditorPanel>("Properties");
+	let pagesDialogOpen = $state(false);
+	let editorSettingsOpen = $state(false);
 	let lastIncomingComponents = $state("");
 	let lastEmittedComponents = $state("");
 
-	const documentSelection = $derived.by(() => {
-		const rootNode = $store.components[0];
-		return rootNode ? { component: rootNode, path: ["0"] } : undefined;
-	});
 	const documentTitle = $derived(appConfig?.name || "Document");
+	const appThemeMode = $derived(canvasAppConfig?.theme?.mode ?? appConfig?.theme?.mode ?? "system");
 	const previewMode = $derived($store.mode === "preview");
 	const canUndo = $derived($store.historyIndex > 0);
 	const canRedo = $derived($store.historyIndex < $store.history.length - 1);
@@ -128,6 +135,13 @@
 	function togglePreview() {
 		store.setMode($store.mode === "edit" ? "preview" : "edit");
 	}
+	function updateAppThemeMode(mode: "system" | "light" | "dark") {
+		const currentTheme = appConfig?.theme ?? canvasAppConfig?.theme ?? {};
+		updateAppProperty?.("theme", {
+			...currentTheme,
+			mode,
+		});
+	}
 	function toggleLeftSidebar() {
 		leftSidebarOpen = !leftSidebarOpen;
 	}
@@ -136,20 +150,26 @@
 	}
 	function handleWorkspaceChange(panel: EditorLeftPanel) {
 		activeWorkspace = panel;
-		if (panel === "Settings") {
-			store.setSelection(undefined);
-		}
+		activeAppSection = undefined;
 		if (isMobile) {
 			activeMobilePanel = panel;
+			mobileSheetOpen = true;
+		}
+	}
+	function handleAppSectionChange(section: EditorAppSection) {
+		activeAppSection = section;
+		store.setSelection(undefined);
+		if (isMobile) {
+			activeMobilePanel = "Properties";
 			mobileSheetOpen = true;
 		}
 	}
 	function handleMobilePanelChange(panel: MobileEditorPanel) {
 		activeMobilePanel = panel;
 		mobileSheetOpen = true;
-		if (panel === "Outline" || panel === "Components" || panel === "Settings") {
+		if (panel === "Outline" || panel === "Components") {
 			activeWorkspace = panel;
-			if (panel === "Settings") store.setSelection(undefined);
+			activeAppSection = undefined;
 		}
 	}
 	function handleKeyDown(event: KeyboardEvent) {
@@ -185,7 +205,7 @@
 	});
 </script>
 
-<div class={cn("canvas-editor h-dvh w-full overflow-hidden", className)} data-mode={$store.mode}>
+<div class={cn("canvas-editor canvas-editor-theme h-dvh w-full overflow-hidden", className)} data-mode={$store.mode}>
 	{#if isMobile}
 		<div class="relative h-full w-full overflow-hidden">
 			<CanvasEditorSurface
@@ -210,19 +230,23 @@
 			{#if mobileSheetOpen}
 				<div class="pointer-events-none fixed inset-x-0 bottom-0 z-30 lg:hidden">
 					<div class="pointer-events-auto mx-auto flex w-full max-w-2xl flex-col gap-3 px-3 pb-3">
-						<div class="overflow-hidden rounded-[1.25rem] border border-black/10 bg-white shadow-2xl shadow-black/10">
-							{#if activeMobilePanel === "Outline" || activeMobilePanel === "Components" || activeMobilePanel === "Settings"}
+						<div class="overflow-hidden rounded-[1.25rem] border border-[color:var(--editor-border)] bg-[color:var(--editor-panel)] text-[color:var(--editor-fg)] shadow-2xl shadow-black/10">
+							{#if activeMobilePanel === "Outline" || activeMobilePanel === "Components"}
 								<div class="max-h-[70vh] overflow-hidden">
-									<div class="flex items-center justify-between border-b border-black/8 px-4 py-3">
-										<h2 class="text-sm font-semibold tracking-tight text-slate-900">{activeMobilePanel}</h2>
-										<button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-sm font-medium" onclick={() => (mobileSheetOpen = false)} aria-label="Close editor">×</button>
+									<div class="flex items-center justify-between border-b px-4 py-3 [border-color:var(--editor-border)]">
+										<h2 class="text-sm font-semibold tracking-tight [color:var(--editor-fg)]">{activeMobilePanel}</h2>
+										<button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-medium [border-color:var(--editor-border)] [background:var(--editor-panel-elevated)] [color:var(--editor-fg)]" onclick={() => (mobileSheetOpen = false)} aria-label="Close editor">×</button>
 									</div>
 									<CanvasEditorLeftSidebar
 										components={$store.components as any}
 										selection={$store.selection as any}
 										{componentCatalog}
 										activePanel={activeWorkspace}
+										appName={appConfig?.name ?? "Canvas App"}
 										onPanelChange={handleWorkspaceChange}
+										onSelectAppSection={handleAppSectionChange}
+										onOpenPages={() => (pagesDialogOpen = true)}
+										onOpenEditorSettings={() => (editorSettingsOpen = true)}
 										{leftSidebar}
 										shell="body"
 									/>
@@ -231,25 +255,27 @@
 								<div class="max-h-[70vh] overflow-hidden">
 									<EditorSidebar
 										components={$store.components as any}
-										selection={$store.selection as any}
-										documentSelection={documentSelection as any}
+										selection={activeAppSection ? undefined : ($store.selection as any)}
+										{documentConfig}
+										{documentEditorConfig}
 										{componentCatalog}
 										{editorConfig}
 										{appConfig}
 										{appEditorConfig}
+										updateDocumentProperty={updateDocumentProperty}
 										updateAppProperty={updateAppProperty}
 										updateProperty={(path, property, value) => store.updateProperty(path, property, value)}
 										mobile={true}
 										showTabs={false}
 										onClose={() => (mobileSheetOpen = false)}
-										activePanel={activeWorkspace === "Settings" ? "Settings" : "Properties"}
+										activePanel="Properties"
 									/>
 								</div>
 							{/if}
 						</div>
-						<div class="grid grid-cols-4 gap-2 rounded-[1.1rem] border border-black/10 bg-white/95 p-2 shadow-lg shadow-black/10 backdrop-blur">
-							{#each (["Outline", "Components", "Properties", "Settings"] satisfies MobileEditorPanel[]) as panel}
-								<button type="button" class={cn("inline-flex min-h-11 items-center justify-center rounded-xl px-2 text-xs font-medium transition", activeMobilePanel === panel ? "bg-slate-900 text-white" : "bg-transparent text-slate-700")} onclick={() => handleMobilePanelChange(panel)}>{panel}</button>
+						<div class="grid grid-cols-3 gap-2 rounded-[1.1rem] border p-2 shadow-lg shadow-black/10 backdrop-blur [border-color:var(--editor-border)] [background:color-mix(in_oklab,var(--editor-panel),transparent_4%)]">
+							{#each (["Outline", "Components", "Properties"] satisfies MobileEditorPanel[]) as panel}
+								<button type="button" class={cn("inline-flex min-h-11 items-center justify-center rounded-xl px-2 text-xs font-medium transition", activeMobilePanel === panel ? "[background:var(--editor-accent)] [color:var(--editor-accent-foreground)]" : "bg-transparent [color:var(--editor-fg-muted)]")} onclick={() => handleMobilePanelChange(panel)}>{panel}</button>
 							{/each}
 						</div>
 					</div>
@@ -257,25 +283,31 @@
 			{/if}
 		</div>
 	{:else}
-		<Sidebar.Provider class="h-full bg-slate-100/80">
-			<div class="flex h-full min-h-0 w-full overflow-hidden bg-slate-100/80">
-				<div class={cn("h-full min-h-0 overflow-hidden border-r border-black/10 bg-slate-50/95 transition-[width] duration-200", leftSidebarOpen ? "w-80" : "w-0 border-r-0")}>
+		<Sidebar.Provider class="h-full [background:var(--editor-bg)] [color:var(--editor-fg)]">
+			<div class="flex h-full min-h-0 w-full overflow-hidden [background:var(--editor-bg)] [color:var(--editor-fg)]">
+				<div class={cn("h-full min-h-0 overflow-hidden border-r transition-[width] duration-200 [border-color:var(--editor-border)] [background:var(--editor-panel)]", leftSidebarOpen ? "w-80" : "w-0 border-r-0")}>
 					{#if leftSidebarOpen}
 						<CanvasEditorLeftSidebar
 							components={$store.components as any}
 							selection={$store.selection as any}
 							{componentCatalog}
 							activePanel={activeWorkspace}
+							appName={appConfig?.name ?? "Canvas App"}
 							onPanelChange={handleWorkspaceChange}
+							onSelectAppSection={handleAppSectionChange}
+							onOpenPages={() => (pagesDialogOpen = true)}
+							onOpenEditorSettings={() => (editorSettingsOpen = true)}
 							{leftSidebar}
 						/>
 					{/if}
 				</div>
 
-				<Sidebar.Inset class="h-full min-w-0 overflow-hidden rounded-none border-x border-black/8 bg-white shadow-none">
+				<Sidebar.Inset class="h-full min-w-0 overflow-hidden rounded-none border-x shadow-none [border-color:var(--editor-border)] [background:var(--editor-bg)] [color:var(--editor-fg)]">
 					<CanvasEditorHeader
 						title={documentTitle}
 						preview={previewMode}
+						themeMode={appThemeMode as any}
+						onThemeModeChange={updateAppThemeMode}
 						{canUndo}
 						{canRedo}
 						canSave={Boolean(onSave)}
@@ -286,7 +318,7 @@
 						onTogglePreview={togglePreview}
 						onSave={onSave}
 					/>
-					<div class="min-h-0 flex-1 overflow-auto bg-white">
+					<div class="min-h-0 flex-1 overflow-auto [background:var(--editor-bg)]">
 						<CanvasEditorSurface
 							{document}
 							components={$store.components as any}
@@ -307,23 +339,28 @@
 					</div>
 				</Sidebar.Inset>
 
-				<div class={cn("h-full min-h-0 overflow-hidden border-l border-black/10 bg-slate-50/95 transition-[width] duration-200", rightSidebarOpen ? "w-96" : "w-0 border-l-0")}>
+				<div class={cn("h-full min-h-0 overflow-hidden border-l transition-[width] duration-200 [border-color:var(--editor-border)] [background:var(--editor-panel)]", rightSidebarOpen ? "w-96" : "w-0 border-l-0")}>
 					{#if rightSidebarOpen}
 						<CanvasEditorRightSidebar
 							components={$store.components as any}
-							selection={$store.selection as any}
-							documentSelection={documentSelection as any}
+							selection={activeAppSection ? undefined : ($store.selection as any)}
+							{documentConfig}
+							{documentEditorConfig}
 							{componentCatalog}
 							{editorConfig}
 							{appConfig}
 							{appEditorConfig}
+							updateDocumentProperty={updateDocumentProperty}
 							updateAppProperty={updateAppProperty}
 							updateProperty={(path, property, value) => store.updateProperty(path, property, value)}
 							workspace={activeWorkspace}
+							appSection={activeAppSection}
 						/>
 					{/if}
 				</div>
 			</div>
 		</Sidebar.Provider>
 	{/if}
+	<CanvasEditorPagesDialog bind:open={pagesDialogOpen} />
+	<EditorSettings bind:open={editorSettingsOpen} />
 </div>

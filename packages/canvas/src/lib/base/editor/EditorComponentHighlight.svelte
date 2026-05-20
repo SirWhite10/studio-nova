@@ -242,10 +242,10 @@
 		gap: 0.3rem;
 		max-width: 100%;
 		padding: 0.2rem;
-		border: 1px solid color-mix(in srgb, var(--primary) 25%, white 75%);
+		border: 1px solid color-mix(in oklab, var(--foreground), transparent 78%);
 		border-radius: 999px;
-		background: color-mix(in srgb, white 94%, var(--primary) 6%);
-		box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+		background: color-mix(in oklab, var(--background), var(--foreground) 10%);
+		box-shadow: 0 8px 20px color-mix(in oklab, var(--foreground), transparent 92%);
 		pointer-events: auto;
 	}
 
@@ -255,7 +255,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: 0.35rem 0.55rem;
-		color: color-mix(in srgb, var(--foreground) 88%, var(--primary) 12%);
+		color: var(--foreground);
 		font-size: 0.75rem;
 		font-weight: 600;
 		line-height: 1;
@@ -275,9 +275,9 @@
 		min-width: 1.75rem;
 		height: 1.75rem;
 		padding: 0 0.45rem;
-		border: 1px solid color-mix(in srgb, var(--border) 85%, white 15%);
+		border: 1px solid color-mix(in oklab, var(--foreground), transparent 82%);
 		border-radius: 999px;
-		background: color-mix(in srgb, white 96%, var(--accent) 4%);
+		background: color-mix(in oklab, var(--background), var(--foreground) 6%);
 		color: var(--foreground);
 		font-size: 0.95rem;
 		line-height: 1;

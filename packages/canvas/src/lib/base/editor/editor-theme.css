@@ -1,0 +1,21 @@
+:root,
+.canvas-editor-theme {
+  --editor-bg: #16130b;
+  --editor-panel: #1f1b13;
+  --editor-panel-muted: #231f17;
+  --editor-panel-elevated: #2d2a21;
+  --editor-panel-strong: #38342b;
+  --editor-fg: #eae1d4;
+  --editor-fg-muted: #d0c5af;
+  --editor-fg-subtle: #b7ac97;
+  --editor-border: #4d4635;
+  --editor-outline: #99907c;
+  --editor-accent: #f2ca50;
+  --editor-accent-foreground: #3c2f00;
+  --editor-accent-muted: color-mix(in oklab, #f2ca50, transparent 88%);
+  --editor-danger: #ffb4ab;
+  --editor-danger-foreground: #690005;
+  --editor-radius: 0.5rem;
+  --editor-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --editor-shadow-md: 0 10px 30px rgba(0, 0, 0, 0.28);
+}

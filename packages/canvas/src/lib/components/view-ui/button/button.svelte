@@ -57,7 +57,7 @@
 	const variantMap: Record<ButtonVariant, Record<string, string>> = {
 		default: {
 			background: canvasTheme.colors.primary,
-			color: "white",
+			color: "var(--primary-foreground)",
 			border: `1px solid ${canvasTheme.colors.primary}`,
 		},
 		outline: {

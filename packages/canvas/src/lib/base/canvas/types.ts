@@ -61,6 +61,7 @@ export interface CanvasProviderNode {
 }
 
 export interface CanvasDocument<TProps extends BaseProps = BaseProps> {
+  props?: TProps;
   providers?: CanvasProviderNode[];
   components?: CanvasNode<TProps>[];
 }

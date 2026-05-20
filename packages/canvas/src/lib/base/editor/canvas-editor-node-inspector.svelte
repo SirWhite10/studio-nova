@@ -186,7 +186,7 @@
 		font-weight: 700;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
+		color: color-mix(in oklab, var(--foreground), transparent 12%);
 	}
 
 	.editor-sidebar-empty,
@@ -195,7 +195,7 @@
 		place-items: center;
 		min-height: 6rem;
 		text-align: center;
-		color: rgba(15, 23, 42, 0.6);
+		color: color-mix(in oklab, var(--foreground), transparent 28%);
 	}
 
 	.editor-breadcrumbs {
@@ -205,9 +205,10 @@
 	}
 
 	.editor-breadcrumb {
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 999px;
-		background: #fff;
+		background: var(--background);
+		color: var(--foreground);
 		padding: 0.375rem 0.625rem;
 		font: inherit;
 		font-size: 0.76rem;
@@ -215,14 +216,14 @@
 	}
 
 	.editor-breadcrumb-active {
-		background: #111827;
-		color: #fff;
-		border-color: #111827;
+		background: var(--foreground);
+		color: var(--background);
+		border-color: var(--foreground);
 	}
 
 	.editor-breadcrumb-slot {
 		cursor: default;
-		background: rgba(248, 250, 252, 0.9);
+		background: color-mix(in oklab, var(--background), var(--muted) 35%);
 	}
 
 	.editor-slot-group {
@@ -233,7 +234,7 @@
 	.editor-slot-group-label {
 		font-size: 0.78rem;
 		font-weight: 600;
-		color: rgba(15, 23, 42, 0.72);
+		color: color-mix(in oklab, var(--foreground), transparent 12%);
 		text-transform: capitalize;
 	}
 
@@ -244,9 +245,10 @@
 	}
 
 	.editor-slot-jump-button {
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 999px;
-		background: #fff;
+		background: var(--background);
+		color: var(--foreground);
 		padding: 0.375rem 0.625rem;
 		font: inherit;
 		font-size: 0.76rem;

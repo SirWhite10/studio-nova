@@ -3,17 +3,17 @@
 	import type { EditorComponent } from "./types.js";
 
 	let {
-		appConfig = {},
-		appEditorConfig = undefined,
-		updateAppProperty = undefined,
+		documentConfig = {},
+		documentEditorConfig = undefined,
+		updateDocumentProperty = undefined,
 	}: {
-		appConfig?: Record<string, any>;
-		appEditorConfig?: EditorComponent<any>;
-		updateAppProperty?: (property: string, value: any) => void;
+		documentConfig?: Record<string, any>;
+		documentEditorConfig?: EditorComponent<any>;
+		updateDocumentProperty?: (property: string, value: any) => void;
 	} = $props();
 
-	const editorGroups = $derived(appEditorConfig?.editorConfig?.groups || {});
-	const editorFields = $derived(appEditorConfig?.editorConfig?.fields || {});
+	const editorGroups = $derived(documentEditorConfig?.editorConfig?.groups || {});
+	const editorFields = $derived(documentEditorConfig?.editorConfig?.fields || {});
 	const filteredGroups = $derived(
 		Object.entries(editorGroups)
 			.filter(([_, group]) => group.fields && group.fields.length > 0)
@@ -32,9 +32,7 @@
 	);
 	const ungroupedFields = $derived(
 		Object.entries(editorFields)
-			.filter(([key]) => {
-				return !Object.values(editorGroups).some((group) => group.fields?.includes(key));
-			})
+			.filter(([key]) => !Object.values(editorGroups).some((group) => group.fields?.includes(key)))
 			.map(([key, field]) => ({
 				name: key,
 				config: field,
@@ -42,7 +40,7 @@
 	);
 </script>
 
-{#if appEditorConfig}
+{#if documentEditorConfig}
 	<div class="editor-sidebar-section-stack">
 		{#if filteredGroups.length > 0}
 			{#each filteredGroups as group}
@@ -53,8 +51,8 @@
 							<EditorField
 								name={field.name}
 								config={field.config}
-								value={appConfig[field.name]}
-								onChange={(value) => updateAppProperty?.(field.name, value)}
+								value={documentConfig[field.name]}
+								onChange={(value) => updateDocumentProperty?.(field.name, value)}
 							/>
 						{/each}
 					</div>
@@ -72,8 +70,8 @@
 						<EditorField
 							name={field.name}
 							config={field.config}
-							value={appConfig[field.name]}
-							onChange={(value) => updateAppProperty?.(field.name, value)}
+							value={documentConfig[field.name]}
+							onChange={(value) => updateDocumentProperty?.(field.name, value)}
 						/>
 					{/each}
 				</div>
@@ -81,7 +79,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="editor-sidebar-placeholder">App editor configuration is not available.</div>
+	<div class="editor-sidebar-placeholder">Document editor configuration is not available.</div>
 {/if}
 
 <style>

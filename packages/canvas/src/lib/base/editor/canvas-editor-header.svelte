@@ -5,7 +5,9 @@
 	import Redo2Icon from "@lucide/svelte/icons/redo-2";
 	import SaveIcon from "@lucide/svelte/icons/save";
 	import Undo2Icon from "@lucide/svelte/icons/undo-2";
+	import CanvasThemeModeSwitcher from "$lib/base/theme/CanvasThemeModeSwitcher.svelte";
 	import { cn } from "$lib/utils.js";
+	import type { CanvasThemeMode } from "$lib/base/theme/types.js";
 
 	let {
 		title = "Document",
@@ -13,6 +15,8 @@
 		canUndo = false,
 		canRedo = false,
 		canSave = false,
+		themeMode = "system",
+		onThemeModeChange = undefined,
 		onToggleLeft = undefined,
 		onToggleRight = undefined,
 		onUndo = undefined,
@@ -25,6 +29,8 @@
 		canUndo?: boolean;
 		canRedo?: boolean;
 		canSave?: boolean;
+		themeMode?: CanvasThemeMode;
+		onThemeModeChange?: (mode: CanvasThemeMode) => void;
 		onToggleLeft?: () => void;
 		onToggleRight?: () => void;
 		onUndo?: () => void;
@@ -34,7 +40,7 @@
 	} = $props();
 </script>
 
-<header class="canvas-editor-header sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-black/10 bg-slate-50/95 px-3 backdrop-blur">
+<header class="canvas-editor-header sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-3 text-foreground backdrop-blur">
 	<div class="flex items-center gap-2">
 		<button type="button" class="canvas-editor-header-icon-button" onclick={() => onToggleLeft?.()} aria-label="Toggle left sidebar">
 			<PanelLeftIcon size={16} />
@@ -45,10 +51,16 @@
 	</div>
 
 	<div class="min-w-0 flex-1 text-center">
-		<div class="truncate text-sm font-semibold tracking-tight text-slate-900">{title}</div>
+		<div class="truncate text-sm font-semibold tracking-tight text-foreground">{title}</div>
 	</div>
 
 	<div class="flex items-center justify-end gap-2">
+		<CanvasThemeModeSwitcher
+			mode={themeMode}
+			onModeChange={onThemeModeChange}
+			variant="segmented"
+			class="canvas-editor-header-theme-switcher"
+		/>
 		<button type="button" class="canvas-editor-header-icon-button" onclick={() => onUndo?.()} aria-label="Undo" disabled={!canUndo}>
 			<Undo2Icon size={16} />
 		</button>
@@ -78,10 +90,10 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.45rem;
-		border: 1px solid rgba(15, 23, 42, 0.12);
+		border: 1px solid var(--border);
 		border-radius: 0.75rem;
-		background: rgba(255, 255, 255, 0.92);
-		color: #0f172a;
+		background: color-mix(in oklab, var(--background), transparent 8%);
+		color: var(--foreground);
 		font: inherit;
 		font-size: 0.8rem;
 		font-weight: 600;
@@ -99,10 +111,18 @@
 		padding: 0 0.8rem;
 	}
 
+	:global(.canvas-editor-header-theme-switcher.canvas-theme-mode-switcher-segmented) {
+		background: color-mix(in oklab, var(--background), var(--muted) 16%);
+	}
+
+	:global(.canvas-editor-header-theme-switcher .canvas-theme-mode-switcher-button) {
+		color: color-mix(in oklab, var(--foreground), transparent 18%);
+	}
+
 	.canvas-editor-header-button-active {
-		background: #111827;
-		border-color: #111827;
-		color: #fff;
+		background: var(--foreground);
+		border-color: var(--foreground);
+		color: var(--background);
 	}
 
 	.canvas-editor-header-icon-button:disabled,
