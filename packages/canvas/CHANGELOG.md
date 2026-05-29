@@ -1,5 +1,115 @@
 # Canvas Changelog
 
+## 2026-05-29
+
+### Summary
+
+- Added scoped theme/runtime groundwork for `CanvasApp` and app preview mode switching.
+- Removed the fake landing `View` root and made the landing document own its wrapper props directly.
+- Reworked the editor shell toward a branded editor/app workspace split.
+- Added app workspace menu and separate editor/pages dialogs.
+- Vendored the local `packages/puck` reference repository into the repo as normal tracked files.
+
+### What We Did
+
+#### 1. Added app-scoped theme groundwork
+
+- Added a theme runtime layer under `src/lib/base/theme`.
+- Added `ThemeProvider.svelte`, theme context/store helpers, and theme type definitions.
+- Extended `CanvasApp` so it can resolve and apply app theme mode and theme variables at the app root.
+- Added support for app preview mode switching between:
+  - `system`
+  - `light`
+  - `dark`
+
+#### 2. Moved landing document wrapper ownership into `CanvasDocument`
+
+- Extended `CanvasDocument` to support document-level `props`.
+- Updated `Canvas` to render a plain document wrapper div from `document.props`.
+- Removed the fake/selectable root `View` from the landing document.
+- Preserved document editing in the inspector via a dedicated document inspector path.
+
+#### 3. Improved theme/editing separation in the editor
+
+- Removed the earlier conflicting global HTML theme-var injection path.
+- Kept global package-level mode watching in the route layout.
+- Added a dedicated app-preview mode switcher in the editor header.
+- Audited and updated major editor chrome surfaces to be more theme-aware and consistent.
+- Fixed inspector routing so selected node editing and document fallback both work again.
+
+#### 4. Introduced branded editor/app workspace separation
+
+- Added a top-left app workspace menu trigger in the left rail.
+- Added app workspace entries for:
+  - App Settings
+  - Theme
+  - Providers
+  - SEO
+  - Metadata
+  - Pages
+- Added a dedicated `Editor Settings` dialog for editor-only concerns.
+- Added a dedicated `Pages` dialog for structural page management.
+- Removed the overloaded single Settings concept from the left rail workflow navigation.
+
+#### 5. Added editor theme planning and shell groundwork
+
+- Added `editor-theme.css` for the current branded editor shell iteration.
+- Updated the editor refactor plan to reflect the new long-term direction:
+  - keep `app.css` as the canonical token contract
+  - move toward scoped `ThemeProvider`-based theming
+  - keep editor shell theme and `CanvasApp` theme as separate scopes
+  - separate app workspace concerns from editor/tool concerns in the IA
+
+#### 6. Fixed interaction and visual regressions during the pass
+
+- Fixed the node inspector selection handoff bug that caused `Hero.1` title changes without showing its actual props.
+- Improved selected overlay badge/menu contrast in dark preview states.
+- Improved inspector heading and field/readability treatment in dark contexts.
+- Tightened app menu trigger behavior back toward an icon-only rail trigger.
+- Fixed dialog theming behavior after portal-related editor token scope issues appeared.
+
+#### 7. Vendored the local Puck reference repository
+
+- First added `packages/puck` as a gitlink by mistake.
+- Then removed the embedded repo metadata and re-added it as normal tracked files.
+- This means fresh clones/pulls of `studio-nova` now include the actual `packages/puck` file contents directly.
+
+### Validation
+
+- Repeated targeted `vp check` runs passed on the changed editor/theme/runtime/planning files.
+- Multiple `agent-browser` checks were used to verify:
+  - app preview mode behavior
+  - selected node inspector routing
+  - editor menu/dialog behavior
+  - branded editor shell consistency
+- Visual artifacts captured during this phase include:
+  - `/tmp/canvas-check/landing-dark-hero-selected-fixed.png`
+  - `/tmp/canvas-check/landing-dark-hero-menu.png`
+  - `/tmp/canvas-check/landing-branded-editor-dark-preview.png`
+  - `/tmp/canvas-check/editor-settings-dialog-solid.png`
+  - `/tmp/canvas-check/left-rail-icon-app-menu.png`
+
+### Current State
+
+- `CanvasApp` now has real theme runtime groundwork and app preview mode switching.
+- The landing document no longer depends on a fake Canvas `View` root wrapper.
+- The editor now distinguishes between:
+  - document/node properties
+  - app workspace sections
+  - editor settings
+- The left rail now has a top app-workspace entry and a bottom editor-settings entry.
+- The long-term plan now favors shared `app.css` token contracts with scoped theme providers over a permanent prefixed editor token system.
+- `packages/puck` is present in the repo as normal files for local reference.
+
+### Follow-up Work Suggested For Later Pickup
+
+1. Replace the temporary prefixed/branded editor token path with a proper scoped editor `ThemeProvider` using the same token contract as `app.css`.
+2. Make editor dialogs/menus inherit theme through the intended scoped provider path rather than incidental/global availability.
+3. Implement real app workspace inspectors for Theme, Providers, SEO, and Metadata instead of placeholders.
+4. Expand the Pages dialog into a full page-management surface.
+5. Decide whether page/document background ownership should live at the document level, section level, or both so app preview theme changes are more legible.
+6. Continue aligning editor shell surfaces to the branded design system while keeping runtime preview isolated.
+
 ## 2026-05-18
 
 ### Summary
@@ -143,7 +253,6 @@
 5. Continue moving complex authored blocks/widgets toward block-owned schemas.
 6. Redesign mobile editor chrome once the desktop shell stabilizes.
 7. Decide how much of `StudioEditor` compatibility should remain in this package long-term.
-
 
 ## 2026-05-14
 
