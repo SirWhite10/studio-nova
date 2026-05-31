@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn forward_request_with_mock_response() {
+    fn forward_request_with_mock_response_test() {
         let mut stream = TunnelStream::with_response(b"mock response body".to_vec());
         let request = TunnelRequest {
             method: "GET".into(),
@@ -332,7 +332,7 @@ mod tests {
             body: Bytes::new(),
         };
 
-        let response = forward_request_with_mock_response(&mut stream, &request).unwrap();
+        let response = super::forward_request_with_mock_response(&mut stream, &request).unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(&response.body[..], b"mock response body");
     }

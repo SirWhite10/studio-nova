@@ -64,13 +64,15 @@ impl TunnelRegistry {
                 drop(old_client);
                 for old_proxy in &old_proxies {
                     if !proxy_names.contains(old_proxy) {
-                        // Remove run_id from old proxy slot
-                        if let Some(slot) = self.proxy_slots.get_mut(old_proxy) {
-                            slot.client_ids.retain(|id| id != &run_id);
-                            if slot.client_ids.is_empty() {
-                                drop(slot);
-                                self.proxy_slots.remove(old_proxy);
+                        // Remove run_id from old proxy slot using entry API
+                        match self.proxy_slots.entry(old_proxy.clone()) {
+                            dashmap::mapref::entry::Entry::Occupied(mut entry) => {
+                                entry.get_mut().client_ids.retain(|id| id != &run_id);
+                                if entry.get().client_ids.is_empty() {
+                                    entry.remove();
+                                }
                             }
+                            dashmap::mapref::entry::Entry::Vacant(_) => {}
                         }
                     }
                 }
