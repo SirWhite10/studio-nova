@@ -87,5 +87,14 @@ chrono = { version = "0.4", features = ["serde"] }
 # Rate limiting
 governor = "0.10"
 
+# Bytes
+bytes = "1"
+
+# Compression
+flate2 = "1"
+
+# Hex encoding
+hex = "0.4"
+
 # Testing
 tempfile = "3"

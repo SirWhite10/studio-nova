@@ -6,13 +6,12 @@ edition.workspace = true
 
 [dependencies]
 edge-store = { path = "../edge-store" }
-edge-tunnel = { path = "../edge-tunnel" }
-edge-analytics = { path = "../edge-analytics" }
 edge-config = { path = "../edge-config" }
 
 axum = { workspace = true }
 hyper = { workspace = true }
 http = { workspace = true }
+http-body-util = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 dashmap = { workspace = true }
@@ -20,3 +19,15 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 governor = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+flate2 = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "macros"] }

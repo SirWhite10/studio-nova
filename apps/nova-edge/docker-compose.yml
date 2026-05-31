@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  nova-edge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nova-edge
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8790:8790"
+      - "9443:9443"
+    env_file:
+      - .env
+    volumes:
+      - nova-edge-certs:/var/lib/nova-edge/certs
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    networks:
+      - nova-edge
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8790/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  surrealdb:
+    image: surrealdb/surrealdb:v3
+    container_name: surrealdb
+    restart: unless-stopped
+    command:
+      - start
+      - --user
+      - root
+      - --pass
+      - root
+      - file:///var/lib/surrealdb/data.db
+    volumes:
+      - surrealdb-data:/var/lib/surrealdb
+    ports:
+      - "8000:8000"
+    networks:
+      - nova-edge
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+volumes:
+  nova-edge-certs:
+    driver: local
+  surrealdb-data:
+    driver: local
+
+networks:
+  nova-edge:
+    driver: bridge

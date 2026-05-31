@@ -1,0 +1,37 @@
+[Unit]
+Description=Nova Edge — Unified Rust edge service (TLS, admin API, tunnel)
+Documentation=https://forgejo.dlxstudios.com/dlxstudios/studio-nova
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nova-edge
+EnvironmentFile=/etc/nova-edge/env
+User=nova-edge
+Group=nova-edge
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/nova-edge
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nova-edge
+
+[Install]
+WantedBy=multi-user.target
