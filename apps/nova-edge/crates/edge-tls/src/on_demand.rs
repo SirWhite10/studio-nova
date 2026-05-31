@@ -65,6 +65,7 @@ impl HostPolicy for StaticHostPolicy {
 /// 1. Checks the host policy (is this host allowed?)
 /// 2. Looks up a pre-loaded certificate for the host
 /// 3. Returns the cert if found, or None (TLS handshake fails)
+#[derive(Debug)]
 pub struct OnDemandResolver {
     policy: Arc<dyn HostPolicy>,
     certs: Mutex<HashMap<String, Arc<CertifiedKey>>>,

@@ -5,13 +5,12 @@
 //! - All other requests → 301 redirect to HTTPS
 
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, State},
     http::{HeaderMap, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -95,22 +94,18 @@ async fn redirect_to_https(
     uri: Uri,
 ) -> Response {
     // Use the Host header if available (more reliable than URI host)
-    let mut https_uri = uri;
     if let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) {
         let host = host.to_string();
         let path = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-        if state.https_port == 443 {
-            https_uri = format!("https://{}{}", host, path)
-                .parse()
-                .unwrap_or(uri);
+        let target = if state.https_port == 443 {
+            format!("https://{}{}", host, path)
         } else {
-            https_uri = format!("https://{}:{}{}", host, state.https_port, path)
-                .parse()
-                .unwrap_or(uri);
-        }
+            format!("https://{}:{}{}", host, state.https_port, path)
+        };
+        return Redirect::permanent(&target).into_response();
     }
 
-    Redirect::permanent(&state.https_url_for(&https_uri)).into_response()
+    Redirect::permanent(&state.https_url_for(&uri)).into_response()
 }
 
 /// Build the HTTP redirect router.

@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::service::TowerToHyperService;
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
@@ -51,9 +52,9 @@ pub async fn serve_https(
                                 let io = TokioIo::new(tls_stream);
                                 let builder =
                                     hyper_util::server::conn::auto::Builder::new(TokioExecutor::new());
-                                // Router implements Service<Request<Incoming>>,
-                                // so we can pass it directly to serve_connection_with_upgrades.
-                                let svc = app.into_service();
+                                // Router's into_service() returns a tower::Service,
+                                // but hyper-util needs a hyper::Service — wrap it.
+                                let svc = TowerToHyperService::new(app.into_service());
                                 let _ = builder.serve_connection_with_upgrades(io, svc).await;
                             }
                             Err(e) => {

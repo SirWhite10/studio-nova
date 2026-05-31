@@ -15,9 +15,6 @@ pem = { workspace = true }
 rcgen = { workspace = true }
 axum = { workspace = true }
 tower = { workspace = true }
-http = { workspace = true }
-hyper = { workspace = true }
-http-body-util = { workspace = true }
 hyper-util = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
