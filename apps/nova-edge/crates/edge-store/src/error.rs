@@ -79,14 +79,9 @@ impl StoreError {
 
 // ── Conversions ──────────────────────────────────────────────────────
 
-impl From<StoreError> for anyhow::Error {
-    fn from(err: StoreError) -> Self {
-        anyhow::Error::msg(err.to_string())
-    }
-}
-
-// Allow `?` propagation from StoreError in anyhow::Result contexts.
-// This is the idiomatic way to let StoreError coexist with anyhow.
+// StoreError implements std::error::Error via thiserror derive.
+// anyhow's blanket From<E: StdError> for anyhow::Error handles the
+// conversion automatically — no manual impl needed.
 
 #[cfg(test)]
 mod tests {
