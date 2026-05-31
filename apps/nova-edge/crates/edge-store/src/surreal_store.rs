@@ -367,21 +367,26 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                 DomainKind::Custom => "custom",
             };
 
+            let mut domain_content = serde_json::json!({
+                "host": &host,
+                "proxyId": &proxy_id,
+                "kind": kind_str,
+                "status": status.to_string(),
+                "updatedAt": now,
+            });
+            if let Some(token) = &verification_token {
+                domain_content["verificationToken"] = serde_json::json!(token);
+            }
+
             let saved_domain: ProxyDomain = if let Some(existing) = existing_domain {
                 let existing_id = record_id_string(&existing.id);
+                let mut content = domain_content.clone();
+                content["createdAt"] = serde_json::json!(existing.created_at);
                 self.db
                     .query("UPDATE type::record($id) MERGE $content")
                     .bind(serde_json::json!({
                         "id": existing_id,
-                        "content": {
-                            "host": &host,
-                            "proxyId": &proxy_id,
-                            "kind": kind_str,
-                            "status": status.to_string(),
-                            "verificationToken": verification_token,
-                            "createdAt": existing.created_at,
-                            "updatedAt": now,
-                        }
+                        "content": content,
                     }))
                     .await?;
 
@@ -393,19 +398,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                     .await?;
                 fetched.into_iter().next().unwrap()
             } else {
-                self.create_record(
-                    "proxy_domain",
-                    serde_json::json!({
-                        "host": &host,
-                        "proxyId": &proxy_id,
-                        "kind": kind_str,
-                        "status": status.to_string(),
-                        "verificationToken": verification_token,
-                        "createdAt": now,
-                        "updatedAt": now,
-                    }),
-                )
-                .await?
+                let mut content = domain_content;
+                content["createdAt"] = serde_json::json!(now);
+                self.create_record("proxy_domain", content).await?
             };
 
             resolutions.push(DomainResolution {
