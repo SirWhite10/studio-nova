@@ -9,17 +9,17 @@
 use async_trait::async_trait;
 use anyhow::Result;
 use surrealdb::Surreal;
-use surrealdb::engine::remote::ws::Client;
+use surrealdb::Connection;
 
 use crate::store::DomainStore;
 use crate::types::*;
 
-pub struct SurrealStore {
-    db: Surreal<Client>,
+pub struct SurrealStore<C: Connection> {
+    db: Surreal<C>,
 }
 
-impl SurrealStore {
-    pub fn new(db: Surreal<Client>) -> Self {
+impl<C: Connection> SurrealStore<C> {
+    pub fn new(db: Surreal<C>) -> Self {
         Self { db }
     }
 
@@ -118,7 +118,7 @@ pub const SCHEMA_DDL: &[&str] = &[
 ];
 
 #[async_trait]
-impl DomainStore for SurrealStore {
+impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
     async fn ensure_schema(&self) -> Result<()> {
         for ddl in SCHEMA_DDL {
             self.db.query(*ddl).await?;
@@ -551,17 +551,17 @@ mod tests {
     use super::*;
     use crate::store::DomainStore;
 
-    async fn test_db() -> Surreal<Client> {
+    async fn test_db() -> Surreal<surrealdb::engine::remote::http::Client> {
         use surrealdb::opt::auth::Root;
 
         let url = std::env::var("SURREAL_TEST_URL")
-            .unwrap_or_else(|_| "ws://127.0.0.1:8000/rpc".into());
+            .unwrap_or_else(|_| "http://127.0.0.1:8000".into());
         let ns = std::env::var("SURREAL_TEST_NS").unwrap_or_else(|_| "test".into());
         let db_name = std::env::var("SURREAL_TEST_DB").unwrap_or_else(|_| "edge_test".into());
         let user = std::env::var("SURREAL_TEST_USER").unwrap_or_else(|_| "root".into());
         let pass = std::env::var("SURREAL_TEST_PASS").unwrap_or_else(|_| "root".into());
 
-        let db = Surreal::new::<surrealdb::engine::remote::ws::Ws>(&url)
+        let db = Surreal::new::<surrealdb::engine::remote::http::Http>(&url)
             .await
             .expect("connect to SurrealDB");
         db.signin(Root {
@@ -577,7 +577,7 @@ mod tests {
         db
     }
 
-    async fn setup_store() -> SurrealStore {
+    async fn setup_store() -> SurrealStore<surrealdb::engine::remote::http::Client> {
         let db = test_db().await;
         db.query("DELETE proxy_domain").await.unwrap();
         db.query("DELETE workspace_proxy").await.unwrap();
