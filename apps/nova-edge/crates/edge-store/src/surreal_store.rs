@@ -552,14 +552,24 @@ mod tests {
     use crate::store::DomainStore;
 
     async fn test_db() -> Surreal<Client> {
+        use surrealdb::opt::auth::Root;
+
         let url = std::env::var("SURREAL_TEST_URL")
             .unwrap_or_else(|_| "ws://127.0.0.1:8000/rpc".into());
         let ns = std::env::var("SURREAL_TEST_NS").unwrap_or_else(|_| "test".into());
         let db_name = std::env::var("SURREAL_TEST_DB").unwrap_or_else(|_| "edge_test".into());
+        let user = std::env::var("SURREAL_TEST_USER").unwrap_or_else(|_| "root".into());
+        let pass = std::env::var("SURREAL_TEST_PASS").unwrap_or_else(|_| "root".into());
 
         let db = Surreal::new::<surrealdb::engine::remote::ws::Ws>(&url)
             .await
             .expect("connect to SurrealDB");
+        db.signin(Root {
+            username: user,
+            password: pass,
+        })
+        .await
+        .expect("signin to SurrealDB");
         db.use_ns(&ns)
             .use_db(&db_name)
             .await
