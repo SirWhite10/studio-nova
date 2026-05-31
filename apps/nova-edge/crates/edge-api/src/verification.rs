@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use hickory_resolver::TokioResolver;
-use rand::RngExt;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// Prefix used for verification tokens.
