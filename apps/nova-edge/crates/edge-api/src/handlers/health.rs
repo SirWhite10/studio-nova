@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use crate::server::AppState;
 
 #[derive(Debug, Deserialize)]
-struct ResolveQuery {
+pub struct ResolveQuery {
     host: Option<String>,
 }
 
