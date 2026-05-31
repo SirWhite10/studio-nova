@@ -59,7 +59,7 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 opentelemetry = "0.28"
-opentelemetry-sdk = "0.28"
+opentelemetry-sdk = { version = "0.28", package = "opentelemetry_sdk" }
 opentelemetry-otlp = "0.28"
 tracing-opentelemetry = "0.29"
 
