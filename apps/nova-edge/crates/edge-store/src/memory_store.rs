@@ -10,6 +10,8 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 use crate::store::DomainStore;
 use crate::types::*;
+use crate::helpers::*;
+use crate::store_config::StoreSchemaConfig;
 
 /// In-memory store backed by `DashMap`. Safe to share across tasks.
 pub struct MemoryStore {
@@ -19,6 +21,8 @@ pub struct MemoryStore {
     domains: DashMap<String, ProxyDomain>,
     /// Monotonic timestamp counter for tests.
     now: AtomicI64,
+    /// Schema configuration for table/field names.
+    schema: StoreSchemaConfig,
 }
 
 impl Default for MemoryStore {
@@ -28,11 +32,18 @@ impl Default for MemoryStore {
 }
 
 impl MemoryStore {
+    /// Create a new in-memory store with studio defaults.
     pub fn new() -> Self {
+        Self::new_with_config(StoreSchemaConfig::studio())
+    }
+
+    /// Create a new in-memory store with a custom schema config.
+    pub fn new_with_config(schema: StoreSchemaConfig) -> Self {
         Self {
             proxies: DashMap::new(),
             domains: DashMap::new(),
             now: AtomicI64::new(1_700_000_000_000),
+            schema,
         }
     }
 
@@ -61,10 +72,7 @@ impl DomainStore for MemoryStore {
         };
         let proxy_name = domain.proxy_id.clone();
         // Strip table prefix if present (e.g. "workspace_proxy:my-proxy" → "my-proxy")
-        let proxy_key = proxy_name
-            .strip_prefix("workspace_proxy:")
-            .unwrap_or(&proxy_name)
-            .to_string();
+        let proxy_key = strip_proxy_prefix(&proxy_name).to_string();
         let Some(proxy) = self.proxies.get(&proxy_key) else {
             return Ok(None);
         };
@@ -81,12 +89,7 @@ impl DomainStore for MemoryStore {
     async fn list_domains_for_studio(&self, studio_id: &str) -> Result<Vec<DomainResolution>> {
         let mut results = Vec::new();
         for entry in self.domains.iter() {
-            let proxy_key = entry
-                .value()
-                .proxy_id
-                .strip_prefix("workspace_proxy:")
-                .unwrap_or(&entry.value().proxy_id)
-                .to_string();
+            let proxy_key = strip_proxy_prefix(&entry.value().proxy_id).to_string();
             if let Some(proxy) = self.proxies.get(&proxy_key) {
                 if proxy.studio_id == studio_id {
                     results.push(DomainResolution {
@@ -107,7 +110,7 @@ impl DomainStore for MemoryStore {
         let Some(proxy) = self.proxies.get(name) else {
             return Ok(vec![]);
         };
-        let proxy_id = format!("workspace_proxy:{name}");
+        let proxy_id = proxy_record_id(name);
         let proxy_clone = proxy.value().clone();
         drop(proxy);
 
@@ -132,7 +135,7 @@ impl DomainStore for MemoryStore {
             studio_id: input.studio_id,
             runtime_id: input.runtime_id,
             proxy_name: input.proxy_name.clone(),
-            proxy_type: input.proxy_type.unwrap_or(ProxyType::Http),
+            proxy_type: input.proxy_type.unwrap_or_default(),
             local_ip: input.local_ip.unwrap_or_else(|| "127.0.0.1".into()),
             local_port: input.local_port,
             remote_port: input.remote_port,
@@ -149,13 +152,13 @@ impl DomainStore for MemoryStore {
 
         // Subdomain
         if let Some(sub) = &input.subdomain {
-            let host = format!("{}.{}", sub, "dlx.studio"); // default subdomain host
+            let host = self.schema.subdomain_host(sub);
             let domain = ProxyDomain {
                 id: None,
                 host: host.clone(),
-                proxy_id: format!("workspace_proxy:{}", input.proxy_name),
+                proxy_id: proxy_record_id(&input.proxy_name),
                 kind: DomainKind::Subdomain,
-                status: DomainStatus::Active, // subdomains auto-activate
+                status: DomainKind::Subdomain.initial_status(),
                 verification_token: None,
                 created_at: now,
                 updated_at: now,
@@ -174,9 +177,9 @@ impl DomainStore for MemoryStore {
                 let domain = ProxyDomain {
                     id: None,
                     host: host.clone(),
-                    proxy_id: format!("workspace_proxy:{}", input.proxy_name),
+                    proxy_id: proxy_record_id(&input.proxy_name),
                     kind: DomainKind::Custom,
-                    status: DomainStatus::Pending,
+                    status: DomainKind::Custom.initial_status(),
                     verification_token: Some(format!("nova-domain={}", generate_token())),
                     created_at: now,
                     updated_at: now,
@@ -211,11 +214,7 @@ impl DomainStore for MemoryStore {
         let domain = entry.value().clone();
         drop(entry);
 
-        let proxy_key = domain
-            .proxy_id
-            .strip_prefix("workspace_proxy:")
-            .unwrap_or(&domain.proxy_id)
-            .to_string();
+        let proxy_key = strip_proxy_prefix(&domain.proxy_id).to_string();
         let Some(proxy) = self.proxies.get(&proxy_key) else {
             return Ok(None);
         };
@@ -237,24 +236,6 @@ impl DomainStore for MemoryStore {
         }
         Ok(())
     }
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────
-
-fn normalize_host(host: &str) -> String {
-    host.trim()
-        .trim_end_matches('.')
-        .to_lowercase()
-}
-
-fn generate_token() -> String {
-    use std::fmt::Write;
-    let bytes: [u8; 16] = rand::random();
-    let mut s = String::with_capacity(32);
-    for b in &bytes {
-        write!(&mut s, "{b:02x}").unwrap();
-    }
-    s
 }
 
 // ── Tests ───────────────────────────────────────────────────────────

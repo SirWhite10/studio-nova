@@ -8,8 +8,10 @@
 use anyhow::Result;
 use dashmap::DashMap;
 use surrealdb::Surreal;
-use surrealdb::engine::remote::ws::Client;
+use surrealdb::Connection;
 
+use crate::helpers::*;
+use crate::surreal_ext::SurrealExt;
 use crate::types::*;
 
 /// Live-updating cache of domain resolutions.
@@ -42,7 +44,7 @@ impl LiveCache {
 
     /// Bootstrap the cache by loading all existing data, then subscribe to
     /// live queries for ongoing mutations.
-    pub async fn start(db: &Surreal<Client>) -> Result<Self> {
+    pub async fn start<C: Connection + Send + Sync>(db: &Surreal<C>) -> Result<Self> {
         let cache = Self::new();
 
         // Load existing proxy_domain records
@@ -96,7 +98,7 @@ impl LiveCache {
     }
 
     /// Gracefully stop live query subscriptions.
-    pub async fn stop(&self, db: &Surreal<Client>) -> Result<()> {
+    pub async fn stop<C: Connection>(&self, db: &Surreal<C>) -> Result<()> {
         for entry in self.live_uuids.iter() {
             let id_str = entry.value().clone();
             let _ = db
@@ -169,7 +171,7 @@ impl LiveCache {
     pub fn remove_proxy(&self, proxy_name: &str) {
         self.proxies.remove(proxy_name);
         // Also remove any domain entries referencing this proxy
-        let proxy_id = format!("workspace_proxy:{proxy_name}");
+        let proxy_id = proxy_record_id(proxy_name);
         self.hosts.retain(|_, v| v.domain.proxy_id != proxy_id);
     }
 
@@ -199,29 +201,12 @@ impl LiveCache {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-fn normalize_host(host: &str) -> String {
-    host.trim()
-        .trim_end_matches('.')
-        .to_lowercase()
-}
-
-async fn fetch_proxy_for_domain(
-    db: &Surreal<Client>,
+/// Fetch a proxy by its record ID using the SurrealExt trait.
+async fn fetch_proxy_for_domain<C: Connection>(
+    db: &Surreal<C>,
     proxy_id: &str,
 ) -> Option<WorkspaceProxy> {
-    if proxy_id.is_empty() {
-        return None;
-    }
-    let raw: Vec<serde_json::Value> = db
-        .query("SELECT * FROM type::record($id)")
-        .bind(serde_json::json!({ "id": proxy_id }))
-        .await
-        .ok()?
-        .take(0)
-        .ok()?;
-    raw.into_iter()
-        .filter_map(|v| serde_json::from_value(v).ok())
-        .next()
+    db.select_by_record_id(proxy_id).await.ok().flatten()
 }
 
 // ── Tests ───────────────────────────────────────────────────────────

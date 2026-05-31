@@ -10,7 +10,7 @@
 //! # Studio Preset
 //!
 //! The default schema is embedded from [`studio.surql`] and matches the
-//! hardcoded DDL previously defined in `surreal_store::SCHEMA_DDL`.
+//! hardcoded DDL previously embedded in `surreal_store.rs`.
 //!
 //! # Change Detection
 //!
@@ -289,13 +289,13 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 
 /// Run all schema DDL statements against the database.
 ///
-/// This is a convenience wrapper kept for backward compatibility with
-/// the original `schema.rs` module. Prefer using [`SchemaManager`] for
-/// new code — it provides checksum-based change detection and avoids
-/// re-applying an up-to-date schema on every startup.
+/// This is a convenience wrapper kept for backward compatibility.
+/// Prefer using [`SchemaManager`] for new code — it provides
+/// checksum-based change detection and avoids re-applying an up-to-date
+/// schema on every startup.
 pub async fn ensure_schema(db: &Surreal<surrealdb::engine::remote::ws::Client>) -> Result<()> {
-    for ddl in super::surreal_store::SCHEMA_DDL {
-        db.query(*ddl).await?;
+    for ddl in studio_parse_statements() {
+        db.query(ddl).await?;
     }
     Ok(())
 }

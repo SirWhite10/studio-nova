@@ -13,112 +13,26 @@ use surrealdb::Connection;
 
 use crate::store::DomainStore;
 use crate::types::*;
+use crate::helpers::*;
+use crate::surreal_ext::SurrealExt;
+use crate::store_config::StoreSchemaConfig;
 
 pub struct SurrealStore<C: Connection> {
     db: Surreal<C>,
+    schema: StoreSchemaConfig,
 }
 
 impl<C: Connection> SurrealStore<C> {
-    pub fn new(db: Surreal<C>) -> Self {
-        Self { db }
-    }
-
-    /// Run a query that returns the first result set as Vec<T>.
-    async fn query_rows<T: serde::de::DeserializeOwned>(
-        &self,
-        sql: &str,
-        vars: serde_json::Value,
-    ) -> Result<Vec<T>> {
-        let mut response = self.db.query(sql).bind(vars).await?;
-        let raw: Vec<serde_json::Value> = response.take(0)?;
-        let rows: Vec<T> = raw
-            .into_iter()
-            .filter_map(|v| serde_json::from_value(v).ok())
-            .collect();
-        Ok(rows)
-    }
-
-    /// Create a record in `table` with JSON content, returning the created row as T.
-    async fn create_record<T: serde::de::DeserializeOwned>(
-        &self,
-        table: &str,
-        content: serde_json::Value,
-    ) -> Result<T> {
-        let sql = "CREATE type::record($table, rand::uuid()) CONTENT $content";
-        let mut response = self
-            .db
-            .query(sql)
-            .bind(serde_json::json!({
-                "table": table,
-                "content": content,
-            }))
-            .await?;
-        let raw: Vec<serde_json::Value> = response.take(0)?;
-        let row: T = raw
-            .into_iter()
-            .filter_map(|v| serde_json::from_value(v).ok())
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("create returned no rows"))?;
-        Ok(row)
-    }
-
-    /// Select a record by record ID string (e.g. "workspace_proxy:abc123").
-    async fn select_record<T: serde::de::DeserializeOwned>(
-        &self,
-        record_id: &str,
-    ) -> Result<Option<T>> {
-        if record_id.is_empty() {
-            return Ok(None);
-        }
-        // Use type::record with the full record ID string
-        let mut response = self
-            .db
-            .query("SELECT * FROM type::record($id)")
-            .bind(serde_json::json!({ "id": record_id }))
-            .await?;
-        let raw: Vec<serde_json::Value> = response.take(0)?;
-        Ok(raw
-            .into_iter()
-            .filter_map(|v| serde_json::from_value(v).ok())
-            .next())
+    pub fn new(db: Surreal<C>, schema: StoreSchemaConfig) -> Self {
+        Self { db, schema }
     }
 }
-
-// ── Schema ──────────────────────────────────────────────────────────
-
-pub const SCHEMA_DDL: &[&str] = &[
-    "DEFINE TABLE IF NOT EXISTS workspace_proxy SCHEMALESS",
-    "DEFINE FIELD IF NOT EXISTS userId ON workspace_proxy TYPE string",
-    "DEFINE FIELD IF NOT EXISTS studioId ON workspace_proxy TYPE string",
-    "DEFINE FIELD IF NOT EXISTS runtimeId ON workspace_proxy TYPE option<string>",
-    "DEFINE FIELD IF NOT EXISTS proxyName ON workspace_proxy TYPE string",
-    "DEFINE FIELD IF NOT EXISTS proxyType ON workspace_proxy TYPE string",
-    "DEFINE FIELD IF NOT EXISTS localIP ON workspace_proxy TYPE string DEFAULT '127.0.0.1'",
-    "DEFINE FIELD IF NOT EXISTS localPort ON workspace_proxy TYPE number",
-    "DEFINE FIELD IF NOT EXISTS remotePort ON workspace_proxy TYPE option<number>",
-    "DEFINE FIELD IF NOT EXISTS frpcClientId ON workspace_proxy TYPE option<string>",
-    "DEFINE FIELD IF NOT EXISTS enabled ON workspace_proxy TYPE bool DEFAULT true",
-    "DEFINE FIELD IF NOT EXISTS createdAt ON workspace_proxy TYPE number",
-    "DEFINE FIELD IF NOT EXISTS updatedAt ON workspace_proxy TYPE number",
-    "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_studio ON workspace_proxy FIELDS studioId",
-    "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_name ON workspace_proxy FIELDS proxyName UNIQUE",
-    "DEFINE TABLE IF NOT EXISTS proxy_domain SCHEMALESS",
-    "DEFINE FIELD IF NOT EXISTS host ON proxy_domain TYPE string",
-    "DEFINE FIELD IF NOT EXISTS proxyId ON proxy_domain TYPE string",
-    "DEFINE FIELD IF NOT EXISTS kind ON proxy_domain TYPE string",
-    "DEFINE FIELD IF NOT EXISTS status ON proxy_domain TYPE string",
-    "DEFINE FIELD IF NOT EXISTS verificationToken ON proxy_domain TYPE option<string>",
-    "DEFINE FIELD IF NOT EXISTS createdAt ON proxy_domain TYPE number",
-    "DEFINE FIELD IF NOT EXISTS updatedAt ON proxy_domain TYPE number",
-    "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_host ON proxy_domain FIELDS host UNIQUE",
-    "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_proxy ON proxy_domain FIELDS proxyId",
-];
 
 #[async_trait]
 impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
     async fn ensure_schema(&self) -> Result<()> {
-        for ddl in SCHEMA_DDL {
-            self.db.query(*ddl).await?;
+        for stmt in crate::schema::studio_parse_statements() {
+            self.db.query(stmt).await?;
         }
         Ok(())
     }
@@ -139,8 +53,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let normalized = normalize_host(host);
 
         let domains: Vec<ProxyDomain> = self
+            .db
             .query_rows(
-                "SELECT * FROM proxy_domain WHERE host = $host AND status = 'active' LIMIT 1",
+                &format!("SELECT * FROM {} WHERE host = $host AND status = 'active' LIMIT 1", self.schema.domain_table),
                 serde_json::json!({ "host": normalized }),
             )
             .await?;
@@ -150,7 +65,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             None => return Ok(None),
         };
 
-        let proxy = self.select_record::<WorkspaceProxy>(&domain.proxy_id).await?;
+        let proxy = self.db.select_by_record_id::<WorkspaceProxy>(&domain.proxy_id).await?;
         let Some(proxy) = proxy else {
             return Ok(None);
         };
@@ -165,8 +80,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let normalized = normalize_host(host);
 
         let domains: Vec<ProxyDomain> = self
+            .db
             .query_rows(
-                "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+                &format!("SELECT * FROM {} WHERE host = $host LIMIT 1", self.schema.domain_table),
                 serde_json::json!({ "host": normalized }),
             )
             .await?;
@@ -176,7 +92,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             None => return Ok(None),
         };
 
-        let proxy = self.select_record::<WorkspaceProxy>(&domain.proxy_id).await?;
+        let proxy = self.db.select_by_record_id::<WorkspaceProxy>(&domain.proxy_id).await?;
         let Some(proxy) = proxy else {
             return Ok(None);
         };
@@ -186,8 +102,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
     async fn list_domains_for_studio(&self, studio_id: &str) -> Result<Vec<DomainResolution>> {
         let proxies: Vec<WorkspaceProxy> = self
+            .db
             .query_rows(
-                "SELECT * FROM workspace_proxy WHERE studioId = $studioId ORDER BY updatedAt DESC",
+                &format!("SELECT * FROM {} WHERE studioId = $studioId ORDER BY updatedAt DESC", self.schema.proxy_table),
                 serde_json::json!({ "studioId": studio_id }),
             )
             .await?;
@@ -196,8 +113,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         for proxy in &proxies {
             let proxy_id = record_id_string(&proxy.id);
             let domains: Vec<ProxyDomain> = self
+                .db
                 .query_rows(
-                    "SELECT * FROM proxy_domain WHERE proxyId = $proxyId ORDER BY updatedAt DESC",
+                    &format!("SELECT * FROM {} WHERE proxyId = $proxyId ORDER BY updatedAt DESC", self.schema.domain_table),
                     serde_json::json!({ "proxyId": proxy_id }),
                 )
                 .await?;
@@ -214,8 +132,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
     async fn get_proxy_by_name(&self, name: &str) -> Result<Option<WorkspaceProxy>> {
         let proxies: Vec<WorkspaceProxy> = self
+            .db
             .query_rows(
-                "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName AND enabled = true LIMIT 1",
+                &format!("SELECT * FROM {} WHERE proxyName = $proxyName AND enabled = true LIMIT 1", self.schema.proxy_table),
                 serde_json::json!({ "proxyName": name }),
             )
             .await?;
@@ -224,8 +143,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
     async fn list_proxy_domains(&self, name: &str) -> Result<Vec<DomainResolution>> {
         let proxies: Vec<WorkspaceProxy> = self
+            .db
             .query_rows(
-                "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName LIMIT 1",
+                &format!("SELECT * FROM {} WHERE proxyName = $proxyName LIMIT 1", self.schema.proxy_table),
                 serde_json::json!({ "proxyName": name }),
             )
             .await?;
@@ -237,8 +157,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
         let proxy_id = record_id_string(&proxy.id);
         let domains: Vec<ProxyDomain> = self
+            .db
             .query_rows(
-                "SELECT * FROM proxy_domain WHERE proxyId = $proxyId",
+                &format!("SELECT * FROM {} WHERE proxyId = $proxyId", self.schema.domain_table),
                 serde_json::json!({ "proxyId": proxy_id }),
             )
             .await?;
@@ -256,19 +177,14 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let now = chrono::Utc::now().timestamp_millis();
 
         let existing: Vec<WorkspaceProxy> = self
+            .db
             .query_rows(
-                "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName LIMIT 1",
+                &format!("SELECT * FROM {} WHERE proxyName = $proxyName LIMIT 1", self.schema.proxy_table),
                 serde_json::json!({ "proxyName": &input.proxy_name }),
             )
             .await?;
 
-        let proxy_type_str = match &input.proxy_type {
-            Some(ProxyType::Http) => "http",
-            Some(ProxyType::Https) => "https",
-            Some(ProxyType::Tcp) => "tcp",
-            Some(ProxyType::Udp) => "udp",
-            None => "http",
-        };
+        let proxy_type_str = input.proxy_type.unwrap_or_default().to_string();
 
         let mut proxy_content = serde_json::json!({
             "userId": input.user_id,
@@ -303,8 +219,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                 .await?;
 
             let updated: Vec<WorkspaceProxy> = self
+                .db
                 .query_rows(
-                    "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName LIMIT 1",
+                    &format!("SELECT * FROM {} WHERE proxyName = $proxyName LIMIT 1", self.schema.proxy_table),
                     serde_json::json!({ "proxyName": &input.proxy_name }),
                 )
                 .await?;
@@ -312,7 +229,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         } else {
             let mut content = proxy_content;
             content["createdAt"] = serde_json::json!(now);
-            self.create_record("workspace_proxy", content).await?
+            self.db.create_record(&self.schema.proxy_table, content).await?
         };
 
         let proxy_id = record_id_string(&proxy.id);
@@ -320,7 +237,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         // Build host list
         let mut hosts: Vec<(String, DomainKind)> = Vec::new();
         if let Some(ref sub) = input.subdomain {
-            let host = format!("{}.dlx.studio", sub);
+            let host = self.schema.subdomain_host(sub);
             hosts.push((host, DomainKind::Subdomain));
         }
         if let Some(ref customs) = input.custom_domains {
@@ -333,8 +250,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let mut resolutions = Vec::new();
         for (host, kind) in hosts {
             let existing_domains: Vec<ProxyDomain> = self
+                .db
                 .query_rows(
-                    "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+                    &format!("SELECT * FROM {} WHERE host = $host LIMIT 1", self.schema.domain_table),
                     serde_json::json!({ "host": &host }),
                 )
                 .await?;
@@ -342,11 +260,11 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             let existing_domain = existing_domains.into_iter().next();
 
             let status = match kind {
-                DomainKind::Subdomain => DomainStatus::Active,
+                DomainKind::Subdomain => kind.initial_status(),
                 DomainKind::Custom => existing_domain
                     .as_ref()
                     .map(|d| d.status.clone())
-                    .unwrap_or(DomainStatus::Pending),
+                    .unwrap_or_else(|| kind.initial_status()),
             };
 
             let verification_token = match kind {
@@ -359,10 +277,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                 DomainKind::Subdomain => None,
             };
 
-            let kind_str = match kind {
-                DomainKind::Subdomain => "subdomain",
-                DomainKind::Custom => "custom",
-            };
+            let kind_str = kind.to_string();
 
             let mut domain_content = serde_json::json!({
                 "host": &host,
@@ -388,8 +303,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                     .await?;
 
                 let fetched: Vec<ProxyDomain> = self
+                    .db
                     .query_rows(
-                        "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+                        &format!("SELECT * FROM {} WHERE host = $host LIMIT 1", self.schema.domain_table),
                         serde_json::json!({ "host": &host }),
                     )
                     .await?;
@@ -397,7 +313,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             } else {
                 let mut content = domain_content;
                 content["createdAt"] = serde_json::json!(now);
-                self.create_record("proxy_domain", content).await?
+                self.db.create_record(&self.schema.domain_table, content).await?
             };
 
             resolutions.push(DomainResolution {
@@ -421,8 +337,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let now = chrono::Utc::now().timestamp_millis();
 
         let domains: Vec<ProxyDomain> = self
+            .db
             .query_rows(
-                "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+                &format!("SELECT * FROM {} WHERE host = $host LIMIT 1", self.schema.domain_table),
                 serde_json::json!({ "host": &normalized }),
             )
             .await?;
@@ -449,8 +366,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
         let normalized = normalize_host(host);
 
         let domains: Vec<ProxyDomain> = self
+            .db
             .query_rows(
-                "SELECT * FROM proxy_domain WHERE host = $host LIMIT 1",
+                &format!("SELECT * FROM {} WHERE host = $host LIMIT 1", self.schema.domain_table),
                 serde_json::json!({ "host": &normalized }),
             )
             .await?;
@@ -471,60 +389,16 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
     async fn disable_proxy(&self, name: &str) -> Result<()> {
         let now = chrono::Utc::now().timestamp_millis();
         self.db
-            .query(
-                "UPDATE workspace_proxy SET enabled = false, updatedAt = $now WHERE proxyName = $proxyName",
-            )
+            .query(&format!(
+                "UPDATE {} SET enabled = false, updatedAt = $now WHERE proxyName = $proxyName",
+                self.schema.proxy_table,
+            ))
             .bind(serde_json::json!({
                 "proxyName": name,
                 "now": now,
             }))
             .await?;
         Ok(())
-    }
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────
-
-fn normalize_host(host: &str) -> String {
-    host.trim()
-        .trim_end_matches('.')
-        .to_lowercase()
-}
-
-fn generate_token() -> String {
-    use std::fmt::Write;
-    let bytes: [u8; 16] = rand::random();
-    let mut s = String::with_capacity(32);
-    for b in &bytes {
-        write!(&mut s, "{b:02x}").unwrap();
-    }
-    s
-}
-
-/// Extract a "table:id" string from a SurrealDB JSON id value.
-fn record_id_string(id: &Option<serde_json::Value>) -> String {
-    match id {
-        Some(serde_json::Value::String(s)) => s.clone(),
-        Some(serde_json::Value::Object(map)) => {
-            let tb = map.get("tb").and_then(|v| v.as_str()).unwrap_or("");
-            let id_part = map.get("id");
-            let id_str = match id_part {
-                Some(serde_json::Value::String(s)) => s.clone(),
-                Some(serde_json::Value::Object(id_map)) => id_map
-                    .get("String")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string(),
-                Some(serde_json::Value::Number(n)) => n.to_string(),
-                _ => String::new(),
-            };
-            if tb.is_empty() || id_str.is_empty() {
-                String::new()
-            } else {
-                format!("{tb}:{id_str}")
-            }
-        }
-        _ => String::new(),
     }
 }
 
@@ -566,7 +440,7 @@ mod tests {
         let db = test_db().await;
         db.query("DELETE proxy_domain").await.unwrap();
         db.query("DELETE workspace_proxy").await.unwrap();
-        let store = SurrealStore::new(db);
+        let store = SurrealStore::new(db, StoreSchemaConfig::studio());
         store.ensure_schema().await.unwrap();
         store
     }
