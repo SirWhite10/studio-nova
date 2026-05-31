@@ -2,6 +2,9 @@
 //!
 //! Query patterns mirror the TypeScript `nova-domain-control` store exactly,
 //! using the same SurrealQL and camelCase field names.
+//!
+//! All SurrealDB API interactions go through `serde_json::Value` to avoid
+//! requiring `SurrealValue` derive on our domain types.
 
 use async_trait::async_trait;
 use anyhow::Result;
@@ -20,7 +23,7 @@ impl SurrealStore {
         Self { db }
     }
 
-    /// Helper: run a query that returns the first result set as Vec<T>.
+    /// Run a query that returns the first result set as Vec<T>.
     async fn query_rows<T: serde::de::DeserializeOwned>(
         &self,
         sql: &str,
@@ -29,6 +32,50 @@ impl SurrealStore {
         let mut response = self.db.query(sql).bind(vars).await?;
         let rows: Vec<T> = response.take(0)?;
         Ok(rows)
+    }
+
+    /// Create a record in `table` with JSON content, returning the created row as T.
+    async fn create_record<T: serde::de::DeserializeOwned>(
+        &self,
+        table: &str,
+        content: serde_json::Value,
+    ) -> Result<T> {
+        // Use SurrealQL CREATE with content — returns the created record
+        let sql = "CREATE type::thing($table, rand::uuid()) CONTENT $content";
+        let mut response = self
+            .db
+            .query(sql)
+            .bind(serde_json::json!({
+                "table": table,
+                "content": content,
+            }))
+            .await?;
+        let rows: Vec<T> = response.take(0)?;
+        rows.into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("create returned no rows"))
+    }
+
+    /// Select a record by table:id string.
+    async fn select_record<T: serde::de::DeserializeOwned>(
+        &self,
+        record_id: &str,
+    ) -> Result<Option<T>> {
+        let parts: Vec<&str> = record_id.splitn(2, ':').collect();
+        if parts.len() != 2 {
+            return Ok(None);
+        }
+        // Use query to avoid SurrealValue requirement on T
+        let mut response = self
+            .db
+            .query("SELECT * FROM type::thing($tb, $id)")
+            .bind(serde_json::json!({
+                "tb": parts[0],
+                "id": parts[1],
+            }))
+            .await?;
+        let rows: Vec<T> = response.take(0)?;
+        Ok(rows.into_iter().next())
     }
 }
 
@@ -94,7 +141,7 @@ impl DomainStore for SurrealStore {
             None => return Ok(None),
         };
 
-        let proxy = self.fetch_proxy_by_record_id(&domain.proxy_id).await?;
+        let proxy = self.select_record::<WorkspaceProxy>(&domain.proxy_id).await?;
         let Some(proxy) = proxy else {
             return Ok(None);
         };
@@ -120,9 +167,9 @@ impl DomainStore for SurrealStore {
             None => return Ok(None),
         };
 
-        let proxy = self.fetch_proxy_by_record_id(&domain.proxy_id).await?;
+        let proxy = self.select_record::<WorkspaceProxy>(&domain.proxy_id).await?;
         let Some(proxy) = proxy else {
-            return Ok(None);
+            return Ok(None),
         };
 
         Ok(Some(DomainResolution { proxy, domain }))
@@ -199,7 +246,6 @@ impl DomainStore for SurrealStore {
     async fn upsert_proxy(&self, input: ProxyUpsertInput) -> Result<Vec<DomainResolution>> {
         let now = chrono::Utc::now().timestamp_millis();
 
-        // Check for existing proxy
         let existing: Vec<WorkspaceProxy> = self
             .query_rows(
                 "SELECT * FROM workspace_proxy WHERE proxyName = $proxyName LIMIT 1",
@@ -219,7 +265,7 @@ impl DomainStore for SurrealStore {
             let existing_id = record_id_string(&existing_proxy.id);
             let created = existing_proxy.created_at;
             self.db
-                .query("UPDATE $id MERGE $content")
+                .query("UPDATE type::thing($id) MERGE $content")
                 .bind(serde_json::json!({
                     "id": existing_id,
                     "content": {
@@ -247,10 +293,9 @@ impl DomainStore for SurrealStore {
                 .await?;
             updated.into_iter().next().unwrap()
         } else {
-            let created: Option<WorkspaceProxy> = self
-                .db
-                .create("workspace_proxy")
-                .content(serde_json::json!({
+            self.create_record(
+                "workspace_proxy",
+                serde_json::json!({
                     "userId": input.user_id,
                     "studioId": input.studio_id,
                     "runtimeId": input.runtime_id,
@@ -263,9 +308,9 @@ impl DomainStore for SurrealStore {
                     "enabled": input.enabled.unwrap_or(true),
                     "createdAt": now,
                     "updatedAt": now,
-                }))
-                .await?;
-            created.unwrap()
+                }),
+            )
+            .await?
         };
 
         let proxy_id = record_id_string(&proxy.id);
@@ -320,7 +365,7 @@ impl DomainStore for SurrealStore {
             let saved_domain: ProxyDomain = if let Some(existing) = existing_domain {
                 let existing_id = record_id_string(&existing.id);
                 self.db
-                    .query("UPDATE $id MERGE $content")
+                    .query("UPDATE type::thing($id) MERGE $content")
                     .bind(serde_json::json!({
                         "id": existing_id,
                         "content": {
@@ -343,10 +388,9 @@ impl DomainStore for SurrealStore {
                     .await?;
                 fetched.into_iter().next().unwrap()
             } else {
-                let created: Option<ProxyDomain> = self
-                    .db
-                    .create("proxy_domain")
-                    .content(serde_json::json!({
+                self.create_record(
+                    "proxy_domain",
+                    serde_json::json!({
                         "host": &host,
                         "proxyId": &proxy_id,
                         "kind": kind_str,
@@ -354,9 +398,9 @@ impl DomainStore for SurrealStore {
                         "verificationToken": verification_token,
                         "createdAt": now,
                         "updatedAt": now,
-                    }))
-                    .await?;
-                created.unwrap()
+                    }),
+                )
+                .await?
             };
 
             resolutions.push(DomainResolution {
@@ -393,7 +437,7 @@ impl DomainStore for SurrealStore {
 
         let domain_id = record_id_string(&domain.id);
         self.db
-            .query("UPDATE $id MERGE { status: $status, updatedAt: $now }")
+            .query("UPDATE type::thing($id) MERGE { status: $status, updatedAt: $now }")
             .bind(serde_json::json!({
                 "id": domain_id,
                 "status": status.to_string(),
@@ -421,7 +465,7 @@ impl DomainStore for SurrealStore {
 
         let domain_id = record_id_string(&domain.id);
         self.db
-            .query("DELETE $id")
+            .query("DELETE type::thing($id)")
             .bind(serde_json::json!({ "id": domain_id }))
             .await?;
         Ok(true)
@@ -443,21 +487,6 @@ impl DomainStore for SurrealStore {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
-
-impl SurrealStore {
-    /// Fetch a proxy by its record ID string (e.g. "workspace_proxy:my-proxy").
-    async fn fetch_proxy_by_record_id(&self, record_id: &str) -> Result<Option<WorkspaceProxy>> {
-        let parts: Vec<&str> = record_id.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            return Ok(None);
-        }
-        let result: Option<WorkspaceProxy> = self
-            .db
-            .select((parts[0], parts[1]))
-            .await?;
-        Ok(result)
-    }
-}
 
 fn normalize_host(host: &str) -> String {
     host.trim()
