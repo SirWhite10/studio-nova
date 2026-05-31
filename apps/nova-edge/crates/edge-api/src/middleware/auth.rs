@@ -66,6 +66,7 @@ mod tests {
             store: Arc::new(MemoryStore::new()) as Arc<dyn edge_store::DomainStore>,
             admin_token: admin_token.to_string(),
             admin_tokens: admin_tokens.iter().map(|s| s.to_string()).collect(),
+            dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
         }
     }
 

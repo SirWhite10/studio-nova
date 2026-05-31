@@ -10,13 +10,20 @@ pub struct AppState {
     pub store: Arc<dyn DomainStore>,
     pub admin_token: String,
     pub admin_tokens: Vec<String>,
+    pub dns_resolver: Arc<dyn crate::verification::DnsResolver>,
 }
 
-pub fn create_router(store: Arc<dyn DomainStore>, admin_token: String, admin_tokens: Vec<String>) -> Router {
+pub fn create_router(
+    store: Arc<dyn DomainStore>,
+    admin_token: String,
+    admin_tokens: Vec<String>,
+    dns_resolver: Arc<dyn crate::verification::DnsResolver>,
+) -> Router {
     let state = AppState {
         store: store.clone(),
         admin_token: admin_token.clone(),
         admin_tokens: admin_tokens.clone(),
+        dns_resolver: dns_resolver.clone(),
     };
 
     Router::new()
@@ -26,15 +33,21 @@ pub fn create_router(store: Arc<dyn DomainStore>, admin_token: String, admin_tok
         // FRP plugin handler
         .route("/frp/handler", post(handlers::frp::handle))
         // Admin API (authenticated)
-        .nest("/admin", admin_routes(store, admin_token, admin_tokens))
+        .nest("/admin", admin_routes(store, admin_token, admin_tokens, dns_resolver))
         .with_state(state)
 }
 
-fn admin_routes(store: Arc<dyn DomainStore>, admin_token: String, admin_tokens: Vec<String>) -> Router<AppState> {
+fn admin_routes(
+    store: Arc<dyn DomainStore>,
+    admin_token: String,
+    admin_tokens: Vec<String>,
+    dns_resolver: Arc<dyn crate::verification::DnsResolver>,
+) -> Router<AppState> {
     let state = AppState {
         store,
         admin_token,
         admin_tokens,
+        dns_resolver,
     };
 
     Router::new()
