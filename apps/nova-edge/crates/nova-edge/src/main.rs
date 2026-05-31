@@ -251,10 +251,24 @@ fn parse_admin_tokens(tunnel_token: &str) -> Vec<String> {
 mod tests {
     use super::*;
     use edge_api::server as api_server;
-    use edge_api::verification::MockDnsResolver;
     use edge_store::memory_store::MemoryStore;
     use edge_tls::certs::CertStorage;
     use edge_tls::on_demand::{OnDemandResolver, StaticHostPolicy};
+
+    /// A simple mock DNS resolver for integration tests.
+    /// (edge-api's MockDnsResolver is #[cfg(test)]-gated and not visible externally)
+    struct LocalMockDnsResolver;
+
+    impl LocalMockDnsResolver {
+        fn new() -> Self { Self }
+    }
+
+    #[async_trait::async_trait]
+    impl edge_api::verification::DnsResolver for LocalMockDnsResolver {
+        async fn lookup_txt(&self, _name: &str) -> anyhow::Result<Vec<String>> {
+            Ok(vec![])
+        }
+    }
 
     /// Test: Config::from_env() fails gracefully when required vars are missing.
     #[test]
@@ -277,7 +291,7 @@ mod tests {
     #[test]
     fn test_admin_router_builds() {
         let store: Arc<dyn DomainStore> = Arc::new(MemoryStore::new());
-        let dns_resolver = Arc::new(MockDnsResolver::new(vec![]));
+        let dns_resolver = Arc::new(LocalMockDnsResolver::new());
         let router = api_server::create_router(
             store,
             "test-token".to_string(),
