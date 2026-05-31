@@ -44,7 +44,7 @@ impl<C: Connection> SurrealStore<C> {
         table: &str,
         content: serde_json::Value,
     ) -> Result<T> {
-        let sql = "CREATE type::thing($table, rand::uuid()) CONTENT $content";
+        let sql = "CREATE type::record($table, rand::uuid()) CONTENT $content";
         let mut response = self
             .db
             .query(sql)
@@ -73,7 +73,7 @@ impl<C: Connection> SurrealStore<C> {
         }
         let mut response = self
             .db
-            .query("SELECT * FROM type::thing($tb, $id)")
+            .query("SELECT * FROM type::record($tb, $id)")
             .bind(serde_json::json!({
                 "tb": parts[0],
                 "id": parts[1],
@@ -277,7 +277,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             let existing_id = record_id_string(&existing_proxy.id);
             let created = existing_proxy.created_at;
             self.db
-                .query("UPDATE type::thing($id) MERGE $content")
+                .query("UPDATE type::record($id) MERGE $content")
                 .bind(serde_json::json!({
                     "id": existing_id,
                     "content": {
@@ -377,7 +377,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             let saved_domain: ProxyDomain = if let Some(existing) = existing_domain {
                 let existing_id = record_id_string(&existing.id);
                 self.db
-                    .query("UPDATE type::thing($id) MERGE $content")
+                    .query("UPDATE type::record($id) MERGE $content")
                     .bind(serde_json::json!({
                         "id": existing_id,
                         "content": {
@@ -449,7 +449,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
         let domain_id = record_id_string(&domain.id);
         self.db
-            .query("UPDATE type::thing($id) MERGE { status: $status, updatedAt: $now }")
+            .query("UPDATE type::record($id) MERGE { status: $status, updatedAt: $now }")
             .bind(serde_json::json!({
                 "id": domain_id,
                 "status": status.to_string(),
@@ -477,7 +477,7 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
 
         let domain_id = record_id_string(&domain.id);
         self.db
-            .query("DELETE type::thing($id)")
+            .query("DELETE type::record($id)")
             .bind(serde_json::json!({ "id": domain_id }))
             .await?;
         Ok(true)
