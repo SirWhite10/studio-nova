@@ -57,16 +57,35 @@ impl TunnelRegistry {
         let proxy_names = client.proxy_names.clone();
         let is_new = !self.clients.contains_key(&run_id);
 
+        // If replacing, clean up old proxy slots first
+        if !is_new {
+            if let Some(old_client) = self.clients.get(&run_id) {
+                let old_proxies = old_client.proxy_names.clone();
+                drop(old_client);
+                for old_proxy in &old_proxies {
+                    if !proxy_names.contains(old_proxy) {
+                        // Remove run_id from old proxy slot
+                        if let Some(slot) = self.proxy_slots.get_mut(old_proxy) {
+                            slot.client_ids.retain(|id| id != &run_id);
+                            if slot.client_ids.is_empty() {
+                                drop(slot);
+                                self.proxy_slots.remove(old_proxy);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Upsert the client
         self.clients.insert(run_id.clone(), client);
 
         // Update proxy slots
         for proxy_name in &proxy_names {
-            let new = is_new;
             self.proxy_slots
                 .entry(proxy_name.clone())
                 .and_modify(|slot| {
-                    if new && !slot.client_ids.contains(&run_id) {
+                    if !slot.client_ids.contains(&run_id) {
                         slot.client_ids.push(run_id.clone());
                     }
                 })
