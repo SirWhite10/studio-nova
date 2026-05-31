@@ -129,7 +129,7 @@ pub async fn verify(
         "ok": true,
         "host": host,
         "activated": activated,
-        "status": if activated { "active" } else { &resolution.domain.status.to_string() },
+        "status": if activated { "active".to_string() } else { resolution.domain.status.to_string() },
         "verification": {
             "host": verification.host,
             "recordName": verification.record_name,
