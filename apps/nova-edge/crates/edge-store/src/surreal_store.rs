@@ -273,27 +273,35 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
             None => "http",
         };
 
+        let mut proxy_content = serde_json::json!({
+            "userId": input.user_id,
+            "studioId": input.studio_id,
+            "proxyName": input.proxy_name,
+            "proxyType": proxy_type_str,
+            "localIP": input.local_ip.unwrap_or_else(|| "127.0.0.1".into()),
+            "localPort": input.local_port,
+            "enabled": input.enabled.unwrap_or(true),
+            "updatedAt": now,
+        });
+        if let Some(v) = &input.runtime_id {
+            proxy_content["runtimeId"] = serde_json::json!(v);
+        }
+        if let Some(v) = input.remote_port {
+            proxy_content["remotePort"] = serde_json::json!(v);
+        }
+        if let Some(v) = &input.frpc_client_id {
+            proxy_content["frpcClientId"] = serde_json::json!(v);
+        }
+
         let proxy: WorkspaceProxy = if let Some(existing_proxy) = existing.into_iter().next() {
             let existing_id = record_id_string(&existing_proxy.id);
-            let created = existing_proxy.created_at;
+            let mut content = proxy_content.clone();
+            content["createdAt"] = serde_json::json!(existing_proxy.created_at);
             self.db
                 .query("UPDATE type::record($id) MERGE $content")
                 .bind(serde_json::json!({
                     "id": existing_id,
-                    "content": {
-                        "userId": input.user_id,
-                        "studioId": input.studio_id,
-                        "runtimeId": input.runtime_id,
-                        "proxyName": input.proxy_name,
-                        "proxyType": proxy_type_str,
-                        "localIP": input.local_ip.unwrap_or_else(|| "127.0.0.1".into()),
-                        "localPort": input.local_port,
-                        "remotePort": input.remote_port,
-                        "frpcClientId": input.frpc_client_id,
-                        "enabled": input.enabled.unwrap_or(true),
-                        "createdAt": created,
-                        "updatedAt": now,
-                    }
+                    "content": content,
                 }))
                 .await?;
 
@@ -305,24 +313,9 @@ impl<C: Connection + Send + Sync> DomainStore for SurrealStore<C> {
                 .await?;
             updated.into_iter().next().unwrap()
         } else {
-            self.create_record(
-                "workspace_proxy",
-                serde_json::json!({
-                    "userId": input.user_id,
-                    "studioId": input.studio_id,
-                    "runtimeId": input.runtime_id,
-                    "proxyName": input.proxy_name,
-                    "proxyType": proxy_type_str,
-                    "localIP": input.local_ip.unwrap_or_else(|| "127.0.0.1".into()),
-                    "localPort": input.local_port,
-                    "remotePort": input.remote_port,
-                    "frpcClientId": input.frpc_client_id,
-                    "enabled": input.enabled.unwrap_or(true),
-                    "createdAt": now,
-                    "updatedAt": now,
-                }),
-            )
-            .await?
+            let mut content = proxy_content;
+            content["createdAt"] = serde_json::json!(now);
+            self.create_record("workspace_proxy", content).await?
         };
 
         let proxy_id = record_id_string(&proxy.id);
