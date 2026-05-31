@@ -555,7 +555,7 @@ mod tests {
         use surrealdb::opt::auth::Root;
 
         let url = std::env::var("SURREAL_TEST_URL")
-            .unwrap_or_else(|_| "http://127.0.0.1:8000".into());
+            .unwrap_or_else(|_| "127.0.0.1:8000".into());
         let ns = std::env::var("SURREAL_TEST_NS").unwrap_or_else(|_| "test".into());
         let db_name = std::env::var("SURREAL_TEST_DB").unwrap_or_else(|_| "edge_test".into());
         let user = std::env::var("SURREAL_TEST_USER").unwrap_or_else(|_| "root".into());
