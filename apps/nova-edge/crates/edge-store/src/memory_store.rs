@@ -41,7 +41,7 @@ impl DomainStore for MemoryStore {
         Ok(vec![])
     }
 
-    async fn upsert_proxy(&self, _input: crate::store::ProxyUpsertInput) -> Result<Vec<DomainResolution>> {
+    async fn upsert_proxy(&self, _input: ProxyUpsertInput) -> Result<Vec<DomainResolution>> {
         Ok(vec![])
     }
 

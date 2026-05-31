@@ -6,7 +6,7 @@ use anyhow::Result;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Client;
 
-use crate::store::{DomainStore, ProxyUpsertInput};
+use crate::store::DomainStore;
 use crate::types::*;
 
 pub struct SurrealStore {

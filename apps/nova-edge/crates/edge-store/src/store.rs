@@ -15,19 +15,3 @@ pub trait DomainStore: Send + Sync {
     async fn remove_domain(&self, host: &str, studio_id: Option<&str>) -> anyhow::Result<bool>;
     async fn disable_proxy(&self, name: &str) -> anyhow::Result<()>;
 }
-
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct ProxyUpsertInput {
-    pub user_id: String,
-    pub studio_id: String,
-    pub runtime_id: Option<String>,
-    pub proxy_name: String,
-    pub proxy_type: Option<ProxyType>,
-    pub local_ip: Option<String>,
-    pub local_port: u16,
-    pub remote_port: Option<u16>,
-    pub frpc_client_id: Option<String>,
-    pub enabled: Option<bool>,
-    pub subdomain: Option<String>,
-    pub custom_domains: Option<Vec<String>>,
-}
