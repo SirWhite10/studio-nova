@@ -28,11 +28,55 @@ pub struct WorkspaceProxy {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+pub enum DomainKind {
+    Subdomain,
+    Custom,
+}
+
+impl DomainKind {
+    /// The initial status for a domain of this kind when first created.
+    /// Subdomains auto-activate; custom domains require verification.
+    pub fn initial_status(&self) -> DomainStatus {
+        match self {
+            Self::Subdomain => DomainStatus::Active,
+            Self::Custom => DomainStatus::Pending,
+        }
+    }
+}
+
+impl std::fmt::Display for DomainKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Subdomain => write!(f, "subdomain"),
+            Self::Custom => write!(f, "custom"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum ProxyType {
     Http,
     Https,
     Tcp,
     Udp,
+}
+
+impl std::fmt::Display for ProxyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Http => write!(f, "http"),
+            Self::Https => write!(f, "https"),
+            Self::Tcp => write!(f, "tcp"),
+            Self::Udp => write!(f, "udp"),
+        }
+    }
+}
+
+impl Default for ProxyType {
+    fn default() -> Self {
+        Self::Http
+    }
 }
 
 /// A domain attached to a proxy.  Maps to the `proxy_domain` SurrealDB table.
@@ -48,13 +92,6 @@ pub struct ProxyDomain {
     pub verification_token: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum DomainKind {
-    Subdomain,
-    Custom,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
