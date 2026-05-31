@@ -66,20 +66,23 @@ impl HickoryDnsResolver {
 #[async_trait]
 impl DnsResolver for HickoryDnsResolver {
     async fn lookup_txt(&self, name: &str) -> anyhow::Result<Vec<String>> {
+        use hickory_resolver::proto::rr::RData;
         let lookup = self.resolver.txt_lookup(name).await?;
         let records: Vec<String> = lookup
             .answers()
             .iter()
             .filter_map(|record| {
-                record.data().and_then(|rdata| {
-                    rdata.as_txt().map(|txt| {
+                let rdata: &RData = &record.data;
+                match rdata {
+                    RData::TXT(txt) => Some(
                         txt.txt_data
                             .iter()
                             .map(|bytes| String::from_utf8_lossy(bytes).to_string())
                             .collect::<Vec<_>>()
-                            .join("")
-                    })
-                })
+                            .join(""),
+                    ),
+                    _ => None,
+                }
             })
             .collect();
         Ok(records)
