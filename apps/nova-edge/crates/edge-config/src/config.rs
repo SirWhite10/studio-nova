@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn test_config_from_env_requires_hostname() {
         // Clear relevant env vars
-        std::env::remove_var("NOVA_EDGE_HOSTNAME");
+        unsafe { std::env::remove_var("NOVA_EDGE_HOSTNAME") };
         let result = Config::from_env();
         assert!(result.is_err());
     }

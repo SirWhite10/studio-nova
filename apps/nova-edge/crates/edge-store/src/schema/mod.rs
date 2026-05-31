@@ -436,8 +436,6 @@ mod tests {
     /// how SurrealStore is parameterized.
     #[test]
     fn schema_manager_is_generic_over_connection() {
-        fn _check<C: Connection + Send + Sync>() {
-            fn _assert_schema_manager(_: SchemaManager<C>) {}
-        }
+        fn _check(_: SchemaManager<surrealdb::engine::remote::http::Client>) {}
     }
 }

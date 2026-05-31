@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn from_env_fails_without_url() {
-        std::env::remove_var("NOVA_EDGE_SURREAL_URL");
+        unsafe { std::env::remove_var("NOVA_EDGE_SURREAL_URL") };
         let result = StoreConfig::from_env();
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -327,12 +327,12 @@ mod tests {
 
     #[test]
     fn from_env_with_url() {
-        std::env::set_var("NOVA_EDGE_SURREAL_URL", "http://localhost:9000");
-        std::env::remove_var("NOVA_EDGE_DB_BACKEND");
+        unsafe { std::env::set_var("NOVA_EDGE_SURREAL_URL", "http://localhost:9000") };
+        unsafe { std::env::remove_var("NOVA_EDGE_DB_BACKEND") };
         let config = StoreConfig::from_env().unwrap();
         assert_eq!(config.surreal_url, "http://localhost:9000");
         assert_eq!(config.backend, DatabaseBackend::SurrealDB);
         // Clean up
-        std::env::remove_var("NOVA_EDGE_SURREAL_URL");
+        unsafe { std::env::remove_var("NOVA_EDGE_SURREAL_URL") };
     }
 }

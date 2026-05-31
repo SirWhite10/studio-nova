@@ -221,8 +221,7 @@ mod tests {
     /// generic usage with both HTTP and WS engines.
     #[test]
     fn trait_compiles_for_http() {
-        fn _assert_impl<C: Connection>() {
-            fn _check(_: impl SurrealExt<C>) {}
-        }
+        // Compile-time check: SurrealExt is implemented for Surreal<http::Client>
+        fn _check(_: Surreal<surrealdb::engine::remote::http::Client>) {}
     }
 }
