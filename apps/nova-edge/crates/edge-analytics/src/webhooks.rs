@@ -84,7 +84,7 @@ pub fn compute_signature(secret: &str, payload: &[u8]) -> Result<String, Webhook
         .map_err(|e| WebhookError::Hmac(e.to_string()))?;
     mac.update(payload);
     let result = mac.finalize().into_bytes();
-    Ok(format!("sha256={}", hex::encode(result)))
+    Ok(format!("sha256={}", hex::encode(&result)))
 }
 
 /// Verifies an HMAC-SHA256 signature.
