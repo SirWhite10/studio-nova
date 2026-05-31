@@ -43,7 +43,7 @@ pub struct HickoryDnsResolver {
 impl HickoryDnsResolver {
     /// Create a new resolver using the system's DNS configuration.
     pub fn new() -> anyhow::Result<Self> {
-        let resolver = TokioResolver::builder_tokio()?.build();
+        let resolver = TokioResolver::builder_tokio()?.build()?;
         Ok(Self { resolver })
     }
 
