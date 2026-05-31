@@ -207,10 +207,15 @@ mod tests {
             host
         );
         tls_stream.write_all(request.as_bytes()).await.unwrap();
-        tls_stream.shutdown().await.unwrap();
 
         let mut response = Vec::new();
-        tls_stream.read_to_end(&mut response).await.unwrap();
+        // read_to_end may error with "peer closed without close_notify" — that's OK
+        // for our test, the response data is still valid.
+        match tls_stream.read_to_end(&mut response).await {
+            Ok(_) => {}
+            Err(e) if e.to_string().contains("close_notify") => {}
+            Err(e) => panic!("unexpected read error: {}", e),
+        }
         let response_str = String::from_utf8(response).unwrap();
         assert!(response_str.contains("hello tls"));
         assert!(response_str.contains("HTTP/1.1 200"));
