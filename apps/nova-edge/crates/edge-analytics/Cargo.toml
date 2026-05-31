@@ -25,8 +25,5 @@ dashmap = { workspace = true }
 bytes = { workspace = true }
 async-trait = { workspace = true }
 opentelemetry = { workspace = true }
-opentelemetry-sdk = { workspace = true }
-opentelemetry-otlp = { workspace = true }
-tracing-opentelemetry = { workspace = true }
 tracing-subscriber = { workspace = true }
 rand = { workspace = true }

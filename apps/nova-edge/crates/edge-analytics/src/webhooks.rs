@@ -4,7 +4,7 @@
 //! Each request is signed with HMAC-SHA256 in the `X-Webhook-Signature` header.
 
 use chrono::{DateTime, Utc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, KeyInit};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
