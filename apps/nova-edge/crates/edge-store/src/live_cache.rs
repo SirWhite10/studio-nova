@@ -9,8 +9,6 @@ use anyhow::Result;
 use dashmap::DashMap;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Client;
-use surrealdb::sql::Uuid;
-use tokio::sync::watch;
 
 use crate::types::*;
 
@@ -22,10 +20,8 @@ use crate::types::*;
 pub struct LiveCache {
     hosts: DashMap<String, DomainResolution>,
     proxies: DashMap<String, WorkspaceProxy>,
-    /// Live query UUIDs, used to kill subscriptions on shutdown.
-    live_uuids: DashMap<String, Uuid>,
-    /// Signal sender to stop background listeners.
-    stop_tx: Option<watch::Sender<bool>>,
+    /// Live query IDs (as strings), used to kill subscriptions on shutdown.
+    live_uuids: DashMap<String, String>,
 }
 
 impl Default for LiveCache {
@@ -79,22 +75,22 @@ impl LiveCache {
         }
 
         // Subscribe to proxy_domain live updates
-        // NOTE: Live query subscription requires SurrealValue on Notification.
-        // We use the raw query API and parse notifications manually.
-        let domain_uuid: Option<Uuid> = db
+        let domain_uuid: Option<serde_json::Value> = db
             .query("LIVE SELECT * FROM proxy_domain")
             .await?
             .take(0)?;
-        if let Some(uuid) = domain_uuid {
-            cache.live_uuids.insert("proxy_domain".into(), uuid);
+        if let Some(v) = domain_uuid {
+            let id_str = v.to_string().trim_matches('"').to_string();
+            cache.live_uuids.insert("proxy_domain".into(), id_str);
         }
 
-        let proxy_uuid: Option<Uuid> = db
+        let proxy_uuid: Option<serde_json::Value> = db
             .query("LIVE SELECT * FROM workspace_proxy")
             .await?
             .take(0)?;
-        if let Some(uuid) = proxy_uuid {
-            cache.live_uuids.insert("workspace_proxy".into(), uuid);
+        if let Some(v) = proxy_uuid {
+            let id_str = v.to_string().trim_matches('"').to_string();
+            cache.live_uuids.insert("workspace_proxy".into(), id_str);
         }
 
         Ok(cache)
@@ -103,10 +99,10 @@ impl LiveCache {
     /// Gracefully stop live query subscriptions.
     pub async fn stop(&self, db: &Surreal<Client>) -> Result<()> {
         for entry in self.live_uuids.iter() {
-            let uuid = *entry.value();
+            let id_str = entry.value().clone();
             let _ = db
-                .query("KILL $uuid")
-                .bind(serde_json::json!({ "uuid": uuid.to_string() }))
+                .query("KILL $id")
+                .bind(serde_json::json!({ "id": id_str }))
                 .await;
         }
         self.live_uuids.clear();
