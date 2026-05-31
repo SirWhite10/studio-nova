@@ -4,10 +4,9 @@
 //! names, and verifying that the expected token is present in a domain's TXT records.
 
 use async_trait::async_trait;
-use hickory_resolver::TokioAsyncResolver;
-use rand::Rng;
+use hickory_resolver::TokioResolver;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 
 /// Prefix used for verification tokens.
 const TOKEN_PREFIX: &str = "nova-domain=";
@@ -38,30 +37,29 @@ pub trait DnsResolver: Send + Sync {
 
 /// Production DNS resolver using the system resolver configuration.
 pub struct HickoryDnsResolver {
-    resolver: TokioAsyncResolver,
+    resolver: TokioResolver,
 }
 
 impl HickoryDnsResolver {
     /// Create a new resolver using the system's DNS configuration.
     pub fn new() -> anyhow::Result<Self> {
-        let resolver = TokioAsyncResolver::tokio_from_system_conf()?;
+        let resolver = TokioResolver::builder_tokio()?.build();
         Ok(Self { resolver })
     }
 
-    /// Create a new resolver with a custom upstream DNS server.
-    pub fn with_nameserver(addr: SocketAddr) -> Self {
+    /// Create a new resolver targeting a custom DNS server.
+    pub fn with_nameserver(ip: std::net::IpAddr) -> Self {
         use hickory_resolver::config::*;
-        let mut config = ResolverConfig::new();
-        config.add_name_server(NameServerConfig {
-            socket_addr: addr,
-            protocol: Protocol::Udp,
-            tls_dns_name: None,
-            trust_negative_responses: false,
-            bind_addr: None,
-            tls_config: None,
-        });
-        let opts = ResolverOpts::default();
-        let resolver = TokioAsyncResolver::tokio(config, opts);
+        let ns = NameServerConfig::udp_and_tcp(ip);
+        let config = ResolverConfig {
+            domain: None,
+            search: vec![],
+            name_servers: vec![ns],
+        };
+        let resolver = TokioResolver::builder_tokio()
+            .expect("tokio runtime provider")
+            .with_config(config)
+            .build();
         Self { resolver }
     }
 }
@@ -272,40 +270,12 @@ mod tests {
         };
         let json = serde_json::to_string(&result).expect("serialization should succeed");
 
-        assert!(
-            json.contains("\"host\":"),
-            "should contain camelCase 'host': {json}"
-        );
-        assert!(
-            json.contains("\"recordName\":"),
-            "should contain camelCase 'recordName': {json}"
-        );
-        assert!(
-            json.contains("\"expectedValue\":"),
-            "should contain camelCase 'expectedValue': {json}"
-        );
-        assert!(
-            json.contains("\"foundValues\":"),
-            "should contain camelCase 'foundValues': {json}"
-        );
-        assert!(
-            json.contains("\"verified\":"),
-            "should contain camelCase 'verified': {json}"
-        );
-
-        // Ensure snake_case is NOT present
-        assert!(
-            !json.contains("record_name"),
-            "should NOT contain snake_case 'record_name': {json}"
-        );
-        assert!(
-            !json.contains("expected_value"),
-            "should NOT contain snake_case 'expected_value': {json}"
-        );
-        assert!(
-            !json.contains("found_values"),
-            "should NOT contain snake_case 'found_values': {json}"
-        );
+        assert!(json.contains("\"recordName\""), "should contain camelCase 'recordName': {json}");
+        assert!(json.contains("\"expectedValue\""), "should contain camelCase 'expectedValue': {json}");
+        assert!(json.contains("\"foundValues\""), "should contain camelCase 'foundValues': {json}");
+        assert!(!json.contains("record_name"), "should NOT contain snake_case: {json}");
+        assert!(!json.contains("expected_value"), "should NOT contain snake_case: {json}");
+        assert!(!json.contains("found_values"), "should NOT contain snake_case: {json}");
     }
 
     #[test]
@@ -333,8 +303,9 @@ mod tests {
 
     #[tokio::test]
     async fn verify_succeeds_when_matching_token_present() {
-        let mock = MockDnsResolver::new(vec!["some-other-txt=value".to_string(),
-            "nova-domain=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6".to_string()
+        let mock = MockDnsResolver::new(vec![
+            "some-other-txt=value".to_string(),
+            "nova-domain=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6".to_string(),
         ]);
 
         let result = verify_with_resolver(
@@ -369,10 +340,7 @@ mod tests {
         .await
         .expect("verification should not error");
 
-        assert!(
-            !result.verified,
-            "should NOT be verified when token does not match"
-        );
+        assert!(!result.verified, "should NOT be verified when token does not match");
     }
 
     #[tokio::test]
@@ -388,10 +356,7 @@ mod tests {
         .await
         .expect("verification should not error");
 
-        assert!(
-            !result.verified,
-            "should NOT be verified when no records returned"
-        );
+        assert!(!result.verified, "should NOT be verified when no records returned");
         assert!(result.found_values.is_empty());
     }
 

@@ -121,13 +121,6 @@ pub fn is_reserved(host: &str) -> bool {
         }
     }
 
-    // Check suffixes
-    for suffix in RESERVED_SUFFIXES {
-        let with_dot = format!("{suffix}{normalized}.");
-        // Actually check if the host ENDS with the suffix pattern
-        // e.g. "*.nova-edge.*" means anything.nova-edge.anything
-    }
-
     // More precise: check for *.nova-edge.* and *.dlx.* patterns
     let labels: Vec<&str> = normalized.split('.').collect();
     for window in labels.windows(2) {

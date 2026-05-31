@@ -23,7 +23,8 @@ anyhow = { workspace = true }
 rand = { workspace = true }
 chrono = { workspace = true }
 http-body-util = "0.1"
+http = "1"
 
 [dev-dependencies]
-edge-store = { path = "../edge-store" }
 async-trait = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
