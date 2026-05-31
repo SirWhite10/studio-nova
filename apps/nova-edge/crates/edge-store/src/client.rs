@@ -12,8 +12,7 @@ pub struct SurrealClient {
 impl SurrealClient {
     pub async fn connect(url: &str, namespace: &str, database: &str) -> Result<Self> {
         let db = Surreal::init();
-        // Connect using the configured protocol from the URL
-        db.connect(url).await?;
+        surrealdb::engine::any::connect(&db, url).await?;
         db.use_ns(namespace).use_db(database).await?;
         Ok(Self { db })
     }
