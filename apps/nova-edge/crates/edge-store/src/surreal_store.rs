@@ -4,17 +4,17 @@
 use async_trait::async_trait;
 use anyhow::Result;
 use surrealdb::Surreal;
-use surrealdb::engine::any::Any;
+use surrealdb::engine::remote::ws::Ws;
 
 use crate::store::{DomainStore, ProxyUpsertInput};
 use crate::types::*;
 
 pub struct SurrealStore {
-    db: Surreal<Any>,
+    db: Surreal<Ws>,
 }
 
 impl SurrealStore {
-    pub fn new(db: Surreal<Any>) -> Self {
+    pub fn new(db: Surreal<Ws>) -> Self {
         Self { db }
     }
 }

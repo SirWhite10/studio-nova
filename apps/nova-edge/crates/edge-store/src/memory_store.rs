@@ -18,7 +18,7 @@ impl DomainStore for MemoryStore {
     }
 
     async fn health(&self) -> Result<StoreHealth> {
-        Ok(StoreHealth { ok: true, message: "memory store".into() })
+        Ok(StoreHealth { ok: true, message: Some("memory store".into()) })
     }
 
     async fn resolve_host(&self, _host: &str) -> Result<Option<DomainResolution>> {

@@ -3,9 +3,9 @@
 
 use anyhow::Result;
 use surrealdb::Surreal;
-use surrealdb::engine::any::Any;
+use surrealdb::engine::remote::ws::Ws;
 
-pub async fn ensure_schema(db: &Surreal<Any>) -> Result<()> {
+pub async fn ensure_schema(_db: &Surreal<Ws>) -> Result<()> {
     // TODO: define tables, indexes, and scopes
     // For now, schema is managed externally by SurrealDB seed
     Ok(())

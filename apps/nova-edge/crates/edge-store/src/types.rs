@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceProxy {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<surrealdb::sql::Thing>,
+    pub id: Option<serde_json::Value>,
     pub user_id: String,
     pub studio_id: String,
     pub runtime_id: Option<String>,
@@ -30,7 +30,7 @@ pub enum ProxyType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyDomain {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<surrealdb::sql::Thing>,
+    pub id: Option<serde_json::Value>,
     pub host: String,
     pub proxy_id: String,
     pub kind: DomainKind,
