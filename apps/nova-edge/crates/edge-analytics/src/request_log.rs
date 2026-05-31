@@ -274,7 +274,7 @@ mod tests {
             std::time::Duration::from_millis(5),
         );
 
-        analytics.buffer(log).await;
+        analytics.insert_request_log(log.to_row()).await;
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
@@ -304,7 +304,7 @@ mod tests {
             std::time::Duration::from_millis(1),
         );
 
-        analytics.buffer(log).await;
+        analytics.insert_request_log(log.to_row()).await;
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
