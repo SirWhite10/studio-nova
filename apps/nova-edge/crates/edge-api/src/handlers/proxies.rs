@@ -148,7 +148,7 @@ pub async fn disable(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::delete, get, post, Router};
+    use axum::{middleware, routing::{delete, get, post}, Router};
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::ProxyUpsertInput;
     use http::{Method, Request as HttpRequest};

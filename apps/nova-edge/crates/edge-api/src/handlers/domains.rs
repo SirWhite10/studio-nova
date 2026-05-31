@@ -3,7 +3,6 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
@@ -130,7 +129,7 @@ pub async fn verify(
         "ok": true,
         "host": host,
         "activated": activated,
-        "status": if activated { "active" } else { resolution.domain.status.to_string() },
+        "status": if activated { "active" } else { &resolution.domain.status.to_string() },
         "verification": {
             "host": verification.host,
             "recordName": verification.record_name,
@@ -172,7 +171,7 @@ pub async fn remove(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::delete, get, post, Router};
+    use axum::{middleware, routing::{delete, get, post}, Router};
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::*;
     use http::{Method, Request as HttpRequest};
