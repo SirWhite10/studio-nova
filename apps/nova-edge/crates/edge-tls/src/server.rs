@@ -82,7 +82,7 @@ mod tests {
     use rustls::client::danger::{
         HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
     };
-    use rustls::crypto::ring::sign::any_private_key_type;
+    use rustls::crypto::ring::sign::any_supported_type;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::{ClientConfig, DigitallySignedStruct, Error as TlsError, SignatureScheme};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -95,7 +95,7 @@ mod tests {
         let key = rustls_pemfile::private_key(&mut &key_pem[..])
             .unwrap()
             .unwrap();
-        let signing_key = any_private_key_type(&key).unwrap();
+        let signing_key = any_supported_type(&key).unwrap();
         Arc::new(rustls::sign::CertifiedKey::new(certs, signing_key))
     }
 

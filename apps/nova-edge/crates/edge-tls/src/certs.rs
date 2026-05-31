@@ -169,7 +169,7 @@ fn parse_private_key(pem: &[u8]) -> Result<Arc<dyn rustls::sign::SigningKey>, Ce
     for block in blocks {
         if block.tag() == "PRIVATE KEY" {
             let key = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(block.contents().to_vec()));
-            return rustls::crypto::ring::sign::any_private_key_type(&key)
+            return rustls::crypto::ring::sign::any_supported_type(&key)
                 .map_err(|e| CertError::Parse(format!("unsupported key type: {}", e)));
         }
     }

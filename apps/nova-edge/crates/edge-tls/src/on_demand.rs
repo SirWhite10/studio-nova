@@ -65,12 +65,20 @@ impl HostPolicy for StaticHostPolicy {
 /// 1. Checks the host policy (is this host allowed?)
 /// 2. Looks up a pre-loaded certificate for the host
 /// 3. Returns the cert if found, or None (TLS handshake fails)
-#[derive(Debug)]
 pub struct OnDemandResolver {
     policy: Arc<dyn HostPolicy>,
     certs: Mutex<HashMap<String, Arc<CertifiedKey>>>,
     /// Optional fallback cert for when no SNI is provided.
     default_cert: Mutex<Option<Arc<CertifiedKey>>>,
+}
+
+impl std::fmt::Debug for OnDemandResolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OnDemandResolver")
+            .field("cert_count", &self.certs.lock().unwrap().len())
+            .field("has_default", &self.default_cert.lock().unwrap().is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 impl OnDemandResolver {
@@ -143,7 +151,7 @@ mod tests {
         let key = rustls_pemfile::private_key(&mut &key_pem[..])
             .unwrap()
             .unwrap();
-        let signing_key = rustls::crypto::ring::sign::any_private_key_type(&key).unwrap();
+        let signing_key = rustls::crypto::ring::sign::any_supported_type(&key).unwrap();
         Arc::new(CertifiedKey::new(certs, signing_key))
     }
 
