@@ -2,7 +2,6 @@
 //! TODO: implement connection, namespace/db selection
 
 use anyhow::Result;
-use surrealdb::opt::Config;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Client;
 
