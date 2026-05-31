@@ -148,7 +148,7 @@ mod integration {
         )
         .await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["reject"], false);
+        assert_eq!(body["ok"], true);
     }
 
     #[tokio::test]
@@ -162,7 +162,8 @@ mod integration {
         )
         .await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["reject"], false);
+        assert_eq!(body["ok"], true);
+        assert_eq!(body["op"], "Login");
     }
 
     #[tokio::test]
@@ -176,7 +177,7 @@ mod integration {
         )
         .await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["reject"], false);
+        assert_eq!(body["ok"], true);
     }
 
     #[tokio::test]
@@ -189,8 +190,8 @@ mod integration {
             Some(r#"{"user":{"metas":{"token":"wrong"}}}"#.to_string()),
         )
         .await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["reject"], true);
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["ok"], false);
     }
 
     // ── Auth-protected admin routes ──────────────────────────
