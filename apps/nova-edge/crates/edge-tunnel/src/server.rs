@@ -41,7 +41,7 @@ impl TunnelServer {
     }
 
     /// Run the tunnel server loop.
-    pub async fn run(&self) -> anyhow::Result<()> {
+    pub async fn run(&mut self) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.bind_addr).await?;
         info!(addr = %self.bind_addr, "Tunnel server listening");
 

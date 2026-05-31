@@ -63,8 +63,7 @@ pub fn inject_forwarded_headers(
 
 /// Generate a random request ID (16 hex chars).
 fn generate_request_id() -> String {
-    let mut rng = rand::rng();
-    let val: u64 = rng.random();
+    let val: u64 = rand::random();
     format!("{:016x}", val)
 }
 
