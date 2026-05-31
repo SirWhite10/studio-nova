@@ -57,7 +57,8 @@ impl HickoryDnsResolver {
             config,
             hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
         )
-        .build();
+        .build()
+        .expect("resolver build should succeed");
         Self { resolver }
     }
 }
@@ -67,11 +68,18 @@ impl DnsResolver for HickoryDnsResolver {
     async fn lookup_txt(&self, name: &str) -> anyhow::Result<Vec<String>> {
         let lookup = self.resolver.txt_lookup(name).await?;
         let records: Vec<String> = lookup
+            .answers()
             .iter()
-            .flat_map(|txt| {
-                txt.txt_data
-                    .iter()
-                    .map(|bytes| String::from_utf8_lossy(bytes).to_string())
+            .filter_map(|record| {
+                record.data().and_then(|rdata| {
+                    rdata.as_txt().map(|txt| {
+                        txt.txt_data
+                            .iter()
+                            .map(|bytes| String::from_utf8_lossy(bytes).to_string())
+                            .collect::<Vec<_>>()
+                            .join("")
+                    })
+                })
             })
             .collect();
         Ok(records)
