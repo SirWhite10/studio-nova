@@ -30,7 +30,11 @@ impl SurrealStore {
         vars: serde_json::Value,
     ) -> Result<Vec<T>> {
         let mut response = self.db.query(sql).bind(vars).await?;
-        let rows: Vec<T> = response.take(0)?;
+        let raw: Vec<serde_json::Value> = response.take(0)?;
+        let rows: Vec<T> = raw
+            .into_iter()
+            .filter_map(|v| serde_json::from_value(v).ok())
+            .collect();
         Ok(rows)
     }
 
@@ -40,7 +44,6 @@ impl SurrealStore {
         table: &str,
         content: serde_json::Value,
     ) -> Result<T> {
-        // Use SurrealQL CREATE with content — returns the created record
         let sql = "CREATE type::thing($table, rand::uuid()) CONTENT $content";
         let mut response = self
             .db
@@ -50,10 +53,13 @@ impl SurrealStore {
                 "content": content,
             }))
             .await?;
-        let rows: Vec<T> = response.take(0)?;
-        rows.into_iter()
+        let raw: Vec<serde_json::Value> = response.take(0)?;
+        let row: T = raw
+            .into_iter()
+            .filter_map(|v| serde_json::from_value(v).ok())
             .next()
-            .ok_or_else(|| anyhow::anyhow!("create returned no rows"))
+            .ok_or_else(|| anyhow::anyhow!("create returned no rows"))?;
+        Ok(row)
     }
 
     /// Select a record by table:id string.
@@ -65,7 +71,6 @@ impl SurrealStore {
         if parts.len() != 2 {
             return Ok(None);
         }
-        // Use query to avoid SurrealValue requirement on T
         let mut response = self
             .db
             .query("SELECT * FROM type::thing($tb, $id)")
@@ -74,8 +79,11 @@ impl SurrealStore {
                 "id": parts[1],
             }))
             .await?;
-        let rows: Vec<T> = response.take(0)?;
-        Ok(rows.into_iter().next())
+        let raw: Vec<serde_json::Value> = response.take(0)?;
+        Ok(raw
+            .into_iter()
+            .filter_map(|v| serde_json::from_value(v).ok())
+            .next())
     }
 }
 
@@ -119,9 +127,13 @@ impl DomainStore for SurrealStore {
     }
 
     async fn health(&self) -> Result<StoreHealth> {
-        let result: Option<serde_json::Value> = self.db.query("RETURN true").await?.take(0)?;
+        let result: serde_json::Value = self
+            .db
+            .query("RETURN true")
+            .await?
+            .take(0)?;
         Ok(StoreHealth {
-            ok: result == Some(serde_json::Value::Bool(true)),
+            ok: result == serde_json::Value::Bool(true),
             message: Some("surrealdb connected".into()),
         })
     }
@@ -169,7 +181,7 @@ impl DomainStore for SurrealStore {
 
         let proxy = self.select_record::<WorkspaceProxy>(&domain.proxy_id).await?;
         let Some(proxy) = proxy else {
-            return Ok(None),
+            return Ok(None);
         };
 
         Ok(Some(DomainResolution { proxy, domain }))
@@ -537,6 +549,7 @@ fn record_id_string(id: &Option<serde_json::Value>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::DomainStore;
 
     async fn test_db() -> Surreal<Client> {
         let url = std::env::var("SURREAL_TEST_URL")
