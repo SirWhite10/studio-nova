@@ -332,7 +332,7 @@ mod tests {
             body: Bytes::new(),
         };
 
-        let response = forward_request_with_mock_response(&mut stream, &request).unwrap();
+        let response = forward_request(&mut stream, &request).unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(&response.body[..], b"mock response body");
     }

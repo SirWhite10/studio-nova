@@ -139,7 +139,7 @@ mod tests {
         let (tx, rx) = watch::channel(false);
 
         // Bind to port 0 for an ephemeral port
-        let server = TunnelServer::new(
+        let mut server = TunnelServer::new(
             "test-token".into(),
             registry.clone(),
             HealthCheckConfig::default(),
@@ -161,11 +161,6 @@ mod tests {
 
         let result = handle.await.unwrap();
         // The server should have either completed or timed out
-        match result {
-            Ok(Ok(())) => {}
-            Ok(Err(_)) => {}
-            Err(_) => {}
-            _ => {}
-        }
+        let _ = result;
     }
 }

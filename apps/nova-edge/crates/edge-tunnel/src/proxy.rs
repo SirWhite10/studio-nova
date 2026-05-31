@@ -235,6 +235,9 @@ mod tests {
 
         let result = handler.handle_new_proxy(msg, "run-1");
 
+        let resp = ProxyHandler::registration_response(&result);
+        assert!(!resp.is_ok());
+
         match result {
             ProxyRegistrationResult::Rejected { proxy_name, reason } => {
                 assert_eq!(proxy_name, "nonexistent");
@@ -242,9 +245,6 @@ mod tests {
             }
             ProxyRegistrationResult::Registered { .. } => panic!("Expected rejection"),
         }
-
-        let resp = ProxyHandler::registration_response(&result);
-        assert!(!resp.is_ok());
     }
 
     #[test]
