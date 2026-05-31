@@ -56,9 +56,11 @@ async fn main() -> Result<()> {
     // ── 4. SurrealDB + LiveCache ──────────────────────────────────
     let store: Arc<dyn DomainStore> = match connect_and_init_store(&config).await {
         Ok((surreal_store, live_cache)) => {
+            let host_count: usize = live_cache.host_count();
+            let proxy_count: usize = live_cache.proxy_count();
             info!(
-                hosts = live_cache.host_count(),
-                proxies = live_cache.proxy_count(),
+                hosts = host_count,
+                proxies = proxy_count,
                 "SurrealDB connected, live cache started"
             );
             Arc::new(surreal_store)
@@ -165,11 +167,13 @@ async fn main() -> Result<()> {
 
     #[cfg(unix)]
     let shutdown = async {
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler");
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!("received SIGINT (ctrl+c)");
             }
-            _ = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) => {
+            _ = sigterm.recv() => {
                 info!("received SIGTERM");
             }
         }
