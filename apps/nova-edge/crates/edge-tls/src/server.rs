@@ -83,9 +83,16 @@ mod tests {
         HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
     };
     use rustls::crypto::ring::sign::any_supported_type;
+    use rustls::crypto::ring::default_provider;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::{ClientConfig, DigitallySignedStruct, Error as TlsError, SignatureScheme};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    /// Install the ring CryptoProvider once for all tests.
+    /// rustls 0.23 requires explicit provider selection.
+    fn ensure_provider() {
+        let _ = default_provider().install_default();
+    }
 
     fn make_certified_key(host: &str) -> Arc<rustls::sign::CertifiedKey> {
         let (cert_pem, key_pem) = CertStorage::generate_self_signed(host).unwrap();
@@ -156,6 +163,7 @@ mod tests {
 
     #[test]
     fn test_tls_config_builds_successfully() {
+        ensure_provider();
         let policy = Arc::new(StaticHostPolicy::allow_all());
         let resolver = Arc::new(OnDemandResolver::new(policy));
         let config = build_tls_server_config(resolver);
@@ -166,6 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_https_server_full_roundtrip() {
+        ensure_provider();
         let policy = Arc::new(StaticHostPolicy::allow_all());
         let resolver = Arc::new(OnDemandResolver::new(policy));
 
@@ -209,6 +218,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_https_rejects_unknown_host() {
+        ensure_provider();
         let policy = Arc::new(StaticHostPolicy::allow_all());
         let resolver = Arc::new(OnDemandResolver::new(policy));
 
