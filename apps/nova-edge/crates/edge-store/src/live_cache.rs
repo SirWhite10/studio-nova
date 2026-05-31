@@ -209,16 +209,12 @@ async fn fetch_proxy_for_domain(
     db: &Surreal<Client>,
     proxy_id: &str,
 ) -> Option<WorkspaceProxy> {
-    let parts: Vec<&str> = proxy_id.splitn(2, ':').collect();
-    if parts.len() != 2 {
+    if proxy_id.is_empty() {
         return None;
     }
     let raw: Vec<serde_json::Value> = db
-        .query("SELECT * FROM type::thing($tb, $id)")
-        .bind(serde_json::json!({
-            "tb": parts[0],
-            "id": parts[1],
-        }))
+        .query("SELECT * FROM type::record($id)")
+        .bind(serde_json::json!({ "id": proxy_id }))
         .await
         .ok()?
         .take(0)

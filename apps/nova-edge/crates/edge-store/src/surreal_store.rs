@@ -62,22 +62,19 @@ impl<C: Connection> SurrealStore<C> {
         Ok(row)
     }
 
-    /// Select a record by table:id string.
+    /// Select a record by record ID string (e.g. "workspace_proxy:abc123").
     async fn select_record<T: serde::de::DeserializeOwned>(
         &self,
         record_id: &str,
     ) -> Result<Option<T>> {
-        let parts: Vec<&str> = record_id.splitn(2, ':').collect();
-        if parts.len() != 2 {
+        if record_id.is_empty() {
             return Ok(None);
         }
+        // Use type::record with the full record ID string
         let mut response = self
             .db
-            .query("SELECT * FROM type::record($tb, $id)")
-            .bind(serde_json::json!({
-                "tb": parts[0],
-                "id": parts[1],
-            }))
+            .query("SELECT * FROM type::record($id)")
+            .bind(serde_json::json!({ "id": record_id }))
             .await?;
         let raw: Vec<serde_json::Value> = response.take(0)?;
         Ok(raw
