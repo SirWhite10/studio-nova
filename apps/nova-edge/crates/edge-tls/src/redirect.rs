@@ -120,8 +120,7 @@ pub fn http_redirect_router(state: Arc<HttpRedirectState>) -> Router {
 mod tests {
     use super::*;
     use axum::body::Body;
-    use http::{Request, StatusCode};
-    use http_body_util::BodyExt;
+    use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
     fn make_app() -> (Router, Arc<HttpRedirectState>) {

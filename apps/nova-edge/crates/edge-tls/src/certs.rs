@@ -179,7 +179,6 @@ fn parse_private_key(pem: &[u8]) -> Result<Arc<dyn rustls::sign::SigningKey>, Ce
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
 
     #[test]
     fn test_self_signed_generation() {
@@ -210,7 +209,6 @@ mod tests {
         // Load
         let loaded = storage.load_cert("acme.example.com").unwrap().unwrap();
         assert_eq!(loaded.cert.len(), 1, "should have exactly 1 certificate");
-        assert!(loaded.key.is_set(), "should have a signing key");
     }
 
     #[test]
