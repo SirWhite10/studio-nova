@@ -16,6 +16,7 @@ pub struct WorkspaceProxy {
     pub runtime_id: Option<String>,
     pub proxy_name: String,
     pub proxy_type: ProxyType,
+    #[serde(rename = "localIP")]
     pub local_ip: String,
     pub local_port: u16,
     pub remote_port: Option<u16>,
@@ -102,6 +103,7 @@ pub struct DomainResolution {
 pub struct ProxyResolution {
     pub proxy_id: String,
     pub proxy_name: String,
+    #[serde(rename = "localIP")]
     pub local_ip: String,
     pub local_port: u16,
     pub enabled: bool,
