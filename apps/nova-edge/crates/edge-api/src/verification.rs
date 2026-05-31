@@ -55,7 +55,7 @@ impl HickoryDnsResolver {
         config.add_name_server(ns);
         let resolver = TokioResolver::builder_with_config(
             config,
-            hickory_resolver::TokioRuntimeProvider::default(),
+            hickory_resolver::net::runtime::TokioRuntimeProvider::default(),
         )
         .build();
         Self { resolver }
@@ -65,12 +65,11 @@ impl HickoryDnsResolver {
 #[async_trait]
 impl DnsResolver for HickoryDnsResolver {
     async fn lookup_txt(&self, name: &str) -> anyhow::Result<Vec<String>> {
-        use hickory_resolver::proto::rr::rdata::TXT;
-        let lookup = self.resolver.txt_lookup(name)?;
+        let lookup = self.resolver.txt_lookup(name).await?;
         let records: Vec<String> = lookup
             .iter()
-            .flat_map(|txt: &TXT| {
-                txt.txt_data()
+            .flat_map(|txt| {
+                txt.txt_data
                     .iter()
                     .map(|bytes| String::from_utf8_lossy(bytes).to_string())
             })
