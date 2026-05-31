@@ -499,7 +499,14 @@ export function createEditorStore(initialComponents: CanvasNode[] = []) {
     setHoveredComponent,
     setIsDragging,
     registerComponent,
+    /**
+     * Programmatic insertion API for agents and integrations.
+     * Alias of addComponent; parentPath may target root, child arrays, or `slot:<name>` paths.
+     */
+    insertComponent: addComponent,
     updateProperty,
+    /** Programmatic property update API for agents and integrations. Alias of updateProperty. */
+    updateComponentProperty: updateProperty,
     addHistoryEntry,
     undo,
     redo,

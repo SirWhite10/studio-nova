@@ -25,6 +25,7 @@
 		Star,
 		Trophy,
 		UserPlus,
+		X,
 	} from "@lucide/svelte";
 
 	type ListItemProps = HTMLAttributes<HTMLAnchorElement> & {
@@ -178,7 +179,8 @@
 								<p class="text-muted-foreground text-sm">Browse Canvas pages, templates, and demos.</p>
 							</div>
 							<Dialog.Close class="border-border/60 bg-background shadow-xs inline-flex size-9 items-center justify-center rounded-md border text-sm font-medium">
-								Close
+								<X class="size-4" />
+								<span class="sr-only">Close navigation menu</span>
 							</Dialog.Close>
 						</div>
 

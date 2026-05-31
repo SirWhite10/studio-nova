@@ -65,7 +65,7 @@
 				</DropdownMenu.Label>
 				<DropdownMenu.Separator />
 				{#if studios.length === 0}
-					<DropdownMenu.Item onclick={() => oncreate?.() ?? navigate('/app')}>
+					<DropdownMenu.Item onclick={() => oncreate?.() ?? navigate('/')}>
 						<PlusIcon />
 						Create your first studio
 					</DropdownMenu.Item>
@@ -82,7 +82,7 @@
 						</DropdownMenu.Item>
 					{/each}
 					<DropdownMenu.Separator />
-					<DropdownMenu.Item onclick={() => oncreate?.() ?? navigate('/app')}>
+					<DropdownMenu.Item onclick={() => oncreate?.() ?? navigate('/')}>
 						<PlusIcon />
 						New Studio
 					</DropdownMenu.Item>

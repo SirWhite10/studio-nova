@@ -1,6 +1,7 @@
 <script lang="ts">
-	import * as Sidebar from "$lib/shadcn-components/ui/sidebar/index.js";
+	import * as Sidebar from "$lib/components/view-ui/sidebar/index.js";
 	import { cn } from "$lib/utils.js";
+	import { getEditorContext } from "./context.js";
 	import CanvasEditorAppPlaceholder from "./canvas-editor-app-placeholder.svelte";
 	import CanvasEditorInspector from "./canvas-editor-inspector.svelte";
 	import type { EditorAppSection, EditorLeftPanel, EditorSidebarProps } from "./types.js";

@@ -47,7 +47,7 @@ class UserStore {
       });
       this.user = data?.user || null;
       toast.success("Account created successfully");
-      window.location.href = "/app";
+      window.location.href = "/";
     } catch (err: any) {
       const message = err.message || "Failed to create account";
       this.error = message;
@@ -67,7 +67,7 @@ class UserStore {
       });
       this.user = data?.user || null;
       toast.success("Signed in successfully");
-      window.location.href = "/app";
+      window.location.href = "/";
     } catch (err: any) {
       const message = err.message?.includes("Invalid")
         ? "Invalid email or password"

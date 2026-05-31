@@ -3,13 +3,15 @@ packages:
   - packages/*
   - tools/*
 allowBuilds:
-  '@blackbelt-technology/pi-agent-dashboard': true
-  '@blackbelt-technology/pi-dashboard-server': true
+  "@blackbelt-technology/pi-agent-dashboard": true
+  "@blackbelt-technology/pi-dashboard-server": true
   "@tailwindcss/oxide": true
   "@zvec/zvec": true
   esbuild: true
   node-pty: true
+  nx: true
   protobufjs: true
+  puppeteer: true
   sharp: true
   workerd: true
 catalog:
@@ -17,7 +19,7 @@ catalog:
   vite-plus: latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest
 onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
+  - "@tailwindcss/oxide"
   - esbuild
 overrides:
   vite: "catalog:"

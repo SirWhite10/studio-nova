@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Pagination as PaginationPrimitive } from "bits-ui";
 	import { cn } from "$lib/shadcn-components/utils.js";
-	import { buttonVariants } from "$lib/shadcn-components/ui/button/index.js";
+	import { buttonVariants } from "$lib/shadcn-components/ui/button/button.svelte";
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 
 	let {

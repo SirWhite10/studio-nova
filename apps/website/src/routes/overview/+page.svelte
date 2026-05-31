@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { APP_SIGN_UP_URL } from '$lib/app-links';
   import NotificationBar from '$lib/ui/landing/notification-bar.svelte';
   import Header from '$lib/ui/landing/header.svelte';
   import Footer from '$lib/ui/landing/footer.svelte';
@@ -90,7 +91,7 @@
       </p>
       <div class="flex items-center gap-6">
         <a
-          href="/auth/sign-up"
+          href={APP_SIGN_UP_URL}
           class="bg-primary/10 border border-primary text-primary px-8 py-3 rounded font-label-caps text-label-caps hover:bg-primary/20 transition-colors duration-300"
         >
           Start Building

@@ -27,7 +27,7 @@ export type EditorSidebarMode = "docked" | "floating" | "hidden" | "auto";
  */
 export type EditorPanel = "Properties" | "Settings";
 
-export type EditorLeftPanel = "Outline" | "Components";
+export type EditorLeftPanel = "Outline" | "Components" | "Fields";
 
 export type EditorAppSection = "app-settings" | "theme" | "providers" | "seo" | "metadata";
 

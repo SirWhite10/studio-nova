@@ -6,6 +6,7 @@
 		value = $bindable(""),
 		class: className = "",
 		style = "",
+		orientation = "horizontal",
 		...restProps
 	}: TabsPrimitive.RootProps & {
 		class?: string;
@@ -16,7 +17,7 @@
 			"display: flex",
 			"gap: 0.5rem",
 			"width: 100%",
-			"flex-direction: column",
+			`flex-direction: ${orientation === "vertical" ? "row" : "column"}`,
 			style,
 		]
 			.filter(Boolean)
@@ -28,7 +29,9 @@
 	bind:ref
 	bind:value
 	data-slot="tabs"
+	data-orientation={orientation}
 	class={className}
 	style={inlineStyle}
+	{orientation}
 	{...restProps}
 />

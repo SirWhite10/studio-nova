@@ -45,7 +45,7 @@
 		<Sidebar.MenuItem>
 			<Sidebar.MenuButton>
 				{#snippet child({ props })}
-					<a href={currentStudioId ? `/app/chats?studio=${currentStudioId}` : '/app/chats'} onclick={() => sidebar.isMobile && sidebar.setOpenMobile(false)} {...props}>
+					<a href={currentStudioId ? `/chats?studio=${currentStudioId}` : '/chats'} onclick={() => sidebar.isMobile && sidebar.setOpenMobile(false)} {...props}>
 						<MessageSquareIcon />
 						<span>All Chats ({chatStore.chats.length})</span>
 					</a>

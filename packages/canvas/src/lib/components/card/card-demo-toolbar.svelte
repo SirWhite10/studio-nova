@@ -3,7 +3,7 @@
   import Palette from "@lucide/svelte/icons/palette";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
-  import * as Tabs from "$lib/components/ui/tabs/index.js";
+  import * as Tabs from "$lib/components/view-ui/tabs/index.js";
   import { cn } from "$lib/utils.js";
 
   type DemoPanel = "content" | "style" | "json";

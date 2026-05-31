@@ -33,7 +33,7 @@ export interface CanvasActionContext {
 export type CanvasActionHandler = (
   payload: Record<string, unknown> | undefined,
   context: CanvasActionContext,
-) => unknown | Promise<unknown>;
+) => void | Promise<void>;
 
 export type CanvasProviderActions = Record<string, Record<string, CanvasActionHandler>>;
 

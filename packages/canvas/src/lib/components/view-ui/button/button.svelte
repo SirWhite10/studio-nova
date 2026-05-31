@@ -58,7 +58,7 @@
 		default: {
 			background: canvasTheme.colors.primary,
 			color: "var(--primary-foreground)",
-			border: `1px solid ${canvasTheme.colors.primary}`,
+			border: "1px solid transparent",
 		},
 		outline: {
 			background: canvasTheme.colors.background,
@@ -76,9 +76,9 @@
 			border: "1px solid transparent",
 		},
 		destructive: {
-			background: "color-mix(in srgb, #b42318 10%, white)",
-			color: "#b42318",
-			border: "1px solid color-mix(in srgb, #b42318 16%, transparent)",
+			background: `color-mix(in srgb, ${canvasTheme.colors.destructive} 10%, white)`,
+			color: canvasTheme.colors.destructive,
+			border: `1px solid color-mix(in srgb, ${canvasTheme.colors.destructive} 16%, transparent)`,
 		},
 		link: {
 			background: "transparent",
@@ -106,6 +106,11 @@
 		},
 		active: {
 			opacity: 0.92,
+			transform: "translateY(1px)",
+		},
+		focusVisible: {
+			border: `1px solid ${canvasTheme.colors.ring}`,
+			boxShadow: `0 0 0 3px ${canvasTheme.colors.ring}50`,
 		},
 		disabled: {
 			opacity: 0.5,
@@ -166,3 +171,12 @@
 >
 	{@render children?.()}
 </View>
+
+<style>
+	:global([data-slot="button"] svg:not([data-size])) {
+		width: 1rem;
+		height: 1rem;
+		pointer-events: none;
+		flex-shrink: 0;
+	}
+</style>

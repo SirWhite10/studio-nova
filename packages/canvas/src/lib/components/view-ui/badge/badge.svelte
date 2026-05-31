@@ -35,9 +35,9 @@
 				};
 			case "destructive":
 				return {
-					background: "color-mix(in srgb, #b42318 10%, white)",
-					color: "#b42318",
-					border: "1px solid color-mix(in srgb, #b42318 16%, transparent)",
+					background: `color-mix(in srgb, ${canvasTheme.colors.destructive} 10%, white)`,
+					color: canvasTheme.colors.destructive,
+					border: `1px solid color-mix(in srgb, ${canvasTheme.colors.destructive} 16%, transparent)`,
 				};
 			case "outline":
 				return {
@@ -85,3 +85,17 @@
 >
 	{@render children?.()}
 </View>
+
+<style>
+	:global([data-slot="badge"]:focus-visible) {
+		border-color: var(--ring) !important;
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent) !important;
+	}
+
+	:global([data-slot="badge"] svg:not([data-size])) {
+		width: 1rem;
+		height: 1rem;
+		pointer-events: none;
+		flex-shrink: 0;
+	}
+</style>

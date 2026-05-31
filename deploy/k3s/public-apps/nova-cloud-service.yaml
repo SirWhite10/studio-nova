@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nova-cloud-web
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-cloud-web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nova-cloud-web
+  ports:
+    - name: http
+      port: 10003
+      targetPort: http

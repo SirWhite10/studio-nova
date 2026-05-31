@@ -1,12 +1,12 @@
 <script lang="ts">
   import CardDemoToolbar from "$lib/components/card/card-demo-toolbar.svelte";
   import * as CanvasCard from "$lib/components/card/index.js";
-  import * as Badge from "$lib/components/ui/badge/index.js";
-  import * as Button from "$lib/components/ui/button/index.js";
-  import * as Field from "$lib/components/ui/field/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import * as Select from "$lib/components/ui/select/index.js";
-  import { Textarea } from "$lib/components/ui/textarea/index.js";
+  import * as Badge from "$lib/components/view-ui/badge/index.js";
+  import * as Button from "$lib/components/view-ui/button/index.js";
+  import * as Field from "$lib/components/view-ui/field/index.js";
+  import { Input } from "$lib/components/view-ui/input/index.js";
+  import * as Select from "$lib/components/view-ui/select/index.js";
+  import { Textarea } from "$lib/components/view-ui/textarea/index.js";
   import {
     ArrowRight,
     Bath,

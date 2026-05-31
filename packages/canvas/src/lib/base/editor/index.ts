@@ -16,7 +16,7 @@ import EditorControls from "./EditorControls.svelte";
 import EditorComponentHighlight from "./EditorComponentHighlight.svelte";
 import EditorField from "./fields/EditorField.svelte";
 
-export { editorStore } from "./store.js";
+export { createEditorStore, editorStore } from "./store.js";
 export {
   getEditorContext,
   setEditorContext,

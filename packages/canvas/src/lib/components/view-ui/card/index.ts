@@ -1,24 +1,24 @@
-import Root from "$lib/components/card/card.svelte";
-import Content from "$lib/components/card/card-content.svelte";
-import Description from "$lib/components/card/card-description.svelte";
-import Footer from "$lib/components/card/card-footer.svelte";
-import Header from "$lib/components/card/card-header.svelte";
-import Title from "$lib/components/card/card-title.svelte";
-import Action from "$lib/components/card/card-action.svelte";
+import Root from "./card.svelte";
+import Header from "./card-header.svelte";
+import Content from "./card-content.svelte";
+import Footer from "./card-footer.svelte";
+import Title from "./card-title.svelte";
+import Description from "./card-description.svelte";
+import Action from "./card-action.svelte";
 
 export {
   Root,
-  Content,
-  Description,
-  Footer,
   Header,
+  Content,
+  Footer,
   Title,
+  Description,
   Action,
   Root as Card,
-  Content as CardContent,
-  Description as CardDescription,
-  Footer as CardFooter,
   Header as CardHeader,
+  Content as CardContent,
+  Footer as CardFooter,
   Title as CardTitle,
+  Description as CardDescription,
   Action as CardAction,
 };

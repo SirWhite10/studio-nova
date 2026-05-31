@@ -35,3 +35,17 @@
 		{@render children?.()}
 	{/snippet}
 </DropdownMenuPrimitive.CheckboxItem>
+
+<style>
+	:global([data-slot="dropdown-menu-checkbox-item"]:focus),
+	:global([data-slot="dropdown-menu-checkbox-item"][data-highlighted]) {
+		background: var(--muted) !important;
+	}
+	:global([data-slot="dropdown-menu-checkbox-item"]:focus-visible) {
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+	}
+	:global([data-slot="dropdown-menu-checkbox-item"][data-disabled]) {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+</style>

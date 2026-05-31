@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@ark-ui/svelte": "^5.21.2",
+    "@fontsource/geist": "^5.2.9",
+    "@fontsource/hanken-grotesk": "^5.2.8",
+    "@fontsource/manrope": "^5.2.8",
     "@lucide/svelte": "^1.14.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.5.0"

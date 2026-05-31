@@ -4,7 +4,7 @@
 		buttonVariants,
 		type ButtonVariant,
 		type ButtonSize,
-	} from "$lib/shadcn-components/ui/button/index.js";
+	} from "$lib/shadcn-components/ui/button/button.svelte";
 	import { cn } from "$lib/shadcn-components/utils.js";
 
 	let {

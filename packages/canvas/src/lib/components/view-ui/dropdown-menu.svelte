@@ -231,7 +231,7 @@ const contentStyles = $derived.by(() => {
 	}
 
 	.canvas-dropdown-item-destructive {
-		color: #b42318;
+		color: var(--destructive);
 	}
 
 	@media (max-width: 1023px) {

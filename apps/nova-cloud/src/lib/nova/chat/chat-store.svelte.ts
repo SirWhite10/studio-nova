@@ -107,7 +107,7 @@ class ChatStore {
           id: s._id,
           title: s.title,
           description: "Last updated: " + new Date(s.updatedAt).toLocaleDateString(),
-          url: `/app/studios/${s.studioId}/chat/${s._id}`,
+          url: `/studios/${s.studioId}/chat/${s._id}`,
           studioId: s.studioId,
         }));
       }
@@ -121,7 +121,7 @@ class ChatStore {
   }
 
   async createChat(title = "New Chat") {
-    const rawStudioId = window.location.pathname.match(/\/app\/studios\/([^/]+)/)?.[1];
+    const rawStudioId = window.location.pathname.match(/\/studios\/([^/]+)/)?.[1];
     if (!rawStudioId) {
       toast.error("Select a Studio before starting a chat");
       return;
@@ -156,7 +156,7 @@ class ChatStore {
     }
 
     await this.loadChats();
-    await goto(`/app/studios/${normalizedStudioId}/chat/${chatId}`);
+    await goto(`/studios/${normalizedStudioId}/chat/${chatId}`);
     return chatId;
   }
 
@@ -199,8 +199,8 @@ class ChatStore {
       await fetch(`/api/chats/${id}`, { method: "DELETE" });
       this.chats = this.chats.filter((c) => c.id !== id);
       if (this.chatId === id) {
-        const studioId = window.location.pathname.match(/\/app\/studios\/([^/]+)/)?.[1];
-        await goto(studioId ? `/app/studios/${studioId}` : "/app");
+        const studioId = window.location.pathname.match(/\/studios\/([^/]+)/)?.[1];
+        await goto(studioId ? `/studios/${studioId}` : "/");
       }
     } catch (e) {
       console.error("Failed to delete chat:", e);

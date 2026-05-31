@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ToggleGroup as ToggleGroupPrimitive } from "bits-ui";
 	import { Button } from "$lib/components/view-ui/button/index.js";
+	import { canvasTheme } from "$lib/components/layout/tokens.js";
 	import { getToggleGroupCtx } from "./context.svelte.js";
 
 	let {
@@ -30,7 +31,7 @@
 			variant={ctx?.variant || variant || "default"}
 			size={(ctx?.size || size || "default") === "default" ? "sm" : (ctx?.size || size || "sm")}
 			style={[
-				state === "on" ? "background: oklch(0.97 0 0);" : "",
+				state === "on" ? `background: ${canvasTheme.colors.muted};` : "",
 				isCollapsed ? "border-radius: 0;" : "",
 				isCollapsed && isOutline ? "box-shadow: none;" : "",
 				isCollapsed && isOutline ? "border-left-width: 0;" : "",
@@ -42,3 +43,12 @@
 		</Button>
 	{/snippet}
 </ToggleGroupPrimitive.Item>
+
+<style>
+	:global([data-slot="toggle-group-item"] svg:not([data-size])) {
+		width: 1rem;
+		height: 1rem;
+		pointer-events: none;
+		flex-shrink: 0;
+	}
+</style>

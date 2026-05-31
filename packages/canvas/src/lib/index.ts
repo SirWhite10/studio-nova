@@ -195,6 +195,7 @@ export const FormSlots = formComponentCatalog["Form.Root"].slots;
 
 export { default as CanvasEditor } from "./base/editor/CanvasEditor.svelte";
 export { default as StudioEditor } from "./base/editor/StudioEditor.svelte";
+export { createEditorStore, editorStore } from "./base/editor/store.js";
 
 export { default as ViewAppSidebar } from "./components/app-sidebar.svelte";
 export { default as ViewSiteHeader } from "./components/site-header.svelte";

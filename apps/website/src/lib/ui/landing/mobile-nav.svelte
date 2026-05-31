@@ -1,5 +1,6 @@
 <script lang="ts">
   import Logo from './logo.svelte';
+  import { APP_SIGN_IN_URL, APP_SIGN_UP_URL } from '$lib/app-links';
 
   interface Props {
     links: { href: string; label: string }[];
@@ -23,13 +24,13 @@
 
     <div class="border-t border-outline/20 pt-4 mt-2 flex flex-col gap-3">
       <a
-        href="/auth/sign-in"
+        href={APP_SIGN_IN_URL}
         class="font-label-caps text-label-caps text-on-surface hover:text-primary transition-colors"
       >
         Sign In
       </a>
       <a
-        href="/auth/sign-up"
+        href={APP_SIGN_UP_URL}
         class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-full text-center"
       >
         Get Started

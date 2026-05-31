@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { APP_SIGN_UP_URL } from '$lib/app-links';
   import NotificationBar from '$lib/ui/landing/notification-bar.svelte';
   import Header from '$lib/ui/landing/header.svelte';
   import Footer from '$lib/ui/landing/footer.svelte';
@@ -199,7 +200,7 @@
 
       <div class="flex items-center gap-6 mt-8">
         <a
-          href="/auth/sign-up"
+          href={APP_SIGN_UP_URL}
           class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-8 py-4 rounded-full text-lg hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] transition-all duration-300"
         >
           Start building
@@ -457,7 +458,7 @@
     description="Your AI-powered workspace is ready in seconds. No setup. No server management. Real value from day one."
   >
     <a
-      href="/auth/sign-up"
+      href={APP_SIGN_UP_URL}
       class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-10 py-4 rounded-full text-lg hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] transition-all duration-300"
     >
       Start building

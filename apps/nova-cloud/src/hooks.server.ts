@@ -12,6 +12,25 @@ if (!seeded) {
 
 export const handle: Handle = async ({ event, resolve }) => {
   const pathname = event.url.pathname;
+  const isAuthPath = pathname.startsWith("/auth");
+  const isApiPath = pathname.startsWith("/api");
+  const isLegacyLandingPath =
+    pathname === "/landing" ||
+    pathname.startsWith("/landing/") ||
+    pathname === "/pricing" ||
+    pathname.startsWith("/pricing/") ||
+    pathname === "/about" ||
+    pathname.startsWith("/about/");
+  const isAppPath =
+    pathname === "/" ||
+    pathname === "/chats" ||
+    pathname.startsWith("/chats/") ||
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    pathname === "/skills" ||
+    pathname.startsWith("/skills/") ||
+    pathname === "/studios" ||
+    pathname.startsWith("/studios/");
 
   const authToken =
     event.cookies.get("better-auth.session_token") ||
@@ -22,8 +41,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   event.locals.session = null;
   const maybeSession =
-    authToken &&
-    (pathname.startsWith("/app") || pathname.startsWith("/auth") || pathname.startsWith("/api"))
+    authToken && (isAppPath || isAuthPath || isApiPath)
       ? await surrealGetSession(event.request.headers).catch(() => null)
       : null;
 
@@ -35,7 +53,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.userId = null;
   }
 
-  if (pathname.startsWith("/app") || pathname.startsWith("/api")) {
+  if (isAppPath || isApiPath) {
     try {
       await ensureTables();
     } catch (err) {
@@ -45,12 +63,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   const isAuthenticated = !!event.locals.userId;
 
-  if (pathname.startsWith("/app") && !isAuthenticated) {
+  if (isAppPath && !isAuthenticated) {
     throw redirect(303, "/auth/sign-in");
   }
 
+  if (isLegacyLandingPath) {
+    throw redirect(308, "/");
+  }
+
   if ((pathname === "/auth/sign-in" || pathname === "/auth/sign-up") && isAuthenticated) {
-    throw redirect(303, "/app");
+    throw redirect(303, "/");
   }
 
   return resolve(event);

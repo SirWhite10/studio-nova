@@ -23,7 +23,7 @@
 					"display: inline-flex",
 					"align-items: center",
 					"gap: 0.25rem",
-					"border-bottom: 1px solid color-mix(in srgb, black 10%, transparent)",
+					`border-bottom: 1px solid ${canvasTheme.colors.border}`,
 					"background: transparent",
 					style,
 				]
@@ -51,3 +51,14 @@
 	style={inlineStyle}
 	{...restProps}
 />
+
+<style>
+	:global([data-slot="tabs"][data-orientation="vertical"] [data-slot="tabs-list"]) {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	:global([data-slot="tabs"][data-orientation="vertical"] [data-slot="tabs-list"][data-variant="line"]) {
+		border-bottom: 0;
+		border-right: 1px solid var(--border);
+	}
+</style>

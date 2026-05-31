@@ -18,6 +18,13 @@ data:
     [transport]
     tls.enable = true
 
+    [[proxies]]
+    name = "smoke-workspace"
+    type = "tcp"
+    localIP = "smoke-workspace.nova-edge.svc.cluster.local"
+    localPort = 3000
+    remotePort = 18080
+
     # Shared K3s frpc deployment scaffold.
     # Proxy entries are expected to be managed by Nova's domain/runtime control layer
     # once the reconciliation path is wired in.

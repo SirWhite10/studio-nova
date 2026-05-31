@@ -50,7 +50,7 @@ export async function getStudioOverviewState(userId: string, studioId: string) {
     chats: chats.map((chat: any) => ({
       id: chat._id,
       title: chat.title,
-      url: `/app/studios/${studioId}/chat/${chat._id}`,
+      url: `/studios/${studioId}/chat/${chat._id}`,
       updatedAt: chat.updatedAt,
     })),
     studioPlan: {

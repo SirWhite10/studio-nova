@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-cloud-web
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-cloud-web
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nova-cloud-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-cloud-web
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: nova-cloud-web
+          image: node:24-bookworm-slim
+          workingDir: /workspace/apps/nova-cloud
+          command:
+            - /bin/sh
+            - -lc
+            - exec node build
+          envFrom:
+            - secretRef:
+                name: nova-cloud-web-env
+          env:
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "10003"
+            - name: NODE_ENV
+              value: production
+            - name: NOVA_RUNTIME_CONTROL_URL
+              value: http://127.0.0.1:8787
+            - name: NOVA_DOMAIN_CONTROL_URL
+              value: http://nova-domain-control.nova-domain.svc.cluster.local:8790
+            - name: SURREALDB_URL
+              value: http://nova-surrealdb.nova-cloud.svc.cluster.local:8000/rpc
+          ports:
+            - containerPort: 10003
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+              readOnly: true
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /home/nova/studio-nova
+            type: Directory

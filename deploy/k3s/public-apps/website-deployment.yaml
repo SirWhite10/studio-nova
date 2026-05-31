@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-website
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-website
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nova-website
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-website
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: nova-website
+          image: node:24-bookworm-slim
+          workingDir: /workspace/apps/website
+          command:
+            - /bin/sh
+            - -lc
+            - exec /workspace/node_modules/.bin/vite preview --host 0.0.0.0 --port "$PORT" --strictPort
+          env:
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "10001"
+            - name: NODE_ENV
+              value: production
+          ports:
+            - containerPort: 10001
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /home/nova/studio-nova
+            type: Directory

@@ -2,6 +2,7 @@
   import Logo from './logo.svelte';
   import { Menu, X } from '@lucide/svelte';
   import MobileNav from './mobile-nav.svelte';
+  import { APP_SIGN_IN_URL, APP_SIGN_UP_URL } from '$lib/app-links';
 
   let mobileOpen = $state(false);
 
@@ -34,13 +35,13 @@
 
     <div class="flex items-center gap-6">
       <a
-        href="/auth/sign-in"
+        href={APP_SIGN_IN_URL}
         class="hidden md:inline-block font-label-caps text-label-caps text-on-surface hover:text-primary transition-colors"
       >
         Sign In
       </a>
       <a
-        href="/auth/sign-up"
+        href={APP_SIGN_UP_URL}
         class="hidden md:inline-block bg-gradient-to-r from-primary to-primary-container text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-full hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300"
       >
         Get Started

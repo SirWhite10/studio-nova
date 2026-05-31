@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { View } from "$lib/base/view/index.js";
+	import { canvasTheme } from "$lib/components/layout/tokens.js";
 	import type { HTMLAttributes } from "svelte/elements";
 
 	let {
@@ -19,7 +20,7 @@
 	as="thead"
 	data-slot="table-header"
 	class={className}
-	style={`border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); ${style}`}
+	style={`border-bottom: 1px solid ${canvasTheme.colors.border}; ${style}`}
 	{...restProps}
 >
 	{@render children?.()}

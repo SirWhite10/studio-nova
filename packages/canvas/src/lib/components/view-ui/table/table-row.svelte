@@ -22,8 +22,8 @@
 	class={className}
 	borderBottom={`1px solid color-mix(in srgb, ${canvasTheme.colors.foreground} 10%, transparent)`}
 	states={{
-		hover: { background: "color-mix(in srgb, oklch(0.97 0 0) 50%, transparent)" },
-		selected: { background: "color-mix(in srgb, oklch(0.97 0 0) 100%, transparent)" },
+		hover: { background: `color-mix(in srgb, ${canvasTheme.colors.muted} 50%, transparent)` },
+		selected: { background: canvasTheme.colors.muted },
 	}}
 	style={`transition: background-color 150ms ease; ${style}`}
 	{...restProps}

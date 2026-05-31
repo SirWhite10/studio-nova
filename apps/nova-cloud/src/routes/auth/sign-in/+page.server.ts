@@ -19,13 +19,13 @@ export const actions: Actions = {
       return { error: "Invalid credentials" };
     }
 
-    throw redirect(303, "/app");
+    throw redirect(303, "/");
   },
 };
 
 export const load: PageServerLoad = async (event) => {
   if (event.locals.userId) {
-    throw redirect(303, "/app");
+    throw redirect(303, "/");
   }
   return {
     reset: event.url.searchParams.get("reset") === "1",

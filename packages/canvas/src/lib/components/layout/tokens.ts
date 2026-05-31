@@ -13,6 +13,7 @@ export const canvasTheme = {
     sidebarMuted: "var(--muted-foreground)",
     sidebarAccent: "var(--sidebar-accent)",
     accent: "var(--accent)",
+    destructive: "var(--destructive)",
     primary: "var(--primary)",
   },
   radius: {

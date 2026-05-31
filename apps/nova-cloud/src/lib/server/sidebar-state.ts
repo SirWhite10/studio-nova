@@ -112,7 +112,7 @@ function buildNavigation(
             {
               id: "get-started",
               title: "Create your first Studio",
-              href: "/app",
+              href: "/",
               icon: "sparkles",
             },
           ],
@@ -143,7 +143,7 @@ function buildNavigation(
           {
             id: `${primaryAgentId}-chats`,
             title: "Chats",
-            href: `/app/chats?studio=${currentStudio.id}`,
+            href: `/chats?studio=${currentStudio.id}`,
             icon: "message-square",
             children: currentStudio.chatPreview.map((chat) => ({
               id: `chat-${chat.id}`,
@@ -340,7 +340,7 @@ export async function getSidebarState(
     const chatPreview = studioChats.slice(0, 3).map((chat) => ({
       id: chat.id,
       title: chat.title,
-      url: `/app/studios/${studio._id}/chat/${chat.id}`,
+      url: `/studios/${studio._id}/chat/${chat.id}`,
     }));
     const appearanceSettings =
       studio.appearanceSettings ?? defaultStudioAppearanceSettings(studio.themeHue ?? 25);
@@ -360,8 +360,8 @@ export async function getSidebarState(
       lastOpenedAt: studio.lastOpenedAt ?? studio.updatedAt ?? Date.now(),
       runtimeStatus: runtime.status,
       runtimeLabel: runtime.label,
-      url: `/app/studios/${studio._id}`,
-      newChatUrl: `/app/studios/${studio._id}`,
+      url: `/studios/${studio._id}`,
+      newChatUrl: `/studios/${studio._id}`,
       chatPreview,
     };
   });

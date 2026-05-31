@@ -15,7 +15,7 @@ export async function getStudioJobsState(userId: string, studioId: string) {
     chats: chats.map((chat) => ({
       id: chat._id,
       title: chat.title,
-      url: `/app/studios/${studioId}/chat/${chat._id}`,
+      url: `/studios/${studioId}/chat/${chat._id}`,
     })),
   };
 }

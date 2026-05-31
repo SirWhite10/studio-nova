@@ -35,7 +35,7 @@
 					tooltipContent="Nova Cloud"
 				>
 					{#snippet child({ props })}
-						<a href="/app" {...props}>
+						<a href="/" {...props}>
 							<div class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary/12 font-semibold text-sidebar-primary">
 								N
 							</div>

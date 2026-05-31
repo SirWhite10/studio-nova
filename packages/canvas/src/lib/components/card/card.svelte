@@ -12,7 +12,7 @@
     RenderComponentFn,
   } from "$lib/base/canvas/types.js";
   import { cn } from "$lib/utils.js";
-  import * as CardPrimitive from "$lib/components/ui/card/index.js";
+  import * as CardPrimitive from "$lib/components/view-ui/card/index.js";
   import { executeCardTapActions, hasCardTapActions } from "./actions.js";
   import type { CardAction, CardRootProps, CardSize, CardVariant } from "./schema.js";
 

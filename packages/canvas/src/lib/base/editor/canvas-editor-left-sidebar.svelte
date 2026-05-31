@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
 	import type { CanvasComponentCatalog, CanvasNode } from "$lib/base/canvas/types.js";
-	import * as Sidebar from "$lib/shadcn-components/ui/sidebar/index.js";
+	import * as Sidebar from "$lib/components/view-ui/sidebar/index.js";
 	import { cn } from "$lib/utils.js";
 	import { getEditorContext } from "./context.js";
-	import CanvasEditorLeftRail from "./canvas-editor-left-rail.svelte";
+	import CanvasEditorNavRail from "./canvas-editor-nav-rail.svelte";
 	import type { ComponentSelection, EditorAppSection, EditorLeftPanel } from "./types.js";
 	import {
 		buildEditorLayerTree,
@@ -50,11 +50,16 @@
 
 	function handleAddComponent(type: string, path?: string[]) {
 		const definition = componentCatalog[type];
-		if (!definition) {
-			return;
-		}
-
+		if (!definition) return;
 		editorContext.addComponent(createNodeFromCatalogEntry(definition), path);
+	}
+
+	function handlePaletteDragStart(event: DragEvent, type: string) {
+		event.dataTransfer?.setData("application/x-studio-nova-component", type);
+		event.dataTransfer?.setData("text/plain", type);
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = "copy";
+		}
 	}
 </script>
 
@@ -111,6 +116,19 @@
 					<div class="canvas-editor-left-sidebar-empty">No components on the canvas yet.</div>
 				{/if}
 			</div>
+		{:else if activePanel === "Fields"}
+			<div class="canvas-editor-left-sidebar-scroll">
+				<section class="canvas-editor-left-sidebar-section">
+					<h3 class="canvas-editor-left-sidebar-section-title">Field Inspector</h3>
+					<div class="canvas-editor-left-sidebar-empty">
+						{#if selection}
+							Select fields and component actions in the right inspector for {formatComponentType(selection.component.type)}.
+						{:else}
+							Select a component on the canvas to edit its schema-driven fields.
+						{/if}
+					</div>
+				</section>
+			</div>
 		{:else if activePanel === "Components"}
 			<div class="canvas-editor-left-sidebar-scroll">
 				{#each catalogCategories as group}
@@ -124,7 +142,11 @@
 									definition,
 									componentCatalog,
 								)}
-								<div class="canvas-editor-left-sidebar-component-card">
+								<div
+									class="canvas-editor-left-sidebar-component-card"
+									draggable="true"
+									ondragstart={(event) => handlePaletteDragStart(event, definition.type)}
+								>
 									<div class="canvas-editor-left-sidebar-component-title">
 										{definition.label ?? formatComponentType(definition.type)}
 									</div>
@@ -162,7 +184,7 @@
 	<div class="canvas-editor-left-sidebar-root">
 		<div class="canvas-editor-left-sidebar-shell">
 			<div class="canvas-editor-left-sidebar-rail-column">
-				<CanvasEditorLeftRail {activePanel} {appName} onSelect={onPanelChange} onSelectAppSection={onSelectAppSection} {onOpenPages} {onOpenEditorSettings} />
+				<CanvasEditorNavRail {activePanel} {appName} onSelect={onPanelChange} onSelectAppSection={onSelectAppSection} {onOpenPages} {onOpenEditorSettings} />
 			</div>
 			<div class="canvas-editor-left-sidebar-panel-column">
 				<Sidebar.Header class="border-b border-black/8 px-0 py-0">

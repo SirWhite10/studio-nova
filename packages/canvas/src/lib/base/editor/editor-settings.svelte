@@ -1,5 +1,6 @@
 <script lang="ts">
-	import * as Dialog from "$lib/shadcn-components/ui/dialog/index.js";
+	import XIcon from "@lucide/svelte/icons/x";
+	import * as Dialog from "$lib/components/view-ui/dialog/index.js";
 
 	let {
 		open = $bindable(false),
@@ -15,8 +16,9 @@
 				<h2 class="text-base font-semibold tracking-tight">Editor Settings</h2>
 				<p class="text-sm [color:var(--editor-fg-muted)]">Preferences for the Canvas editor shell and workflow.</p>
 			</div>
-			<Dialog.Close class="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium [border-color:var(--editor-border)] [background:var(--editor-panel-elevated)] [color:var(--editor-fg)]">
-				Close
+			<Dialog.Close class="inline-flex size-9 items-center justify-center rounded-md border [border-color:var(--editor-border)] [background:var(--editor-panel-elevated)] [color:var(--editor-fg)]">
+				<XIcon size={16} />
+				<span class="sr-only">Close editor settings</span>
 			</Dialog.Close>
 		</div>
 

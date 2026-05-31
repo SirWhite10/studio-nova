@@ -45,9 +45,14 @@ No constitutional violations require special justification.
 
 ```text
 specs/002-canvas-app-runtime/
-├── plan.md
 ├── spec.md
-└── (future) tasks.md
+├── plan.md
+├── tasks.md
+├── data-model.md
+├── research.md
+├── quickstart.md
+├── contracts/public-api.md
+└── checklists/requirements.md
 ```
 
 ### Related package planning
@@ -87,47 +92,55 @@ packages/
 ## Implementation Phases
 
 ### Phase 0 — Planning and alignment
+
 - confirm `CanvasApp` / `CanvasDocument` / `Canvas` hierarchy
 - confirm responsive value data model
 - confirm app-owned breakpoint configuration
 - confirm provider/runtime centralization path
 
 ### Phase 1 — Responsive types and breakpoint definitions
+
 - add shared responsive types
 - add breakpoint definitions and defaults
 - add root/app responsive config types
 - add pure responsive resolution helpers
 
 ### Phase 2 — Responsive runtime layer
+
 - add viewport runtime helper using Svelte `MediaQuery`
 - add container breakpoint resolution path
 - wire runtime resolution to app-provided breakpoint definitions
 - preserve base-safe behavior during SSR/hydration
 
 ### Phase 3 — `CanvasApp` runtime root
+
 - define `CanvasApp` API and runtime config types
 - add runtime context and app-owned config delivery
 - wrap Canvas rendering with app-level runtime shell
 - keep `Canvas` as renderer-only primitive
-- define the editor-facing root model so app-level selection targets `CanvasApp`
+- define the editor-facing model so `CanvasDocument` remains the editing root while app-level settings stay separately editable
 
 ### Phase 4 — Provider/runtime foundation
+
 - centralize provider data/actions through the app runtime
 - preserve compatibility with existing Canvas runtime flow
 - define provider-related extension points for future work
 
 ### Phase 5 — Responsive `Text`
+
 - extend text sizing scale
 - support responsive typography props
 - resolve text typography from responsive config instead of Tailwind typography classes
 - preserve utility classes for non-typography styling
 
 ### Phase 6 — Root breakpoint config adoption
+
 - add root-configured breakpoint usage to demo/example flows
 - update landing Canvas hero to use responsive text props
 - validate document/runtime separation in real examples
 
 ### Phase 7 — Migration, validation, and follow-up readiness
+
 - validate demos and package docs
 - document runtime hierarchy clearly
 - document the thought process from `Text`/hero issue to runtime/editor architecture change so handoff to another developer stays understandable

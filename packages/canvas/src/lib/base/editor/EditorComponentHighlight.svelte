@@ -153,6 +153,10 @@
 			<div class="editor-component-badge">
 				<div class="editor-component-label">{label}</div>
 				<div class="editor-component-actions">
+					<button type="button" class="editor-component-edit-button" onclick={() => onEdit?.()}>
+						<Settings size={14} />
+						<span>Edit</span>
+					</button>
 					<DropdownMenu
 						triggerClass="editor-component-menu-button"
 						menuClass="editor-component-menu"
@@ -265,7 +269,25 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
+		gap: 0.3rem;
 		pointer-events: auto;
+	}
+
+	.editor-component-edit-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.3rem;
+		min-height: 1.75rem;
+		padding: 0 0.65rem;
+		border: 1px solid color-mix(in oklab, var(--foreground), transparent 82%);
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--background), var(--foreground) 6%);
+		color: var(--foreground);
+		font: inherit;
+		font-size: 0.72rem;
+		font-weight: 700;
+		cursor: pointer;
 	}
 
 	.editor-component-menu-button {
@@ -302,6 +324,16 @@
 			max-width: min(260px, calc(100vw - 7.5rem));
 			padding: 0.45rem 0.65rem;
 			font-size: 0.8rem;
+		}
+
+		.editor-component-edit-button,
+		.editor-component-menu-button {
+			min-height: 2.5rem;
+		}
+
+		.editor-component-edit-button {
+			padding-inline: 0.8rem;
+			font-size: 0.78rem;
 		}
 
 		.editor-component-menu-button {

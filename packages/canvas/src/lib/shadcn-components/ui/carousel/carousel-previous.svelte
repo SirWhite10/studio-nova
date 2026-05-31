@@ -2,7 +2,8 @@
 	import type { WithoutChildren } from "bits-ui";
 	import { getEmblaContext } from "./context.js";
 	import { cn } from "$lib/shadcn-components/utils.js";
-	import { Button, type Props } from "$lib/shadcn-components/ui/button/index.js";
+	import { Button } from "$lib/shadcn-components/ui/button/index.js";
+	import type { ButtonProps } from "$lib/shadcn-components/ui/button/button.svelte";
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 
 	let {
@@ -11,7 +12,7 @@
 		variant = "outline",
 		size = "icon-sm",
 		...restProps
-	}: WithoutChildren<Props> = $props();
+	}: WithoutChildren<ButtonProps> = $props();
 
 	const emblaCtx = getEmblaContext("<Carousel.Previous/>");
 </script>

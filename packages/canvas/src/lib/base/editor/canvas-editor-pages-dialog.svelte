@@ -1,8 +1,9 @@
 <script lang="ts">
 	import FileTextIcon from "@lucide/svelte/icons/file-text";
 	import PlusIcon from "@lucide/svelte/icons/plus";
-	import * as Command from "$lib/shadcn-components/ui/command/index.js";
-	import * as Dialog from "$lib/shadcn-components/ui/dialog/index.js";
+	import XIcon from "@lucide/svelte/icons/x";
+	import * as Command from "$lib/components/view-ui/command/index.js";
+	import * as Dialog from "$lib/components/view-ui/dialog/index.js";
 
 	let {
 		open = $bindable(false),
@@ -25,8 +26,9 @@
 					<PlusIcon size={14} />
 					New Page
 				</button>
-				<Dialog.Close class="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium [border-color:var(--editor-border)] [background:var(--editor-panel-elevated)] [color:var(--editor-fg)]">
-					Close
+				<Dialog.Close class="inline-flex size-9 items-center justify-center rounded-md border [border-color:var(--editor-border)] [background:var(--editor-panel-elevated)] [color:var(--editor-fg)]">
+					<XIcon size={16} />
+					<span class="sr-only">Close pages dialog</span>
 				</Dialog.Close>
 			</div>
 		</div>

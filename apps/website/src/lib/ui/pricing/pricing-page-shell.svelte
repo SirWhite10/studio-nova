@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { APP_SIGN_IN_URL, APP_SIGN_UP_URL } from '$lib/app-links';
   import Logo from '$lib/ui/landing/logo.svelte';
   import { routeLinks } from '$lib/data/catalog';
   import type { Snippet } from 'svelte';
@@ -35,13 +36,13 @@
       </div>
       <div class="flex items-center gap-4">
         <a
-          href="/auth/sign-in"
+          href={APP_SIGN_IN_URL}
           class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors"
         >
           Sign in
         </a>
         <a
-          href="/auth/sign-up"
+          href={APP_SIGN_UP_URL}
           class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-label-caps text-label-caps px-5 py-2.5 rounded-full"
         >
           Get started

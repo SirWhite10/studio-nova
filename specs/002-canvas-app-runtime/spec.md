@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-canvas-app-runtime`  
 **Created**: 2026-05-17  
-**Status**: Draft  
+**Status**: Implemented Baseline  
 **Input**: User description: "Introduce a first-class CanvasApp runtime root for Canvas documents, with app-level responsive breakpoint configuration, viewport/container responsive values, provider runtime wiring, splash/loading shell support, and a clearer separation between CanvasApp, CanvasDocument, and Canvas renderer responsibilities."
 
 ## Feature Rationale
@@ -16,7 +16,7 @@ Rather than adding more local exceptions, this led to a broader architectural de
 - `Text` should own responsive typography directly
 - responsive behavior should be resolved from shared app/runtime configuration
 - app/runtime concerns need a dedicated `CanvasApp` root above the renderer
-- the editor should have a meaningful root object to select and inspect
+- the editor should preserve `CanvasDocument` as the editing root while exposing app-level runtime settings through dedicated flows
 - the generic editor should belong to Canvas, while a customized workspace/studio editor should belong to nova-cloud
 - the current package-level `StudioEditor` implementation should be renamed/generalized toward `CanvasEditor` during migration
 
@@ -47,7 +47,7 @@ If a future developer must restart this feature from scratch, the intended reaso
 3. That requires a reusable responsive system.
 4. A reusable responsive system requires root/app-owned breakpoint config.
 5. Root/app-owned runtime config implies a `CanvasApp` shell above `Canvas`.
-6. Once `CanvasApp` exists, the editor root should select `CanvasApp` rather than doing nothing.
+6. Once `CanvasApp` exists, the editor must distinguish runtime-shell concerns from document-root selection rather than collapsing them into one root object.
 7. The generic editor belongs in Canvas; the product-specific Studio experience belongs in nova-cloud.
 8. Integrations should be able to target manifests, providers, widgets, and schemas even when they do not use the default editor UI.
 
@@ -112,18 +112,19 @@ A developer can treat `CanvasApp` as the app/runtime boundary where providers, a
 1. **Given** provider data and provider actions, **When** they are supplied through `CanvasApp`, **Then** rendered Canvas nodes can access them through the runtime pipeline.
 2. **Given** a future extension-oriented app surface, **When** it assembles a scoped registry and runtime config, **Then** the architecture supports that assembly without redefining `Canvas` as the app shell.
 
-### User Story 5 - Treat the app root as the editor root (Priority: P3)
+### User Story 5 - Keep document-root editing while supporting app-level runtime configuration (Priority: P3)
 
-A developer using the generic Canvas editor can select the root app object and edit app-level runtime fields such as breakpoints and provider-related configuration, while nova-cloud remains free to wrap that editor in a workspace-specific Studio experience.
+A developer using the generic Canvas editor can keep `CanvasDocument` as the editing root while still editing app-level runtime fields such as breakpoints and provider-related configuration through dedicated editor flows, and nova-cloud remains free to wrap that editor in a workspace-specific Studio experience.
 
-**Why this priority**: This keeps the library editor generic while preserving a meaningful root selection model for future editor UX.
+**Why this priority**: This keeps the library editor generic while preserving a clean distinction between document editing and app/runtime configuration.
 
-**Independent Test**: Can be tested by confirming the editor architecture treats `CanvasApp` as the root selection target rather than leaving the top-level selection empty or document-only.
+**Independent Test**: Can be tested by confirming the editor architecture keeps document-root selection semantics while still exposing app-level editing inputs separately.
 
 **Acceptance Scenarios**:
 
-1. **Given** the generic Canvas editor, **When** the root is selected, **Then** the inspector can target app-level fields rather than a no-op root.
-2. **Given** nova-cloud needs a workspace-specific editor, **When** it builds on top of the generic editor, **Then** it can provide a customized `StudioEditor` wrapper without changing the core Canvas editor model.
+1. **Given** the generic Canvas editor, **When** document-root selection is evaluated, **Then** `CanvasDocument` remains the editing root rather than `CanvasApp`.
+2. **Given** app-level runtime fields exist, **When** the user enters app/document settings flows, **Then** the editor can target those fields without redefining the root selection model.
+3. **Given** nova-cloud needs a workspace-specific editor, **When** it builds on top of the generic editor, **Then** it can provide a customized `StudioEditor` wrapper without changing the core Canvas runtime model.
 
 ### Edge Cases
 
@@ -153,7 +154,7 @@ A developer using the generic Canvas editor can select the root app object and e
 - **FR-013**: The feature MUST document the runtime hierarchy clearly in package-level planning and package documentation.
 - **FR-014**: The app/root responsive configuration MUST be designed so future editor UI can expose editable breakpoint definitions and responsive field controls without changing the stored value model.
 - **FR-015**: The feature MUST leave a clear handoff path for future scoped registries, extension contributions, and integration-backed widgets.
-- **FR-016**: The editor architecture MUST be able to treat `CanvasApp` as the root selection target for app-level editing.
+- **FR-016**: The editor architecture MUST preserve `CanvasDocument` as the editing root while allowing app-level runtime fields to be edited through dedicated editor flows.
 - **FR-017**: The Canvas library SHOULD evolve toward a generic `CanvasEditor`, while nova-cloud remains free to provide a customized `StudioEditor` wrapper built on top of it.
 - **FR-018**: The documented architecture MUST make clear that nova-cloud may expose additional or different editor configuration at the Studio/product layer without redefining the base Canvas editor contract.
 - **FR-019**: The migration plan SHOULD explicitly treat the current package-level `StudioEditor` implementation as a rename/generalization candidate toward `CanvasEditor`, with temporary compatibility aliasing allowed during transition.

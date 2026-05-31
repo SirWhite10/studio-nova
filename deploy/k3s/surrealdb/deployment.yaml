@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-surrealdb
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-surrealdb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nova-surrealdb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-surrealdb
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: surrealdb
+          image: surrealdb/surrealdb:v3.0.5
+          args:
+            - start
+            - --bind
+            - 0.0.0.0:8000
+            - --username
+            - root
+            - --password
+            - root
+            - --no-banner
+            - surrealkv:///data
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nova-surrealdb-data

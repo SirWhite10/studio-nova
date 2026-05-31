@@ -9,12 +9,14 @@ use crate::middleware::auth::auth_middleware;
 pub struct AppState {
     pub store: Arc<dyn DomainStore>,
     pub admin_token: String,
+    pub admin_tokens: Vec<String>,
 }
 
-pub fn create_router(store: Arc<dyn DomainStore>, admin_token: String) -> Router {
+pub fn create_router(store: Arc<dyn DomainStore>, admin_token: String, admin_tokens: Vec<String>) -> Router {
     let state = AppState {
         store: store.clone(),
         admin_token: admin_token.clone(),
+        admin_tokens: admin_tokens.clone(),
     };
 
     Router::new()
@@ -24,14 +26,15 @@ pub fn create_router(store: Arc<dyn DomainStore>, admin_token: String) -> Router
         // FRP plugin handler
         .route("/frp/handler", post(handlers::frp::handle))
         // Admin API (authenticated)
-        .nest("/admin", admin_routes(store, admin_token))
+        .nest("/admin", admin_routes(store, admin_token, admin_tokens))
         .with_state(state)
 }
 
-fn admin_routes(store: Arc<dyn DomainStore>, admin_token: String) -> Router<AppState> {
+fn admin_routes(store: Arc<dyn DomainStore>, admin_token: String, admin_tokens: Vec<String>) -> Router<AppState> {
     let state = AppState {
         store,
         admin_token,
+        admin_tokens,
     };
 
     Router::new()

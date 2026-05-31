@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { cn } from "$lib/utils.js";
-  import * as CardPrimitive from "$lib/components/ui/card/index.js";
+  import * as CardPrimitive from "$lib/components/view-ui/card/index.js";
 
   let {
     children,

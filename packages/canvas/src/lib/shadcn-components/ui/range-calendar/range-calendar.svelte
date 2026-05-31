@@ -2,7 +2,7 @@
 	import { RangeCalendar as RangeCalendarPrimitive } from "bits-ui";
 	import * as RangeCalendar from "./index.js";
 	import { cn, type WithoutChildrenOrChild } from "$lib/shadcn-components/utils.js";
-	import type { ButtonVariant } from "$lib/shadcn-components/ui/button/index.js";
+	import type { ButtonVariant } from "$lib/shadcn-components/ui/button/button.svelte";
 	import type { Snippet } from "svelte";
 	import { isEqualMonth, type DateValue } from "@internationalized/date";
 

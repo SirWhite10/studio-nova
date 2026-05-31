@@ -20,7 +20,7 @@
 	as="tfoot"
 	data-slot="table-footer"
 	class={className}
-	background="color-mix(in srgb, oklch(0.97 0 0) 50%, transparent)"
+	background={`color-mix(in srgb, ${canvasTheme.colors.muted} 50%, transparent)`}
 	borderTop={`1px solid color-mix(in srgb, ${canvasTheme.colors.foreground} 10%, transparent)`}
 	style={`font-weight: 500; ${style}`}
 	{...restProps}

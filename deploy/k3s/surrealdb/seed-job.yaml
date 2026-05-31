@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nova-surrealdb-seed
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-surrealdb-seed
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nova-surrealdb-seed
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: alpine:3.22
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -eu
+              if [ ! -d /seed-source/manifest ]; then
+                echo "Source SurrealDB data directory is missing expected manifest/" >&2
+                exit 1
+              fi
+              mkdir -p /seed-target
+              rm -rf /seed-target/manifest /seed-target/sstables /seed-target/wal /seed-target/vlog /seed-target/LOCK
+              cp -a /seed-source/. /seed-target/
+              rm -f /seed-target/LOCK
+              find /seed-target -maxdepth 2 -mindepth 1 -printf '%P\n' | sort
+          volumeMounts:
+            - name: seed-source
+              mountPath: /seed-source
+              readOnly: true
+            - name: seed-target
+              mountPath: /seed-target
+      volumes:
+        - name: seed-source
+          hostPath:
+            path: /home/nova/studio-nova/apps/nova-cloud/surreal/data
+            type: Directory
+        - name: seed-target
+          persistentVolumeClaim:
+            claimName: nova-surrealdb-data

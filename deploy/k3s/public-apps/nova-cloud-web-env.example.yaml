@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nova-cloud-web-env
+  namespace: nova-cloud
+type: Opaque
+stringData:
+  BETTER_AUTH_SECRET: change-me
+  NOVA_APP_URL: https://app.example.com
+  NOVA_CRON_SECRET: change-me
+  NOVA_DOMAIN_CONTROL_TOKEN: change-me
+  NOVA_DOMAIN_CONTROL_URL: http://nova-domain-control.nova-domain.svc.cluster.local:8790
+  NOVA_RUNTIME_CONTROL_TOKEN: change-me
+  NOVA_RUNTIME_CONTROL_URL: http://127.0.0.1:8787
+  NOVA_SUPER_ADMIN_EMAILS: your@email.com
+  OPENROUTER_API_KEY: change-me
+  PUBLIC_SITE_URL: https://example.com
+  RESEND_API_KEY: change-me
+  RESEND_FROM_EMAIL: noreply@example.com
+  SURREALDB_CONNECT_TIMEOUT_MS: "5000"
+  SURREALDB_DATABASE: main
+  SURREALDB_NAMESPACE: main
+  SURREALDB_PASSWORD: root
+  SURREALDB_URL: http://nova-surrealdb.nova-cloud.svc.cluster.local:8000/rpc
+  SURREALDB_USERNAME: root

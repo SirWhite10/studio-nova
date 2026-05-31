@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Button, type ButtonProps } from "$lib/shadcn-components/ui/button/index.js";
+	import { Button } from "$lib/shadcn-components/ui/button/index.js";
+	import type { ButtonProps } from "$lib/shadcn-components/ui/button/button.svelte";
 
 	let { ref = $bindable(null), ...restProps }: ButtonProps = $props();
 </script>

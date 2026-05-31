@@ -81,7 +81,7 @@
 			const studio = await res.json();
 			open = false;
 			reset();
-			await goto(`/app/studios/${studio.id}`);
+			await goto(`/studios/${studio.id}`);
 		} catch (e: any) {
 			toast.error(e.message || 'Failed to create studio');
 		} finally {

@@ -42,7 +42,7 @@ That exposed a deeper requirement:
 - responsive values need a reusable system rather than one-off component logic
 - breakpoints need to be configured at the app/runtime level
 - provider/runtime concerns need a top-level shell above the renderer
-- the editor needs a meaningful root selection target for app-level fields
+- the editor needs a clear distinction between document-root editing and app-level runtime configuration
 
 So although this work began with text sizing in a hero, the correct solution is a foundational runtime/editor architecture change rather than another local styling patch.
 
@@ -80,7 +80,7 @@ If this work must be resumed from scratch, the core chain of reasoning is:
 3. Once `Text` owns responsive typography, responsive values need a reusable breakpoint-aware system.
 4. Once responsiveness is reusable, breakpoint definitions must be owned by an app/runtime root rather than duplicated in components.
 5. Once app-level runtime config exists, the renderer needs a runtime shell above it: `CanvasApp`.
-6. Once `CanvasApp` exists, the editor should select that app root and expose app-level fields.
+6. Once `CanvasApp` exists, the editor should keep `CanvasDocument` as the editing root while exposing app-level runtime fields through dedicated flows.
 7. Once the editor and runtime are generic, nova-cloud can wrap them with a product-specific `StudioEditor`.
 8. Once that boundary exists, integrations/extensions can target manifests, schemas, providers, widgets, and optional editor customization without redefining the core renderer.
 
@@ -144,14 +144,12 @@ Responsibilities:
 
 ### 2a. Editor boundary
 
-- The generic editor in this package should evolve toward **`CanvasEditor`**.
-- `CanvasEditor` should treat `CanvasApp` as the editable root selection target for app-level fields.
+- The generic editor in this package should be **`CanvasEditor`**.
+- `CanvasDocument` remains the editing root for document-oriented editor selection.
+- `CanvasApp` remains the runtime shell and should not become the document-root selection target.
+- App-level runtime settings can still be edited through dedicated app/document editor flows.
 - A studio/workspace-specific editor such as **`StudioEditor`** should live in **nova-cloud**, where workspace-specific behavior can expand independently of the Canvas library.
-- The current `StudioEditor` implementation in this package should be treated as the starting point to generalize, not as the long-term package-level branding.
-- Planned package-level rename direction:
-  - `StudioEditor.svelte` → `CanvasEditor.svelte`
-  - package exports/examples/routes should move to `CanvasEditor`
-  - a compatibility alias can exist temporarily during migration if helpful
+- The current `StudioEditor` implementation in this package should be treated as a compatibility/generalization surface, not as the long-term package-level branding.
 - nova-cloud may expose a different or larger editor configuration surface than the base Canvas editor because it is a product layer, not the library layer.
 
 ### 2b. Why the editor split matters

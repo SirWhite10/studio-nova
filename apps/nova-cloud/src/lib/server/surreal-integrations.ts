@@ -82,7 +82,7 @@ async function ensureDefaultIntegrations(
         studioId: fullStudioId,
         key: integration.key,
         title: integration.title,
-        route: `/app/studios/${bareStudioId}/integrations/${integration.key}`,
+        route: `/studios/${bareStudioId}/integrations/${integration.key}`,
         icon: integration.icon,
         category: integration.category,
         summary: integration.summary,

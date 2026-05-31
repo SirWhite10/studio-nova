@@ -16,7 +16,7 @@ That exposed a larger architectural need:
 1. typography and responsiveness should be owned by Canvas primitives themselves
 2. responsive behavior should not be hardcoded ad hoc inside individual components
 3. app-level concerns such as breakpoints, providers, splash/loading behavior, and future integration/runtime state need a dedicated root above the renderer
-4. the editor should have a meaningful root object to select and inspect
+4. the editor should preserve a clear document root while still exposing app-level runtime configuration through dedicated editor flows
 
 That is why the package is moving toward a clearer split between:
 
@@ -67,9 +67,11 @@ Canvas is organized around three distinct layers:
 
 The intended runtime hierarchy is:
 
-- `CanvasApp`
-  - `CanvasDocument` (data/model)
-  - `Canvas` (renderer)
+```text
+CanvasApp
+  └── CanvasDocument
+        └── Canvas
+```
 
 Important:
 
@@ -80,17 +82,13 @@ Important:
 
 ## Editor direction
 
-The generic editor surface in this package should evolve toward **`CanvasEditor`**.
+The generic editor surface in this package is **`CanvasEditor`**.
 
-- `CanvasEditor` should treat `CanvasApp` as the editable root selection target.
-- Selecting the root in the editor should expose app/runtime fields rather than a no-op root selection.
-- A product/workspace-specific editor such as **`StudioEditor`** should live in **nova-cloud**, where workspace-specific behavior can grow independently.
-- The current package-level `StudioEditor` implementation is best treated as the starting point to generalize into `CanvasEditor`.
-- Planned rename direction in this package:
-  - `StudioEditor.svelte` → `CanvasEditor.svelte`
-  - package exports and examples should follow the generic `CanvasEditor` naming
-  - a temporary compatibility alias may be kept during migration if needed
-- The studio/workspace editor may expose a different or expanded configuration surface than the base library editor, because nova-cloud can compose additional product-level behavior on top of the generic Canvas editor contract.
+- `CanvasDocument` is the editing root for document-oriented selection state.
+- `CanvasApp` remains the runtime shell and is not modeled as the document-root selection target.
+- App-level runtime settings may still be edited through dedicated app/document editor flows.
+- A product/workspace-specific editor such as **`StudioEditor`** can remain as a wrapper or product-layer experience, but it should not redefine the base Canvas runtime model.
+- The current package-level `StudioEditor` should be treated as compatibility/migration surface rather than the long-term primary package editor.
 
 ### Thought process for another developer
 
@@ -124,25 +122,28 @@ Responsive behavior is planned to be data-driven and app-defined:
 
 ## Planning
 
-Current implementation planning lives in:
+Current implementation planning/spec artifacts live in:
 
-- `planning/26-05-17-canvas-app-runtime-and-responsive-foundation.md`
-- `planning/26-05-17-canvas-extension-contribution-model.md`
+- `specs/002-canvas-app-runtime/`
+- `specs/004-canvas-editor-rebuild/`
+- `packages/canvas/planning/26-05-17-canvas-app-runtime-and-responsive-foundation.md`
+- `packages/canvas/planning/26-05-17-canvas-extension-contribution-model.md`
 
 ## Development
 
 ```sh
-npm run dev
+vp dev
 ```
 
 ## Checks
 
 ```sh
-npm run check
+vp check
+vp test
 ```
 
 ## Build
 
 ```sh
-npm run build
+vp build
 ```

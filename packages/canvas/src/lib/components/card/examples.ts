@@ -391,6 +391,6 @@ export const cardShowcaseJson = JSON.stringify(cardShowcaseDocument, null, 2);
 
 export const cardShowcaseProviderActions = {
   demo: {
-    selectCard: (payload) => payload,
+    selectCard: (_payload) => undefined,
   },
 } satisfies CanvasProviderActions;

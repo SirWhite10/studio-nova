@@ -277,7 +277,7 @@
 				This Studio chat URL is missing a valid conversation id. Go back to the Studio overview and create a fresh chat.
 			</p>
 			<div class="mt-6">
-				<Button href={data.studioId ? `/app/studios/${data.studioId}` : '/app'} class="rounded-full px-5">
+				<Button href={data.studioId ? `/studios/${data.studioId}` : '/'} class="rounded-full px-5">
 					Back to Studio
 				</Button>
 			</div>

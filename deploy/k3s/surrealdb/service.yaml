@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nova-surrealdb
+  namespace: nova-cloud
+  labels:
+    app.kubernetes.io/name: nova-surrealdb
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nova-surrealdb
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
