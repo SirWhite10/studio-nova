@@ -1,4 +1,4 @@
-use axum::{routing::{delete, get, post}, Router, body::Body, middleware};
+use axum::{routing::{delete, get, post}, Router, middleware};
 use edge_store::DomainStore;
 use std::sync::Arc;
 
