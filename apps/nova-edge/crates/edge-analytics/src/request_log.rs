@@ -258,9 +258,10 @@ mod tests {
             .body(Body::empty())
             .unwrap();
 
-        let response = axum::serve(app, req).await;
-        // Can't easily get response from serve; use tower's ServiceExt instead
-        // For now, just test the data model directly
+        // Use tower oneshot to test the middleware via the router
+        use tower::ServiceExt;
+        let response = app.oneshot(req).await;
+        // Response status doesn't matter for this test, just drop it
         drop(response);
 
         // Test via direct data model instead
