@@ -37,7 +37,6 @@ impl LiveCache {
             hosts: DashMap::new(),
             proxies: DashMap::new(),
             live_uuids: DashMap::new(),
-            stop_tx: None,
         }
     }
 
