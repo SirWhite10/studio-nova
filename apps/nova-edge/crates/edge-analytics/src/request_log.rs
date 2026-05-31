@@ -260,23 +260,9 @@ mod tests {
 
         // Use tower oneshot to test the middleware via the router
         use tower::ServiceExt;
-        let response = app.oneshot(req).await;
-        // Response status doesn't matter for this test, just drop it
-        drop(response);
+        let _response = app.oneshot(req).await.unwrap();
 
-        // Test via direct data model instead
-        let log = RequestLog::from_request_response(
-            &Method::GET,
-            "/test",
-            "test.example.com",
-            "10.0.0.1",
-            "test-proxy",
-            StatusCode::OK,
-            std::time::Duration::from_millis(5),
-        );
-
-        analytics.insert_request_log(log.to_row()).await;
-
+        // The middleware itself logs the request, so we should have 1 row
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let count = analytics.buffered_count().await;
