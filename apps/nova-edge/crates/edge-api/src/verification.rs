@@ -123,8 +123,7 @@ impl DnsResolver for MockDnsResolver {
 /// The token consists of 32 random hex characters after the prefix.
 /// Example: `nova-domain=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6`
 pub fn generate_verification_token() -> String {
-    let mut rng = rand::rng();
-    let bytes: [u8; 16] = rng.random();
+    let bytes: [u8; 16] = rand::random();
     let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     format!("{TOKEN_PREFIX}{hex}")
 }
