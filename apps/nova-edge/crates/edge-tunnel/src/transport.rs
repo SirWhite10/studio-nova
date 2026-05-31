@@ -1,2 +1,2 @@
-// yamux stream management
-// TODO: open/accept yamux substreams for data forwarding
+//! yamux stream management
+//! TODO: open/accept yamux substreams for data forwarding

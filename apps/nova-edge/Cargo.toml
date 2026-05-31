@@ -33,17 +33,17 @@ http-body-util = "0.1"
 # TLS
 rustls = "0.23"
 tokio-rustls = "0.26"
-rustls-acme = "0.12"
+rustls-acme = "0.15"
 
 # Database
-surrealdb = { version = "2", features = ["protocol-ws", "protocol-http"] }
-clickhouse = "0.13"
+surrealdb = { version = "3", features = ["protocol-ws", "protocol-http"] }
+clickhouse = "0.15"
 
 # Tunnel transport
-yamux = "0.12"
+yamux = "0.13"
 
 # DNS
-hickory-resolver = "0.24"
+hickory-resolver = "0.26"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -65,12 +65,12 @@ thiserror = "2"
 anyhow = "1"
 
 # HTTP client (for webhooks)
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.13", features = ["json"] }
 
 # Crypto
-hmac = "0.12"
-sha2 = "0.10"
-rand = "0.9"
+hmac = "0.13"
+sha2 = "0.11"
+rand = "0.10"
 
 # Async trait
 async-trait = "0.1"

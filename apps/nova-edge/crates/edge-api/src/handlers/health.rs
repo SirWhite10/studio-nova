@@ -1,4 +1,4 @@
-use axum::{extract::State, response::Json};
+use axum::response::Json;
 use serde_json::{json, Value};
 
 pub async fn health() -> Json<Value> {
@@ -10,6 +10,6 @@ pub async fn health() -> Json<Value> {
 }
 
 pub async fn resolve() -> Json<Value> {
-    // TODO: implement host resolution
+    // TODO: implement host resolution via edge-store
     Json(json!({ "ok": true, "message": "resolve endpoint" }))
 }

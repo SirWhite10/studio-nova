@@ -1,2 +1,2 @@
-// Response compression
-// TODO: implement brotli/gzip compression for tunnel responses
+//! Response compression
+//! TODO: implement brotli/gzip compression for tunnel responses

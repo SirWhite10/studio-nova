@@ -3,16 +3,14 @@ use axum::{
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
+    body::Body,
 };
 
-pub async fn auth_middleware<B>(
+pub async fn auth_middleware(
     State(state): State<crate::server::AppState>,
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode>
-where
-    B: Send,
-{
+    req: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let auth_header = req
         .headers()
         .get("Authorization")

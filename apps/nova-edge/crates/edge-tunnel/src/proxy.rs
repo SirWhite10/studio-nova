@@ -1,2 +1,2 @@
-// Proxy registration handler
-// TODO: validate NewProxy against SurrealDB, add to routing table
+//! Proxy registration handler
+//! TODO: validate NewProxy against SurrealDB, add to routing table

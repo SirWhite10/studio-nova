@@ -19,5 +19,6 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 hickory-resolver = { workspace = true }
 thiserror = { workspace = true }
+anyhow = { workspace = true }
 rand = { workspace = true }
 chrono = { workspace = true }
