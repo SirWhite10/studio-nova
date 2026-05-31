@@ -51,15 +51,13 @@ impl HickoryDnsResolver {
     pub fn with_nameserver(ip: std::net::IpAddr) -> Self {
         use hickory_resolver::config::*;
         let ns = NameServerConfig::udp_and_tcp(ip);
-        let config = ResolverConfig {
-            domain: None,
-            search: vec![],
-            name_servers: vec![ns],
-        };
-        let resolver = TokioResolver::builder_tokio()
-            .expect("tokio runtime provider")
-            .with_config(config)
-            .build();
+        let mut config = ResolverConfig::default();
+        config.add_name_server(ns);
+        let resolver = TokioResolver::builder_with_config(
+            config,
+            hickory_resolver::TokioRuntimeProvider::default(),
+        )
+        .build();
         Self { resolver }
     }
 }
@@ -67,10 +65,11 @@ impl HickoryDnsResolver {
 #[async_trait]
 impl DnsResolver for HickoryDnsResolver {
     async fn lookup_txt(&self, name: &str) -> anyhow::Result<Vec<String>> {
+        use hickory_resolver::proto::rr::rdata::TXT;
         let lookup = self.resolver.txt_lookup(name)?;
         let records: Vec<String> = lookup
             .iter()
-            .flat_map(|txt| {
+            .flat_map(|txt: &TXT| {
                 txt.txt_data()
                     .iter()
                     .map(|bytes| String::from_utf8_lossy(bytes).to_string())
