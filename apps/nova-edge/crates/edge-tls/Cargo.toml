@@ -10,8 +10,21 @@ edge-config = { path = "../edge-config" }
 
 rustls = { workspace = true }
 tokio-rustls = { workspace = true }
-rustls-acme = { workspace = true }
+rustls-pemfile = { workspace = true }
+pem = { workspace = true }
+rcgen = { workspace = true }
 axum = { workspace = true }
+tower = { workspace = true }
+http = { workspace = true }
+hyper = { workspace = true }
+http-body-util = { workspace = true }
+hyper-util = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["test-util", "macros"] }

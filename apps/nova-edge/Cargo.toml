@@ -34,6 +34,12 @@ http-body-util = "0.1"
 rustls = "0.23"
 tokio-rustls = "0.26"
 rustls-acme = "0.15"
+rustls-pemfile = "2"
+pem = "3"
+rcgen = "0.13"
+
+# Hyper utilities
+hyper-util = { version = "0.1", features = ["tokio"] }
 
 # Database
 surrealdb = { version = "3", features = ["protocol-ws", "protocol-http"] }
@@ -80,3 +86,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Rate limiting
 governor = "0.10"
+
+# Testing
+tempfile = "3"
