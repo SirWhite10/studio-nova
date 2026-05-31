@@ -1,0 +1,10 @@
+[package]
+name = "edge-config"
+description = "Configuration loading from environment variables"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

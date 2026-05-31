@@ -1,0 +1,22 @@
+[package]
+name = "edge-proxy"
+description = "Reverse proxy with middleware pipeline"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+edge-store = { path = "../edge-store" }
+edge-tunnel = { path = "../edge-tunnel" }
+edge-analytics = { path = "../edge-analytics" }
+edge-config = { path = "../edge-config" }
+
+axum = { workspace = true }
+hyper = { workspace = true }
+http = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+dashmap = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+governor = { workspace = true }

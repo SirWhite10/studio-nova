@@ -1,0 +1,8 @@
+[package]
+name = "edge-dns"
+description = "DNS server capabilities (Phase 2)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tracing = { workspace = true }

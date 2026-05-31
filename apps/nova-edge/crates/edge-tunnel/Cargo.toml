@@ -1,0 +1,18 @@
+[package]
+name = "edge-tunnel"
+description = "FRP-compatible tunnel server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+edge-store = { path = "../edge-store" }
+edge-analytics = { path = "../edge-analytics" }
+edge-config = { path = "../edge-config" }
+
+tokio = { workspace = true }
+yamux = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+dashmap = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }

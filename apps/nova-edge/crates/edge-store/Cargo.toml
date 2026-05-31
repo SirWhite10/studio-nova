@@ -1,0 +1,18 @@
+[package]
+name = "edge-store"
+description = "SurrealDB data layer with live query cache"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+edge-config = { path = "../edge-config" }
+
+surrealdb = { workspace = true }
+dashmap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }

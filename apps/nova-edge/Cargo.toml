@@ -1,0 +1,82 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/nova-edge",
+  "crates/edge-api",
+  "crates/edge-tls",
+  "crates/edge-proxy",
+  "crates/edge-tunnel",
+  "crates/edge-store",
+  "crates/edge-analytics",
+  "crates/edge-dns",
+  "crates/edge-config",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://forgejo.dlxstudios.com/dlxstudios/studio-nova"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP framework
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-br", "compression-gzip"] }
+hyper = { version = "1", features = ["full"] }
+http = "1"
+http-body-util = "0.1"
+
+# TLS
+rustls = "0.23"
+tokio-rustls = "0.26"
+rustls-acme = "0.12"
+
+# Database
+surrealdb = { version = "2", features = ["protocol-ws", "protocol-http"] }
+clickhouse = "0.13"
+
+# Tunnel transport
+yamux = "0.12"
+
+# DNS
+hickory-resolver = "0.24"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+opentelemetry = "0.28"
+opentelemetry-sdk = "0.28"
+opentelemetry-otlp = "0.28"
+tracing-opentelemetry = "0.29"
+
+# Concurrency
+dashmap = "6"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# HTTP client (for webhooks)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Crypto
+hmac = "0.12"
+sha2 = "0.10"
+rand = "0.9"
+
+# Async trait
+async-trait = "0.1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Rate limiting
+governor = "0.10"
