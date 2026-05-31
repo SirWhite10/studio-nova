@@ -3,7 +3,7 @@
 use axum::body::Body;
 use axum::http::{Request, Response, StatusCode, header::{COOKIE, SET_COOKIE}};
 use axum::response::IntoResponse;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, KeyInit};
 use sha2::Sha256;
 use std::sync::Arc;
 

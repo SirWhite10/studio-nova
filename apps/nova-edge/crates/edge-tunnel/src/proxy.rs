@@ -6,7 +6,7 @@
 
 use crate::protocol::*;
 use crate::registry::TunnelRegistry;
-use edge_store::LiveCache;
+use edge_store::live_cache::LiveCache;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
