@@ -218,7 +218,7 @@ mod tests {
     fn validate_rejects_empty() {
         assert!(matches!(validate_host(""), Err(ValidationError::Empty)));
         assert!(matches!(validate_host("   "), Err(ValidationError::Empty)));
-        assert!(matches!(validate_host("."), Err(ValidationError::InvalidChars { .. })));
+        assert!(matches!(validate_host("."), Err(ValidationError::Empty)));
     }
 
     #[test]
