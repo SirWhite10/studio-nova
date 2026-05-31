@@ -127,13 +127,13 @@ impl DomainStore for SurrealStore {
     }
 
     async fn health(&self) -> Result<StoreHealth> {
-        let result: serde_json::Value = self
+        let result: Option<serde_json::Value> = self
             .db
             .query("RETURN true")
             .await?
             .take(0)?;
         Ok(StoreHealth {
-            ok: result == serde_json::Value::Bool(true),
+            ok: result == Some(serde_json::Value::Bool(true)),
             message: Some("surrealdb connected".into()),
         })
     }
