@@ -5,13 +5,14 @@
 //! - All other requests → 301 redirect to HTTPS
 
 use axum::{
+    Router,
     extract::{Path, State},
     http::{HeaderMap, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router,
 };
 use std::collections::HashMap;
+use std::path::{Path as FsPath, PathBuf};
 use std::sync::Arc;
 
 /// Shared state for the HTTP redirect server.
@@ -21,6 +22,8 @@ pub struct HttpRedirectState {
     challenges: Arc<std::sync::Mutex<HashMap<String, String>>>,
     /// The HTTPS port to redirect to.
     https_port: u16,
+    /// Optional ACME webroot used by external HTTP-01 clients.
+    webroot: Option<PathBuf>,
 }
 
 impl HttpRedirectState {
@@ -28,7 +31,21 @@ impl HttpRedirectState {
         Self {
             challenges: Arc::new(std::sync::Mutex::new(HashMap::new())),
             https_port,
+            webroot: None,
         }
+    }
+
+    /// Create redirect state that serves ACME challenge files from a webroot.
+    pub fn with_webroot(https_port: u16, webroot: impl AsRef<FsPath>) -> Self {
+        Self {
+            challenges: Arc::new(std::sync::Mutex::new(HashMap::new())),
+            https_port,
+            webroot: Some(webroot.as_ref().to_path_buf()),
+        }
+    }
+
+    pub fn webroot(&self) -> Option<&FsPath> {
+        self.webroot.as_deref()
     }
 
     /// Store an ACME challenge token + key authorization.
@@ -73,18 +90,48 @@ async fn acme_challenge(
     State(state): State<Arc<HttpRedirectState>>,
     Path(token): Path<String>,
 ) -> Response {
+    if !is_safe_acme_token(&token) {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    if let Some(webroot) = state.webroot() {
+        let challenge_path = webroot
+            .join(".well-known")
+            .join("acme-challenge")
+            .join(&token);
+        let direct_path = webroot.join(&token);
+        let path = if challenge_path.exists() {
+            challenge_path
+        } else {
+            direct_path
+        };
+        match tokio::fs::read_to_string(path).await {
+            Ok(key_auth) => {
+                return (StatusCode::OK, [("Content-Type", "text/plain")], key_auth)
+                    .into_response();
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                tracing::warn!(token = %token, error = %e, "failed to read ACME challenge webroot file");
+                return StatusCode::NOT_FOUND.into_response();
+            }
+        }
+    }
+
     match state.get_challenge(&token) {
         Some(key_auth) => {
             // ACME spec: return key authorization as plain text
-            (
-                StatusCode::OK,
-                [("Content-Type", "text/plain")],
-                key_auth,
-            )
-                .into_response()
+            (StatusCode::OK, [("Content-Type", "text/plain")], key_auth).into_response()
         }
         None => StatusCode::NOT_FOUND.into_response(),
     }
+}
+
+fn is_safe_acme_token(token: &str) -> bool {
+    !token.is_empty()
+        && token
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
 }
 
 /// Redirects all non-ACME requests to HTTPS.
@@ -184,7 +231,12 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
-        let location = response.headers().get("location").unwrap().to_str().unwrap();
+        let location = response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert_eq!(location, "https://example.com/some/path?query=1");
     }
 
@@ -205,8 +257,45 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
-        let location = response.headers().get("location").unwrap().to_str().unwrap();
+        let location = response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert_eq!(location, "https://example.com:8443/test");
+    }
+
+    #[tokio::test]
+    async fn test_acme_challenge_serves_webroot_file_before_redirect() {
+        let dir = tempfile::tempdir().unwrap();
+        let token_path = dir
+            .path()
+            .join(".well-known")
+            .join("acme-challenge")
+            .join("file-token");
+        std::fs::create_dir_all(token_path.parent().unwrap()).unwrap();
+        std::fs::write(&token_path, "file-token.key-auth-from-disk").unwrap();
+
+        let state = Arc::new(HttpRedirectState::with_webroot(443, dir.path()));
+        let app = http_redirect_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/.well-known/acme-challenge/file-token")
+                    .header("host", "example.com")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"file-token.key-auth-from-disk");
     }
 
     #[tokio::test]
@@ -219,7 +308,10 @@ mod tests {
         state.set_challenge("token-b", "key-auth-b");
         assert_eq!(state.challenge_count(), 2);
 
-        assert_eq!(state.get_challenge("token-a"), Some("key-auth-a".to_string()));
+        assert_eq!(
+            state.get_challenge("token-a"),
+            Some("key-auth-a".to_string())
+        );
         assert_eq!(state.get_challenge("nonexistent"), None);
 
         assert!(state.remove_challenge("token-a"));
@@ -260,7 +352,12 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
-        let location = response.headers().get("location").unwrap().to_str().unwrap();
+        let location = response
+            .headers()
+            .get("location")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert_eq!(location, "https://mysite.example.com/");
     }
 }

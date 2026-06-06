@@ -208,6 +208,86 @@ pub fn decode_envelope(raw: &str) -> Result<FrpEnvelope, serde_json::Error> {
     serde_json::from_str(raw)
 }
 
+
+
+// ── Async framed I/O ───────────────────────────────────────────────
+
+pub const MAX_CONTROL_FRAME_BYTES: usize = 64 * 1024;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProtocolError {
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("control frame too large: {0} bytes")]
+    FrameTooLarge(u32),
+}
+
+/// Prelude sent on each server-opened data stream before raw HTTP bytes.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DataStreamStart {
+    pub proxy_name: String,
+    pub request_id: String,
+}
+
+impl FrpMessage for DataStreamStart {
+    fn msg_type() -> FrpMessageType {
+        // Encoded as an envelope type string even though FRP does not define it.
+        FrpMessageType::GeneralResponse
+    }
+}
+
+/// Serialize an envelope as u32 length-prefixed JSON using futures I/O.
+pub async fn write_envelope_futures<W>(
+    writer: &mut W,
+    envelope: &FrpEnvelope,
+) -> Result<(), ProtocolError>
+where
+    W: futures::io::AsyncWrite + Unpin,
+{
+    use futures::io::AsyncWriteExt;
+    let bytes = serde_json::to_vec(envelope)?;
+    if bytes.len() > MAX_CONTROL_FRAME_BYTES {
+        return Err(ProtocolError::FrameTooLarge(bytes.len() as u32));
+    }
+    writer.write_all(&(bytes.len() as u32).to_be_bytes()).await?;
+    writer.write_all(&bytes).await?;
+    writer.flush().await?;
+    Ok(())
+}
+
+pub async fn write_message_futures<W, T>(writer: &mut W, msg: &T) -> Result<(), ProtocolError>
+where
+    W: futures::io::AsyncWrite + Unpin,
+    T: FrpMessage,
+{
+    write_envelope_futures(writer, &FrpEnvelope::new(msg)).await
+}
+
+pub async fn read_envelope_futures<R>(reader: &mut R) -> Result<FrpEnvelope, ProtocolError>
+where
+    R: futures::io::AsyncRead + Unpin,
+{
+    use futures::io::AsyncReadExt;
+    let mut len_buf = [0u8; 4];
+    reader.read_exact(&mut len_buf).await?;
+    let len = u32::from_be_bytes(len_buf);
+    if len as usize > MAX_CONTROL_FRAME_BYTES {
+        return Err(ProtocolError::FrameTooLarge(len));
+    }
+    let mut buf = vec![0u8; len as usize];
+    reader.read_exact(&mut buf).await?;
+    Ok(serde_json::from_slice(&buf)?)
+}
+
+pub fn data_stream_start_envelope(start: &DataStreamStart) -> FrpEnvelope {
+    FrpEnvelope {
+        msg_type: "DataStreamStart".to_string(),
+        payload: serde_json::to_value(start).unwrap_or(serde_json::Value::Null),
+    }
+}
+
 // ── Tests ──────────────────────────────────────────────────────────
 
 #[cfg(test)]

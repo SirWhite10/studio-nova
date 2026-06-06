@@ -75,26 +75,17 @@ pub fn validate_host(host: &str) -> Result<(), ValidationError> {
 
     // Reject raw IP addresses (v4 or v6)
     if normalized.parse::<IpAddr>().is_ok() {
-        return Err(ValidationError::IpAddress {
-            host: normalized,
-        });
+        return Err(ValidationError::IpAddress { host: normalized });
     }
 
     // Check characters and label rules
     for label in normalized.split('.') {
         if label.is_empty() {
-            return Err(ValidationError::InvalidChars {
-                host: normalized,
-            });
+            return Err(ValidationError::InvalidChars { host: normalized });
         }
 
-        if !label
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-')
-        {
-            return Err(ValidationError::InvalidChars {
-                host: normalized,
-            });
+        if !label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            return Err(ValidationError::InvalidChars { host: normalized });
         }
 
         if label.starts_with('-') || label.ends_with('-') {
@@ -150,11 +141,7 @@ pub fn classify_host(host: &str, subdomain_base: &str) -> DomainKind {
 
 /// Generate a subdomain host string: `{subdomain}.{base}`.
 pub fn generate_subdomain_host(subdomain: &str, base: &str) -> String {
-    format!(
-        "{}.{}",
-        normalize_host(subdomain),
-        normalize_host(base)
-    )
+    format!("{}.{}", normalize_host(subdomain), normalize_host(base))
 }
 
 /// Build a DNS TXT verification record name.
@@ -224,7 +211,10 @@ mod tests {
     #[test]
     fn validate_rejects_too_long() {
         let long = "a".repeat(254);
-        assert!(matches!(validate_host(&long), Err(ValidationError::TooLong { .. })));
+        assert!(matches!(
+            validate_host(&long),
+            Err(ValidationError::TooLong { .. })
+        ));
     }
 
     #[test]
@@ -328,10 +318,7 @@ mod tests {
 
     #[test]
     fn classify_custom() {
-        assert_eq!(
-            classify_host("10.cloud", "dlx.studio"),
-            DomainKind::Custom
-        );
+        assert_eq!(classify_host("10.cloud", "dlx.studio"), DomainKind::Custom);
     }
 
     #[test]

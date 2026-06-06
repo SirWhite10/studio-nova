@@ -4,7 +4,7 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::server::AppState;
 
@@ -14,7 +14,9 @@ pub struct ResolveQuery {
 }
 
 /// GET /health
-pub async fn health(State(state): State<AppState>) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+pub async fn health(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let store_health = match state.store.health().await {
         Ok(h) => h,
         Err(e) => {
@@ -80,7 +82,7 @@ pub async fn resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{routing::get, Router};
+    use axum::{Router, routing::get};
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::ProxyUpsertInput;
     use http::{Method, Request as HttpRequest};
@@ -94,6 +96,7 @@ mod tests {
             admin_token: "test-token".to_string(),
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 
@@ -104,11 +107,7 @@ mod tests {
             .with_state(state)
     }
 
-    async fn send_request(
-        app: Router,
-        method: Method,
-        uri: &str,
-    ) -> (StatusCode, Value) {
+    async fn send_request(app: Router, method: Method, uri: &str) -> (StatusCode, Value) {
         let request = HttpRequest::builder()
             .method(method)
             .uri(uri)

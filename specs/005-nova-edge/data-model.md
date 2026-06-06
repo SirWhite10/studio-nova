@@ -57,6 +57,25 @@ Same schema as existing `nova-domain-control`. Nova Edge is now the primary writ
 | enabled   | bool   | Whether credentials are active   |
 | createdAt | number | Unix ms                          |
 
+
+### `tls_certificate` (new — ACME cert metadata)
+
+| Field          | Type    | Description                                      |
+| -------------- | ------- | ------------------------------------------------ |
+| id             | record  | `tls_certificate:<normalized_host>`              |
+| host           | string  | Domain hostname                                  |
+| status         | string  | `"missing"`, `"provisioning"`, `"active"`, `"renewing"`, `"failed"`, `"degraded"` |
+| source         | string  | `"acme"`, `"self_signed"`, `"imported"`          |
+| issuer         | string? | Certificate issuer                               |
+| serialNumber   | string? | Certificate serial number                        |
+| notBefore      | number? | Unix ms                                          |
+| notAfter       | number? | Unix ms                                          |
+| lastAttemptAt  | number? | Last ACME attempt timestamp                      |
+| lastSuccessAt  | number? | Last successful obtain/renew timestamp           |
+| failureReason  | string? | Last ACME failure reason                         |
+| instanceId     | string? | Edge instance that last touched the cert         |
+| updatedAt      | number  | Unix ms                                          |
+
 ## Rust Types
 
 ### Core Types
@@ -316,4 +335,33 @@ CREATE TABLE IF NOT EXISTS tunnel_event (
     instance_id String
 ) ENGINE = MergeTree()
 ORDER BY (client_id, timestamp);
+```
+
+### TLS Certificate Types
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TlsCertificate {
+    pub id: Option<serde_json::Value>,
+    pub host: String,
+    pub status: CertStatus,
+    pub source: CertSource,
+    pub issuer: Option<String>,
+    pub serial_number: Option<String>,
+    pub not_before: Option<i64>,
+    pub not_after: Option<i64>,
+    pub last_attempt_at: Option<i64>,
+    pub last_success_at: Option<i64>,
+    pub failure_reason: Option<String>,
+    pub instance_id: Option<String>,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CertStatus { Missing, Provisioning, Active, Renewing, Failed, Degraded }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CertSource { Acme, SelfSigned, Imported }
 ```

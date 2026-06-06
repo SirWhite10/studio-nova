@@ -24,6 +24,11 @@ pub struct Config {
     // TLS
     pub tls_email: Option<String>,
     pub tls_cache_dir: PathBuf,
+    pub acme_directory: String,
+    pub acme_cache_dir: PathBuf,
+    pub acme_webroot_dir: PathBuf,
+    pub acme_command: String,
+    pub tls_self_signed_fallback: bool,
 
     // ClickHouse
     pub clickhouse_url: Option<String>,
@@ -71,6 +76,20 @@ impl Config {
                 "NOVA_EDGE_TLS_CACHE_DIR",
                 "/var/lib/nova-edge/certs",
             )),
+            acme_directory: env_or(
+                "NOVA_EDGE_ACME_DIRECTORY",
+                "https://acme-v02.api.letsencrypt.org/directory",
+            ),
+            acme_cache_dir: PathBuf::from(env_or(
+                "NOVA_EDGE_ACME_CACHE_DIR",
+                "/var/lib/nova-edge/certs/acme",
+            )),
+            acme_webroot_dir: PathBuf::from(env_or(
+                "NOVA_EDGE_ACME_WEBROOT_DIR",
+                "/var/lib/nova-edge/acme-webroot",
+            )),
+            acme_command: env_or("NOVA_EDGE_ACME_COMMAND", "lego"),
+            tls_self_signed_fallback: env_or_parse("NOVA_EDGE_TLS_SELF_SIGNED_FALLBACK", false)?,
 
             clickhouse_url: std::env::var("NOVA_EDGE_CLICKHOUSE_URL").ok(),
             clickhouse_database: env_or("NOVA_EDGE_CLICKHOUSE_DATABASE", "nova_analytics"),

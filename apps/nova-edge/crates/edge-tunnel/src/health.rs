@@ -163,6 +163,7 @@ mod tests {
         TunnelClient {
             run_id: run_id.to_string(),
             proxy_names: proxy_names.iter().map(|s| s.to_string()).collect(),
+            connector: None,
             registered_at: Instant::now(),
             last_seen: Instant::now(),
         }

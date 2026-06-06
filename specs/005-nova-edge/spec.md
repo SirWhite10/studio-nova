@@ -6,7 +6,7 @@
 
 ## Status
 
-**Draft** — Rust rewrite. Go POC proved architecture; now building the real thing.
+**Implementation in progress** — core Rust service is deployed on the VPS. SurrealDB live-cache connectivity is working. Production ACME certificate automation remains explicit remaining work; the current VPS smoke fix uses generated self-signed fallback certs for active hosts only and must not be treated as the final TLS implementation.
 
 ## Problem Statement
 
@@ -17,6 +17,7 @@ Nova Studio's custom domain routing requires a single unified edge service on th
 **Nova Edge** — a single Rust binary that runs on the public VPS:
 
 - **TLS termination** with automatic Let's Encrypt certificates (rustls + rustls-acme)
+- **ACME HTTP-01 challenge handling** on port 80 before HTTPS redirects
 - **On-demand TLS** backed by SurrealDB live queries (instant cache invalidation)
 - **FRP-compatible tunnel server** rewritten in Rust (protocol-compatible with existing frpc)
 - **Admin API** for domain registration, verification, proxy management
@@ -152,6 +153,40 @@ Single binary. Single process. Configured via SurrealDB + env vars. No config fi
 7. If heartbeat times out → circuit breaker trips → webhook: "tunnel.disconnected"
 8. On reconnect → circuit breaker resets → webhook: "tunnel.connected"
 ```
+
+
+## Production ACME Certificate Requirements
+
+ACME is part of the remaining Nova Edge spec and is required before calling public TLS production-ready. The temporary self-signed fallback used during VPS smoke testing is allowed only for development/staging diagnostics.
+
+### ACME flow
+
+```
+1. Browser connects to https://<active-host> with SNI.
+2. Host policy checks LiveCache: host must be active and proxy enabled.
+3. If a non-expired cert exists in CertStorage, serve it.
+4. If no cert exists, request/obtain a Let's Encrypt certificate via ACME HTTP-01.
+5. ACME solver publishes token response under /.well-known/acme-challenge/<token> on port 80.
+6. Port 80 router must serve ACME challenge paths before applying HTTP→HTTPS redirects.
+7. Store cert/key/account metadata on disk and write cert status metadata to SurrealDB.
+8. Emit webhook event: cert.obtained or cert.failed.
+9. Renew automatically when cert has <= 30 days remaining; emit cert.renewed.
+```
+
+### Environment/config
+
+- `NOVA_EDGE_TLS_EMAIL` is required in production.
+- `NOVA_EDGE_ACME_DIRECTORY` defaults to Let's Encrypt production; staging can be selected for tests.
+- `NOVA_EDGE_ACME_CACHE_DIR` defaults to `${NOVA_EDGE_TLS_CACHE_DIR}/acme`.
+- `NOVA_EDGE_TLS_SELF_SIGNED_FALLBACK=false` in production. If enabled, fallback certs are generated only after ACME failure and logs/webhooks must mark the host as degraded.
+
+### Safety rules
+
+- Never request certificates for inactive, pending, blocked, disabled, or unknown hosts.
+- Never issue certs for raw IP SNI or malformed hostnames.
+- Never let the catch-all redirect handler consume `/.well-known/acme-challenge/*`.
+- Rate-limit certificate attempts per host to avoid Let's Encrypt failed-validation limits.
+- Multi-VPS deployments must either share cert state or use a SurrealDB-backed cert lock so two instances do not stampede ACME for the same host.
 
 ## SurrealDB Live Queries — The Key Pattern
 

@@ -9,11 +9,15 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
+use crate::transport::TunnelConnector;
+
 /// Represents a connected tunnel client.
 #[derive(Debug, Clone)]
 pub struct TunnelClient {
     pub run_id: String,
     pub proxy_names: Vec<String>,
+    /// Data-plane connector for opening yamux request streams.
+    pub connector: Option<TunnelConnector>,
     /// When this client was registered.
     pub registered_at: Instant,
     /// Last heartbeat or activity timestamp.
@@ -128,6 +132,53 @@ impl TunnelRegistry {
         removed.map(|(_, v)| v)
     }
 
+    /// Register a proxy name for an existing connected client.
+    pub fn register_proxy_for_client(&self, run_id: &str, proxy_name: &str) -> bool {
+        let Some(mut client) = self.clients.get_mut(run_id) else {
+            warn!(run_id = %run_id, proxy_name = %proxy_name, "Cannot register proxy for unknown tunnel client");
+            return false;
+        };
+        if !client.proxy_names.iter().any(|p| p == proxy_name) {
+            client.proxy_names.push(proxy_name.to_string());
+        }
+        drop(client);
+        self.proxy_slots
+            .entry(proxy_name.to_string())
+            .and_modify(|slot| {
+                if !slot.client_ids.iter().any(|id| id == run_id) {
+                    slot.client_ids.push(run_id.to_string());
+                }
+            })
+            .or_insert_with(|| ProxySlot {
+                client_ids: vec![run_id.to_string()],
+                cursor: AtomicUsize::new(0),
+            });
+        true
+    }
+
+    /// Remove a single proxy association from a connected client.
+    pub fn unregister_proxy_for_client(&self, run_id: &str, proxy_name: &str) -> bool {
+        if let Some(mut client) = self.clients.get_mut(run_id) {
+            client.proxy_names.retain(|p| p != proxy_name);
+        }
+        if let Some(mut slot) = self.proxy_slots.get_mut(proxy_name) {
+            slot.client_ids.retain(|id| id != run_id);
+            let empty = slot.client_ids.is_empty();
+            drop(slot);
+            if empty {
+                self.proxy_slots.remove(proxy_name);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Select a connected client with a data-plane connector for a proxy.
+    pub fn select_connector(&self, proxy_name: &str) -> Option<TunnelConnector> {
+        self.get_connection(proxy_name).and_then(|c| c.connector)
+    }
+
     /// Get a connection for the given proxy name using round-robin selection.
     /// Returns `None` if no clients serve this proxy.
     pub fn get_connection(&self, proxy_name: &str) -> Option<TunnelClient> {
@@ -196,6 +247,7 @@ mod tests {
         TunnelClient {
             run_id: run_id.to_string(),
             proxy_names: proxy_names.iter().map(|s| s.to_string()).collect(),
+            connector: None,
             registered_at: Instant::now(),
             last_seen: Instant::now(),
         }

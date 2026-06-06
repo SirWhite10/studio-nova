@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 use crate::server::AppState;
@@ -120,7 +120,9 @@ pub async fn verify(
         if let Err(e) = state.store.set_domain_status(&host, "active").await {
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "ok": false, "error": format!("verified but activation failed: {e}") })),
+                Json(
+                    json!({ "ok": false, "error": format!("verified but activation failed: {e}") }),
+                ),
             ));
         }
     }
@@ -149,11 +151,7 @@ pub async fn remove(
     let host = normalize_host(&host);
     let studio_id = params.get("studioId").cloned();
 
-    match state
-        .store
-        .remove_domain(&host, studio_id.as_deref())
-        .await
-    {
+    match state.store.remove_domain(&host, studio_id.as_deref()).await {
         Ok(removed) => Ok(Json(json!({
             "ok": true,
             "host": host,
@@ -171,7 +169,10 @@ pub async fn remove(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::{delete, get, post}, Router};
+    use axum::{
+        Router, middleware,
+        routing::{delete, get, post},
+    };
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::*;
     use http::{Method, Request as HttpRequest};
@@ -185,15 +186,13 @@ mod tests {
             admin_token: "test-token".to_string(),
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 
     fn build_app(state: AppState) -> Router {
         Router::new()
-            .route(
-                "/domains/verify",
-                get(check_verification).post(verify),
-            )
+            .route("/domains/verify", get(check_verification).post(verify))
             .route("/domains/{host}", delete(remove))
             .layer(middleware::from_fn_with_state(
                 state.clone(),
@@ -359,14 +358,8 @@ mod tests {
         let state = make_state();
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::DELETE,
-            "/domains/nope.com",
-            true,
-            None,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::DELETE, "/domains/nope.com", true, None).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);

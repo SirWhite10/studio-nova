@@ -1,10 +1,10 @@
 use axum::{
+    Json,
     body::Body,
     extract::State,
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
-    Json,
 };
 use serde_json::json;
 
@@ -50,7 +50,7 @@ pub async fn auth_middleware(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::get, Router};
+    use axum::{Router, middleware, routing::get};
     use edge_store::memory_store::MemoryStore;
     use http::{Method, Request as HttpRequest};
     use http_body_util::BodyExt;
@@ -67,6 +67,7 @@ mod tests {
             admin_token: admin_token.to_string(),
             admin_tokens: admin_tokens.iter().map(|s| s.to_string()).collect(),
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 

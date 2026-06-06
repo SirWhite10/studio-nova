@@ -27,10 +27,16 @@
 
 ## Phase 3: TLS + HTTPS Edge
 
-- [ ] T17: Cert provisioning (rustls-acme + storage) + tests
-- [ ] T18: On-demand TLS (SurrealDB host policy) + tests
-- [ ] T19: HTTPS server (tokio-rustls + axum) + tests
-- [ ] T20: HTTP redirect + ACME challenge listener + tests
+- [ ] T17: Cert storage foundation (PEM read/write, expiry parsing, cache listing) + tests
+- [ ] T18: ACME account + order flow (rustls-acme, staging directory support, account cache) + tests
+- [ ] T19: HTTP-01 challenge router on port 80 before redirect handling + tests
+- [ ] T20: On-demand TLS host policy (LiveCache active-host gate; reject pending/blocked/IP SNI) + tests
+- [ ] T21: Production ACME resolver integration (serve cached cert, request missing cert, renew expiring cert) + tests
+- [ ] T22: TLS fallback policy (self-signed allowed only when explicitly enabled; degraded logging/webhook) + tests
+- [ ] T23: HTTPS server (tokio-rustls + axum; ALPN h2/http1) + tests
+
+
+> Numbering note: Phase 3 expanded after VPS smoke testing exposed that production ACME was underspecified. Existing later task numbers may be renumbered during execution; preserve ordering over numeric continuity.
 
 ## Phase 4: Proxy Middleware Pipeline
 
@@ -68,3 +74,5 @@
 - [ ] T43: Systemd service unit
 - [ ] T44: VPS deployment script
 - [ ] T45: Update Nova Cloud env vars to point at nova-edge
+- [ ] T46: Production ACME VPS smoke test (staging first, then production) for `test.one0.cloud` and `ws-smoke.dlx.studio`
+- [ ] T47: Remove or disable self-signed fallback in production env once ACME succeeds

@@ -182,6 +182,33 @@ Confirms current state. Cache is auto-updated via live queries — this endpoint
 { "reject": true, "rejectReason": "Proxy is not registered: my-proxy" }
 ```
 
+
+### `GET /admin/certs/:host`
+
+Returns certificate metadata for a host. Requires admin auth.
+
+```json
+{
+  "ok": true,
+  "host": "test.one0.cloud",
+  "cert": {
+    "status": "active",
+    "source": "acme",
+    "issuer": "Let's Encrypt",
+    "notAfter": 1785550000000,
+    "renewalDue": false
+  }
+}
+```
+
+### `POST /admin/certs/:host/renew`
+
+Queues or performs a certificate renewal for an active host. Requires admin auth.
+
+```json
+{ "ok": true, "host": "test.one0.cloud", "status": "renewing" }
+```
+
 ---
 
 ## Webhook Events

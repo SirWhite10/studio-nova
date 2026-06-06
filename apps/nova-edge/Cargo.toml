@@ -89,6 +89,10 @@ governor = "0.10"
 
 # Bytes
 bytes = "1"
+futures = "0.3"
+tokio-util = { version = "0.7", features = ["compat"] }
+httparse = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
 
 # Compression
 flate2 = "1"

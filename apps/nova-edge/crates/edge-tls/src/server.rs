@@ -12,12 +12,10 @@ use hyper_util::service::TowerToHyperService;
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
-use rustls::server::ServerConfig;
-
-use crate::on_demand::OnDemandResolver;
+use rustls::server::{ResolvesServerCert, ServerConfig};
 
 /// Builds a `rustls::ServerConfig` using the on-demand resolver.
-pub fn build_tls_server_config(resolver: Arc<OnDemandResolver>) -> Arc<ServerConfig> {
+pub fn build_tls_server_config(resolver: Arc<dyn ResolvesServerCert>) -> Arc<ServerConfig> {
     let mut config = ServerConfig::builder()
         .with_no_client_auth()
         .with_cert_resolver(resolver);
@@ -50,12 +48,17 @@ pub async fn serve_https(
                         match acceptor.accept(stream).await {
                             Ok(tls_stream) => {
                                 let io = TokioIo::new(tls_stream);
-                                let builder =
-                                    hyper_util::server::conn::auto::Builder::new(TokioExecutor::new());
+                                let builder = hyper_util::server::conn::auto::Builder::new(
+                                    TokioExecutor::new(),
+                                );
                                 // Router's into_service() returns a tower::Service,
                                 // but hyper-util needs a hyper::Service — wrap it.
                                 let svc = TowerToHyperService::new(app.into_service());
-                                let _ = builder.serve_connection_with_upgrades(io, svc).await;
+                                if let Err(e) =
+                                    builder.serve_connection_with_upgrades(io, svc).await
+                                {
+                                    tracing::warn!(error = %e, "HTTPS connection failed");
+                                }
                             }
                             Err(e) => {
                                 tracing::debug!("TLS handshake failed: {}", e);
@@ -79,11 +82,9 @@ mod tests {
     use crate::certs::CertStorage;
     use crate::on_demand::{OnDemandResolver, StaticHostPolicy};
     use axum::routing::get;
-    use rustls::client::danger::{
-        HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
-    };
-    use rustls::crypto::ring::sign::any_supported_type;
+    use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
     use rustls::crypto::ring::default_provider;
+    use rustls::crypto::ring::sign::any_supported_type;
     use rustls::pki_types::{CertificateDer, ServerName};
     use rustls::{ClientConfig, DigitallySignedStruct, Error as TlsError, SignatureScheme};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -185,13 +186,9 @@ mod tests {
         let tls_config = build_tls_server_config(resolver);
         let app = Router::new().route("/", get(|| async { "hello tls" }));
 
-        let addr = serve_https(
-            "127.0.0.1:0".parse().unwrap(),
-            app,
-            tls_config,
-        )
-        .await
-        .unwrap();
+        let addr = serve_https("127.0.0.1:0".parse().unwrap(), app, tls_config)
+            .await
+            .unwrap();
 
         // Connect as a TLS client
         let client_config = make_client_config();
@@ -233,13 +230,9 @@ mod tests {
         let tls_config = build_tls_server_config(resolver);
         let app = Router::new().route("/", get(|| async { "hello" }));
 
-        let addr = serve_https(
-            "127.0.0.1:0".parse().unwrap(),
-            app,
-            tls_config,
-        )
-        .await
-        .unwrap();
+        let addr = serve_https("127.0.0.1:0".parse().unwrap(), app, tls_config)
+            .await
+            .unwrap();
 
         let client_config = make_client_config();
         let connector = tokio_rustls::TlsConnector::from(Arc::new(client_config));
@@ -247,6 +240,9 @@ mod tests {
         let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
         let server_name = ServerName::try_from("unknown.local").unwrap();
         let result = connector.connect(server_name, stream).await;
-        assert!(result.is_err(), "TLS handshake should fail for unknown host");
+        assert!(
+            result.is_err(),
+            "TLS handshake should fail for unknown host"
+        );
     }
 }

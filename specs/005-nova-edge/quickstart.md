@@ -50,8 +50,15 @@ cp .env.example .env
 NOVA_EDGE_HOSTNAME=domains.dlxstudios.com
 NOVA_EDGE_ADMIN_TOKEN=          # openssl rand -hex 32
 NOVA_EDGE_TUNNEL_TOKEN=         # openssl rand -hex 32
-NOVA_EDGE_SURREAL_URL=ws://127.0.0.1:8000/rpc
-NOVA_EDGE_SUBDOMAIN_HOST=dlx.studio
+NOVA_EDGE_SURREAL_URL=wss://surrealdb.dlxstudios.com/rpc
+NOVA_EDGE_SURREAL_USERNAME=root
+NOVA_EDGE_SURREAL_PASSWORD=root
+NOVA_EDGE_SURREAL_NAMESPACE=main
+NOVA_EDGE_SURREAL_DATABASE=main
+NOVA_EDGE_SUBDOMAIN_HOST=dlxstudios.com
+NOVA_EDGE_TLS_EMAIL=nova@dlxstudios.com
+NOVA_EDGE_ACME_DIRECTORY=https://acme-staging-v02.api.letsencrypt.org/directory  # staging first
+NOVA_EDGE_TLS_SELF_SIGNED_FALLBACK=false
 ```
 
 ## Run
@@ -124,3 +131,24 @@ make run       # Build + run
 make watch     # Dev mode with auto-rebuild
 make clean     # Clean build artifacts
 ```
+
+
+## ACME certificate smoke test
+
+Use Let's Encrypt staging before production:
+
+```bash
+# Should serve ACME challenge paths on port 80 without redirecting
+curl -i --resolve test.one0.cloud:80:137.184.212.150 \
+  http://test.one0.cloud/.well-known/acme-challenge/smoke
+
+# Should complete TLS for active hosts and reject unknown hosts
+curl -vk --resolve test.one0.cloud:443:137.184.212.150 \
+  https://test.one0.cloud/health
+
+# Production check after switching NOVA_EDGE_ACME_DIRECTORY to Let's Encrypt production
+openssl s_client -connect 137.184.212.150:443 -servername test.one0.cloud </dev/null 2>/dev/null \
+  | openssl x509 -noout -issuer -subject -dates
+```
+
+Expected production issuer: Let's Encrypt. Self-signed fallback must stay disabled in production.

@@ -106,6 +106,7 @@ impl TunnelSession {
                 let client = TunnelClient {
                     run_id: run_id.clone(),
                     proxy_names,
+                    connector: None,
                     registered_at: std::time::Instant::now(),
                     last_seen: std::time::Instant::now(),
                 };

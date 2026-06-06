@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rcgen::{CertificateParams, DnType, KeyPair};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
+use rustls::pki_types::CertificateDer;
 use rustls::sign::CertifiedKey;
 use thiserror::Error;
 
@@ -56,7 +56,12 @@ impl CertStorage {
     }
 
     /// Store a PEM-encoded certificate chain + key for a domain.
-    pub fn store_cert(&self, domain: &str, cert_pem: &[u8], key_pem: &[u8]) -> Result<(), CertError> {
+    pub fn store_cert(
+        &self,
+        domain: &str,
+        cert_pem: &[u8],
+        key_pem: &[u8],
+    ) -> Result<(), CertError> {
         let dir = self.domain_dir(domain);
         std::fs::create_dir_all(&dir)?;
         std::fs::write(self.cert_path(domain), cert_pem)?;
@@ -116,8 +121,7 @@ impl CertStorage {
             .distinguished_name
             .push(DnType::CommonName, "Nova Edge Test");
 
-        let key_pair =
-            KeyPair::generate().map_err(|e| CertError::Generation(e.to_string()))?;
+        let key_pair = KeyPair::generate().map_err(|e| CertError::Generation(e.to_string()))?;
         let cert = params
             .self_signed(&key_pair)
             .map_err(|e| CertError::Generation(e.to_string()))?;
@@ -143,11 +147,11 @@ impl CertStorage {
 
 /// Parse a PEM certificate chain into rustls certificates.
 fn parse_cert_chain(pem: &[u8]) -> Result<Vec<CertificateDer<'static>>, CertError> {
-    let pem_str = std::str::from_utf8(pem)
-        .map_err(|e| CertError::Parse(format!("invalid UTF-8: {}", e)))?;
+    let pem_str =
+        std::str::from_utf8(pem).map_err(|e| CertError::Parse(format!("invalid UTF-8: {}", e)))?;
     let mut certs = Vec::new();
-    for block in pem::parse_many(pem_str)
-        .map_err(|e| CertError::Parse(format!("PEM parse: {}", e)))?
+    for block in
+        pem::parse_many(pem_str).map_err(|e| CertError::Parse(format!("PEM parse: {}", e)))?
     {
         if block.tag() == "CERTIFICATE" {
             certs.push(CertificateDer::from(block.contents().to_vec()));
@@ -161,19 +165,12 @@ fn parse_cert_chain(pem: &[u8]) -> Result<Vec<CertificateDer<'static>>, CertErro
 
 /// Parse a PEM private key into a rustls signing key.
 fn parse_private_key(pem: &[u8]) -> Result<Arc<dyn rustls::sign::SigningKey>, CertError> {
-    let pem_str = std::str::from_utf8(pem)
-        .map_err(|e| CertError::Parse(format!("invalid UTF-8: {}", e)))?;
-    let blocks = pem::parse_many(pem_str)
-        .map_err(|e| CertError::Parse(format!("PEM parse: {}", e)))?;
+    let key = rustls_pemfile::private_key(&mut &pem[..])
+        .map_err(|e| CertError::Parse(format!("private key PEM parse: {}", e)))?
+        .ok_or_else(|| CertError::Parse("no private key found in PEM".into()))?;
 
-    for block in blocks {
-        if block.tag() == "PRIVATE KEY" {
-            let key = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(block.contents().to_vec()));
-            return rustls::crypto::ring::sign::any_supported_type(&key)
-                .map_err(|e| CertError::Parse(format!("unsupported key type: {}", e)));
-        }
-    }
-    Err(CertError::Parse("no private key found in PEM".into()))
+    rustls::crypto::ring::sign::any_supported_type(&key)
+        .map_err(|e| CertError::Parse(format!("unsupported key type: {}", e)))
 }
 
 #[cfg(test)]
@@ -217,7 +214,9 @@ mod tests {
         let storage = CertStorage::new(dir.path());
 
         let (cert, key) = CertStorage::generate_self_signed("remove.example.com").unwrap();
-        storage.store_cert("remove.example.com", &cert, &key).unwrap();
+        storage
+            .store_cert("remove.example.com", &cert, &key)
+            .unwrap();
         assert!(storage.has_cert("remove.example.com"));
 
         let removed = storage.remove_cert("remove.example.com").unwrap();

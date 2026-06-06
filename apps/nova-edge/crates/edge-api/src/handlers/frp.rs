@@ -4,7 +4,7 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::server::AppState;
 
@@ -70,10 +70,14 @@ async fn handle_new_proxy(
     }
 
     match state.store.get_proxy_by_name(proxy_name).await {
-        Ok(Some(_proxy)) => Ok(Json(json!({ "ok": true, "op": "NewProxy", "proxyName": proxy_name }))),
+        Ok(Some(_proxy)) => Ok(Json(
+            json!({ "ok": true, "op": "NewProxy", "proxyName": proxy_name }),
+        )),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(json!({ "ok": false, "error": "proxy_not_found", "op": "NewProxy", "proxyName": proxy_name })),
+            Json(
+                json!({ "ok": false, "error": "proxy_not_found", "op": "NewProxy", "proxyName": proxy_name }),
+            ),
         )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -87,7 +91,7 @@ async fn handle_new_proxy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{routing::post, Router};
+    use axum::{Router, routing::post};
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::ProxyUpsertInput;
     use http::{Method, Request as HttpRequest};
@@ -101,6 +105,7 @@ mod tests {
             admin_token: "admin-secret".to_string(),
             admin_tokens: vec!["secondary-token".to_string()],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 
@@ -110,11 +115,7 @@ mod tests {
             .with_state(state)
     }
 
-    async fn send_request(
-        app: Router,
-        uri: &str,
-        body: Option<String>,
-    ) -> (StatusCode, Value) {
+    async fn send_request(app: Router, uri: &str, body: Option<String>) -> (StatusCode, Value) {
         let mut builder = HttpRequest::builder()
             .method(Method::POST)
             .uri(uri)
@@ -257,12 +258,7 @@ mod tests {
         let state = make_state();
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            "/frp/handler?op=Ping",
-            Some(r#"{}"#.into()),
-        )
-        .await;
+        let (status, body) = send_request(app, "/frp/handler?op=Ping", Some(r#"{}"#.into())).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);
@@ -276,12 +272,8 @@ mod tests {
         let state = make_state();
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            "/frp/handler?op=SomethingElse",
-            Some(r#"{}"#.into()),
-        )
-        .await;
+        let (status, body) =
+            send_request(app, "/frp/handler?op=SomethingElse", Some(r#"{}"#.into())).await;
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["ok"], false);

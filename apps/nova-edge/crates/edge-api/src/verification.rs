@@ -278,12 +278,30 @@ mod tests {
         };
         let json = serde_json::to_string(&result).expect("serialization should succeed");
 
-        assert!(json.contains("\"recordName\""), "should contain camelCase 'recordName': {json}");
-        assert!(json.contains("\"expectedValue\""), "should contain camelCase 'expectedValue': {json}");
-        assert!(json.contains("\"foundValues\""), "should contain camelCase 'foundValues': {json}");
-        assert!(!json.contains("record_name"), "should NOT contain snake_case: {json}");
-        assert!(!json.contains("expected_value"), "should NOT contain snake_case: {json}");
-        assert!(!json.contains("found_values"), "should NOT contain snake_case: {json}");
+        assert!(
+            json.contains("\"recordName\""),
+            "should contain camelCase 'recordName': {json}"
+        );
+        assert!(
+            json.contains("\"expectedValue\""),
+            "should contain camelCase 'expectedValue': {json}"
+        );
+        assert!(
+            json.contains("\"foundValues\""),
+            "should contain camelCase 'foundValues': {json}"
+        );
+        assert!(
+            !json.contains("record_name"),
+            "should NOT contain snake_case: {json}"
+        );
+        assert!(
+            !json.contains("expected_value"),
+            "should NOT contain snake_case: {json}"
+        );
+        assert!(
+            !json.contains("found_values"),
+            "should NOT contain snake_case: {json}"
+        );
     }
 
     #[test]
@@ -328,7 +346,10 @@ mod tests {
         assert!(result.verified, "should be verified when token matches");
         assert_eq!(result.host, "example.com");
         assert_eq!(result.record_name, "_nova-domain.example.com");
-        assert_eq!(result.expected_value, "nova-domain=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6");
+        assert_eq!(
+            result.expected_value,
+            "nova-domain=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+        );
         assert_eq!(result.found_values.len(), 2);
     }
 
@@ -348,7 +369,10 @@ mod tests {
         .await
         .expect("verification should not error");
 
-        assert!(!result.verified, "should NOT be verified when token does not match");
+        assert!(
+            !result.verified,
+            "should NOT be verified when token does not match"
+        );
     }
 
     #[tokio::test]
@@ -364,7 +388,10 @@ mod tests {
         .await
         .expect("verification should not error");
 
-        assert!(!result.verified, "should NOT be verified when no records returned");
+        assert!(
+            !result.verified,
+            "should NOT be verified when no records returned"
+        );
         assert!(result.found_values.is_empty());
     }
 

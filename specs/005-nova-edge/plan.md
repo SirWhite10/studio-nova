@@ -336,37 +336,150 @@ Wire all handlers into an axum `Router` with middleware layers. Integration test
 
 ## Phase 3: TLS + HTTPS Edge
 
-### Task 17: edge-tls — Cert provisioning
+Production ACME is required. The current VPS smoke-test fallback that generates self-signed certs for active hosts is temporary and must be disabled in production after this phase.
+
+### Task 17: edge-tls — Cert storage foundation
+
+**Objective:** Store, load, list, and inspect TLS certificates from `NOVA_EDGE_TLS_CACHE_DIR`.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-tls/src/certs.rs`
+- Test: `apps/nova-edge/crates/edge-tls/src/certs.rs`
 
 **TDD cycle:**
 
-1. Write tests for cert storage, retrieval, expiry checking
-2. Implement using `rustls-acme` for ACME + `rustls` for TLS
-3. Verify tests pass (use ACME staging or pebble)
+1. Write tests for storing PEM cert/key pairs, loading `CertifiedKey`, listing domains, and parsing `not_after`.
+2. Add `CertMetadata { host, issuer, not_before, not_after, source, status }`.
+3. Add `expires_within(Duration)` helper.
+4. Verify: `cargo test -p edge-tls certs -- --nocapture`.
 
-### Task 18: edge-tls — On-demand TLS
+### Task 18: edge-tls — ACME account + order flow
 
-**TDD cycle:**
+**Objective:** Add ACME account creation, account key caching, staging/production directory selection, and single-host order orchestration.
 
-1. Write tests: active host → cert provisioned, inactive host → rejected
-2. Implement `rustls-acme` with custom `AccountCache` that checks SurrealDB live cache
-3. Verify tests pass
+**Files:**
 
-### Task 19: edge-tls — HTTPS server
-
-**TDD cycle:**
-
-1. Write test: start HTTPS server, connect, verify cert
-2. Implement `tokio-rustls` + `axum` HTTPS listener
-3. Verify tests pass
-
-### Task 20: edge-tls — HTTP redirect
+- Create: `apps/nova-edge/crates/edge-tls/src/acme.rs`
+- Modify: `apps/nova-edge/crates/edge-tls/src/lib.rs`
+- Modify: `apps/nova-edge/crates/edge-config/src/config.rs`
+- Test: `apps/nova-edge/crates/edge-tls/src/acme.rs`
 
 **TDD cycle:**
 
-1. Write test: HTTP request → 301 redirect to HTTPS
-2. Implement separate HTTP listener for redirect + ACME challenges
-3. Verify tests pass
+1. Write tests for config defaults: production directory default, staging override, cache directory default.
+2. Write tests for account cache read/write without network.
+3. Implement `AcmeConfig { email, directory_url, cache_dir, staging }`.
+4. Implement `AcmeIssuer` wrapper around `rustls-acme` or the chosen ACME crate.
+5. Verify: `cargo test -p edge-tls acme -- --nocapture`.
+
+### Task 19: edge-tls — HTTP-01 challenge router
+
+**Objective:** Ensure `/.well-known/acme-challenge/*` is served on port 80 before redirect logic.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-tls/src/redirect.rs`
+- Create/modify: `apps/nova-edge/crates/edge-tls/src/acme_challenge.rs`
+- Test: `apps/nova-edge/crates/edge-tls/src/redirect.rs`
+
+**TDD cycle:**
+
+1. Write test: `GET /.well-known/acme-challenge/token` returns token body, not 301.
+2. Write test: ordinary HTTP path still redirects to HTTPS.
+3. Implement an in-memory challenge registry with TTL.
+4. Wire challenge route before catch-all redirect.
+5. Verify: `cargo test -p edge-tls redirect acme_challenge -- --nocapture`.
+
+### Task 20: edge-tls — On-demand TLS host policy
+
+**Objective:** Gate ACME and TLS serving by SurrealDB-backed `LiveCache`.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-tls/src/on_demand.rs`
+- Modify: `apps/nova-edge/crates/edge-store/src/live_cache.rs` if extra host metadata is needed
+- Test: `apps/nova-edge/crates/edge-tls/src/on_demand.rs`
+
+**TDD cycle:**
+
+1. Write tests: active host allowed; pending host rejected; blocked host rejected; disabled proxy rejected; IP SNI rejected.
+2. Keep `LiveCacheHostPolicy` as the single production gate.
+3. Add structured rejection reasons for logging/webhooks.
+4. Verify: `cargo test -p edge-tls on_demand -- --nocapture`.
+
+### Task 21: edge-tls — Production ACME resolver integration
+
+**Objective:** Resolve certificates by serving cached certs, obtaining missing certs for active hosts, and renewing expiring certs.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-tls/src/on_demand.rs`
+- Modify: `apps/nova-edge/crates/edge-tls/src/server.rs`
+- Modify: `apps/nova-edge/crates/nova-edge/src/main.rs`
+- Test: `apps/nova-edge/crates/edge-tls/src/on_demand.rs`
+
+**TDD cycle:**
+
+1. Write tests with a fake ACME issuer: no cert + active host → issuer called → cert registered.
+2. Write tests: cached cert → issuer not called.
+3. Write tests: cert expiring within 30 days → renewal scheduled.
+4. Implement rate limiting/backoff for failed ACME attempts per host.
+5. Emit events: `cert.obtained`, `cert.renewed`, `cert.failed`.
+6. Verify: `cargo test -p edge-tls on_demand -- --nocapture`.
+
+### Task 22: edge-tls — TLS fallback policy
+
+**Objective:** Keep self-signed fallback as an explicit non-production escape hatch only.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-config/src/config.rs`
+- Modify: `apps/nova-edge/crates/nova-edge/src/main.rs`
+- Modify: `apps/nova-edge/.env.example`
+- Test: `apps/nova-edge/crates/nova-edge/src/main.rs` or config tests
+
+**TDD cycle:**
+
+1. Add `NOVA_EDGE_TLS_SELF_SIGNED_FALLBACK=false` default.
+2. Write test: production default does not generate fallback certs.
+3. Write test: fallback enabled generates cert but marks `source = self_signed` / degraded.
+4. Remove unconditional fallback generation from `main.rs`.
+5. Verify: `cargo test -p nova-edge -p edge-config -- --nocapture`.
+
+### Task 23: edge-tls — HTTPS server
+
+**Objective:** Run public HTTPS with ALPN and the production resolver.
+
+**Files:**
+
+- Modify: `apps/nova-edge/crates/edge-tls/src/server.rs`
+- Modify: `apps/nova-edge/crates/nova-edge/src/main.rs`
+- Test: integration tests under `apps/nova-edge/crates/nova-edge/src/main.rs` or `tests/`
+
+**TDD cycle:**
+
+1. Write test: start HTTPS server, connect with active SNI, receive cert and HTTP response.
+2. Write test: inactive SNI fails handshake.
+3. Verify ALPN contains `h2` and `http/1.1`.
+4. Verify: `cargo test -p nova-edge test_tls -- --nocapture`.
+
+### Phase 3 VPS acceptance test
+
+Run staging first, then production:
+
+```bash
+# Staging smoke: should produce a valid staging cert chain and HTTP/2 response
+curl -vk --resolve test.one0.cloud:443:137.184.212.150 https://test.one0.cloud/health
+
+# ACME challenge path must not redirect
+curl -i --resolve test.one0.cloud:80:137.184.212.150 http://test.one0.cloud/.well-known/acme-challenge/smoke
+
+# Production smoke after switching directory URL
+openssl s_client -connect 137.184.212.150:443 -servername test.one0.cloud </dev/null 2>/dev/null | openssl x509 -noout -issuer -subject -dates
+```
+
+Expected: issuer is Let's Encrypt in production, not `self-signed`; Nova Edge health remains `store.ok=true`; active-host TLS succeeds; unknown-host TLS fails.
 
 ---
 

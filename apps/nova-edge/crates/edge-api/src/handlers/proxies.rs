@@ -4,7 +4,7 @@ use axum::{
     response::Json,
 };
 use edge_store::types::ProxyUpsertInput;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::server::AppState;
 use crate::types::ProxyUpsertRequest;
@@ -89,7 +89,10 @@ pub async fn sync(
     };
 
     // Derive cert_status: if any domain is active, certs are ready
-    let cert_status = if domains.iter().any(|d| d.domain.status == edge_store::types::DomainStatus::Active) {
+    let cert_status = if domains
+        .iter()
+        .any(|d| d.domain.status == edge_store::types::DomainStatus::Active)
+    {
         "ready"
     } else {
         "pending"
@@ -148,7 +151,10 @@ pub async fn disable(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::{delete, get, post}, Router};
+    use axum::{
+        Router, middleware,
+        routing::{delete, get, post},
+    };
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::ProxyUpsertInput;
     use http::{Method, Request as HttpRequest};
@@ -162,6 +168,7 @@ mod tests {
             admin_token: "test-token".to_string(),
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 
@@ -215,7 +222,8 @@ mod tests {
             "localPort": 3000,
             "subdomain": "myapp",
             "customDomains": ["example.com"]
-        }"#.to_string()
+        }"#
+        .to_string()
     }
 
     async fn seed_proxy(store: &dyn edge_store::DomainStore) {
@@ -245,14 +253,8 @@ mod tests {
         let state = make_state();
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::POST,
-            "/proxies",
-            true,
-            Some(seed_body()),
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::POST, "/proxies", true, Some(seed_body())).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);
@@ -269,14 +271,8 @@ mod tests {
         seed_proxy(state.store.as_ref()).await;
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::POST,
-            "/proxies/test-proxy/sync",
-            true,
-            None,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::POST, "/proxies/test-proxy/sync", true, None).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);
@@ -292,14 +288,8 @@ mod tests {
         let state = make_state();
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::POST,
-            "/proxies/no-such-proxy/sync",
-            true,
-            None,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::POST, "/proxies/no-such-proxy/sync", true, None).await;
 
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(body["ok"], false);
@@ -314,14 +304,8 @@ mod tests {
         seed_proxy(state.store.as_ref()).await;
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::GET,
-            "/proxies/test-proxy/domains",
-            true,
-            None,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::GET, "/proxies/test-proxy/domains", true, None).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);
@@ -359,14 +343,8 @@ mod tests {
         seed_proxy(state.store.as_ref()).await;
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::DELETE,
-            "/proxies/test-proxy",
-            true,
-            None,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::DELETE, "/proxies/test-proxy", true, None).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);

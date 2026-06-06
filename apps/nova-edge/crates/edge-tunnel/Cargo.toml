@@ -15,8 +15,13 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 dashmap = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 bytes = { workspace = true }
 rand = { workspace = true }
+futures = { workspace = true }
+tokio-util = { workspace = true }
+httparse = { workspace = true }
+uuid = { workspace = true }

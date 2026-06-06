@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::server::AppState;
 
@@ -36,7 +36,7 @@ pub async fn list_domains(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{middleware, routing::get, Router};
+    use axum::{Router, middleware, routing::get};
     use edge_store::memory_store::MemoryStore;
     use edge_store::types::ProxyUpsertInput;
     use http::{Method, Request as HttpRequest};
@@ -50,6 +50,7 @@ mod tests {
             admin_token: "test-token".to_string(),
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
+            live_cache: None,
         }
     }
 
@@ -111,13 +112,8 @@ mod tests {
         seed_studio(state.store.as_ref()).await;
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::GET,
-            "/studios/studio-1/domains",
-            true,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::GET, "/studios/studio-1/domains", true).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);
@@ -135,13 +131,8 @@ mod tests {
         seed_studio(state.store.as_ref()).await;
         let app = build_app(state);
 
-        let (status, body) = send_request(
-            app,
-            Method::GET,
-            "/studios/no-such-studio/domains",
-            true,
-        )
-        .await;
+        let (status, body) =
+            send_request(app, Method::GET, "/studios/no-such-studio/domains", true).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["ok"], true);

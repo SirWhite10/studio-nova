@@ -12,14 +12,17 @@ use tracing::info;
 use edge_api::server;
 use edge_api::verification::HickoryDnsResolver;
 use edge_config::config::Config;
+use edge_store::DomainStore;
 use edge_store::live_cache::LiveCache;
 use edge_store::memory_store::MemoryStore;
 use edge_store::surreal_store::SurrealStore;
-use edge_store::DomainStore;
+use edge_tls::acme::ExternalCommandAcmeIssuer;
 use edge_tls::certs::CertStorage;
-use edge_tls::on_demand::{LiveCacheHostPolicy, OnDemandResolver};
-use edge_tls::redirect::{http_redirect_router, HttpRedirectState};
+use edge_tls::on_demand::{LiveCacheHostPolicy, ProductionAcmeResolver};
+use edge_tls::redirect::{HttpRedirectState, http_redirect_router};
 use edge_tls::server::{build_tls_server_config, serve_https};
+use edge_tunnel::{health::HealthCheckConfig, registry::TunnelRegistry, server::TunnelServer};
+use tokio::sync::watch;
 
 // ── Entry point ──────────────────────────────────────────────────────
 
@@ -54,48 +57,71 @@ async fn main() -> Result<()> {
     info!("rustls CryptoProvider installed");
 
     // ── 4. SurrealDB + LiveCache ──────────────────────────────────
-    let store: Arc<dyn DomainStore> = match connect_and_init_store(&config).await {
-        Ok((surreal_store, live_cache)) => {
-            let host_count: usize = live_cache.host_count();
-            let proxy_count: usize = live_cache.proxy_count();
-            info!(
-                hosts = host_count,
-                proxies = proxy_count,
-                "SurrealDB connected, live cache started"
-            );
-            Arc::new(surreal_store)
-        }
-        Err(e) => {
-            tracing::warn!(
-                error = %e,
-                "SurrealDB unavailable — falling back to in-memory store"
-            );
-            Arc::new(MemoryStore::new()) as Arc<dyn DomainStore>
-        }
-    };
-
-    let live_cache = Arc::new(LiveCache::new());
+    let (store, live_cache): (Arc<dyn DomainStore>, Arc<LiveCache>) =
+        match connect_and_init_store(&config).await {
+            Ok((surreal_store, live_cache)) => {
+                let host_count: usize = live_cache.host_count();
+                let proxy_count: usize = live_cache.proxy_count();
+                info!(
+                    hosts = host_count,
+                    proxies = proxy_count,
+                    "SurrealDB connected, live cache started"
+                );
+                (Arc::new(surreal_store), live_cache)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "SurrealDB unavailable — falling back to in-memory store"
+                );
+                (
+                    Arc::new(MemoryStore::new()) as Arc<dyn DomainStore>,
+                    Arc::new(LiveCache::new()),
+                )
+            }
+        };
 
     // ── 5. Admin API router ───────────────────────────────────────
-    let dns_resolver = Arc::new(
-        HickoryDnsResolver::new().context("failed to create DNS resolver")?,
-    );
+    let dns_resolver =
+        Arc::new(HickoryDnsResolver::new().context("failed to create DNS resolver")?);
     let admin_tokens = parse_admin_tokens(&config.tunnel_token);
+    let tunnel_registry = Arc::new(TunnelRegistry::new());
 
-    let admin_router = server::create_router(
+    let admin_router = server::create_router_with_tunnel_registry(
         store.clone(),
         config.admin_token.clone(),
         admin_tokens,
         dns_resolver,
+        Some(live_cache.clone()),
+        Some(tunnel_registry.clone()),
     );
     info!("admin API router built");
 
     // ── 6. TLS setup ──────────────────────────────────────────────
-    let cert_storage = CertStorage::new(&config.tls_cache_dir);
+    let cert_storage = Arc::new(CertStorage::new(&config.tls_cache_dir));
     let host_policy = Arc::new(LiveCacheHostPolicy::new(live_cache.clone()));
-    let resolver = Arc::new(OnDemandResolver::new(host_policy));
+    let acme_email = config.tls_email.clone().unwrap_or_else(|| {
+        tracing::warn!(
+            "NOVA_EDGE_TLS_EMAIL is not set; ACME issuer will fail until a contact email is configured"
+        );
+        format!("admin@{}", config.hostname)
+    });
+    let issuer = Arc::new(ExternalCommandAcmeIssuer::new(
+        config.acme_command.clone(),
+        acme_email,
+        config.acme_directory.clone(),
+        config.acme_cache_dir.clone(),
+        config.acme_webroot_dir.clone(),
+    ));
+    let resolver = Arc::new(ProductionAcmeResolver::new(
+        host_policy,
+        cert_storage.clone(),
+        issuer,
+        config.tls_self_signed_fallback,
+    ));
 
-    // Pre-load any cached certs into the resolver
+    // Pre-load any cached certs into the resolver. Missing certs are issued lazily
+    // during SNI resolution; self-signed fallback is disabled unless explicitly enabled.
     match cert_storage.list_domains() {
         Ok(domains) => {
             for domain in &domains {
@@ -103,7 +129,12 @@ async fn main() -> Result<()> {
                     resolver.register(domain, cert);
                 }
             }
-            info!(count = domains.len(), "pre-loaded cached TLS certs");
+            info!(
+                count = domains.len(),
+                self_signed_fallback = config.tls_self_signed_fallback,
+                acme_directory = %config.acme_directory,
+                "pre-loaded cached TLS certs"
+            );
         }
         Err(e) => {
             tracing::warn!(error = %e, "failed to list cached certs");
@@ -128,7 +159,10 @@ async fn main() -> Result<()> {
         .context("invalid tunnel port")?;
 
     // ── 8. HTTP redirect server (port 80) ─────────────────────────
-    let redirect_state = Arc::new(HttpRedirectState::new(config.tls_port));
+    let redirect_state = Arc::new(HttpRedirectState::with_webroot(
+        config.tls_port,
+        &config.acme_webroot_dir,
+    ));
     let redirect_router = http_redirect_router(redirect_state.clone());
 
     let http_listener = tokio::net::TcpListener::bind(http_addr)
@@ -154,8 +188,18 @@ async fn main() -> Result<()> {
 
     let api_server = axum::serve(api_listener, admin_router);
 
-    // ── 11. Tunnel server (placeholder) ───────────────────────────
-    info!(addr = %tunnel_addr, "tunnel server placeholder (not yet implemented)");
+    // ── 11. Tunnel server ─────────────────────────────────────────
+    let (tunnel_shutdown_tx, tunnel_shutdown_rx) = watch::channel(false);
+    let mut tunnel_server = TunnelServer::new(
+        config.tunnel_token.clone(),
+        tunnel_registry.clone(),
+        live_cache.clone(),
+        HealthCheckConfig::default(),
+        tunnel_addr.to_string(),
+        tunnel_shutdown_rx,
+    );
+    let tunnel_task = tokio::spawn(async move { tunnel_server.run().await });
+    info!(addr = %tunnel_addr, "tunnel server task started");
 
     // ── 12. Graceful shutdown ─────────────────────────────────────
     let shutdown = async {
@@ -191,8 +235,13 @@ async fn main() -> Result<()> {
             info!("admin API server exited");
             r.context("admin API server error")?;
         }
+        r = tunnel_task => {
+            info!("tunnel server exited");
+            r.context("tunnel server task join error")??;
+        }
         _ = shutdown => {
             info!("shutdown signal received, stopping");
+            let _ = tunnel_shutdown_tx.send(true);
         }
     }
 
@@ -205,13 +254,18 @@ async fn main() -> Result<()> {
 /// Connect to SurrealDB, ensure schema, start live cache, return the store.
 async fn connect_and_init_store(
     config: &Config,
-) -> Result<(SurrealStore<surrealdb::engine::remote::ws::Client>, Arc<LiveCache>)> {
+) -> Result<(
+    SurrealStore<surrealdb::engine::remote::ws::Client>,
+    Arc<LiveCache>,
+)> {
     use edge_store::store_config::StoreSchemaConfig;
 
     let client = edge_store::client::SurrealClient::connect(
         &config.surreal_url,
         &config.surreal_namespace,
         &config.surreal_database,
+        &config.surreal_username,
+        &config.surreal_password,
     )
     .await
     .context("failed to connect to SurrealDB")?;
@@ -260,7 +314,9 @@ mod tests {
     struct LocalMockDnsResolver;
 
     impl LocalMockDnsResolver {
-        fn new() -> Self { Self }
+        fn new() -> Self {
+            Self
+        }
     }
 
     #[async_trait::async_trait]
@@ -284,7 +340,10 @@ mod tests {
             unsafe { std::env::remove_var(key) };
         }
         let result = Config::from_env();
-        assert!(result.is_err(), "Config::from_env should fail without required vars");
+        assert!(
+            result.is_err(),
+            "Config::from_env should fail without required vars"
+        );
     }
 
     /// Test: Admin API router can be built with a memory store.
@@ -292,12 +351,8 @@ mod tests {
     fn test_admin_router_builds() {
         let store: Arc<dyn DomainStore> = Arc::new(MemoryStore::new());
         let dns_resolver = Arc::new(LocalMockDnsResolver::new());
-        let router = api_server::create_router(
-            store,
-            "test-token".to_string(),
-            vec![],
-            dns_resolver,
-        );
+        let router =
+            api_server::create_router(store, "test-token".to_string(), vec![], dns_resolver);
         // Router builds without panicking — sufficient for wiring test
         drop(router);
     }
@@ -320,7 +375,9 @@ mod tests {
         let storage = CertStorage::new(dir.path());
 
         let (cert_pem, key_pem) = CertStorage::generate_self_signed("test.local").unwrap();
-        storage.store_cert("test.local", &cert_pem, &key_pem).unwrap();
+        storage
+            .store_cert("test.local", &cert_pem, &key_pem)
+            .unwrap();
         let loaded = storage.load_cert("test.local").unwrap().unwrap();
         assert_eq!(loaded.cert.len(), 1);
     }
