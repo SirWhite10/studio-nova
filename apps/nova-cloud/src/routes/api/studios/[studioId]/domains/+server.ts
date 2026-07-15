@@ -22,7 +22,7 @@ export const GET: RequestHandler = async (event) => {
 
   return json({
     ok: true,
-    domains: await loadStudioDomainSettings(access.studioId),
+    domains: await loadStudioDomainSettings(access.userId, access.studioId),
   });
 };
 

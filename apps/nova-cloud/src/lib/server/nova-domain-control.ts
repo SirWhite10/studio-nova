@@ -49,6 +49,14 @@ function domainControlHeaders() {
   return headers;
 }
 
+function routeControlHeaders() {
+  const headers = domainControlHeaders();
+  const token =
+    getPrivateEnv("NOVA_DOMAIN_CONTROL_ROUTE_TOKEN") || process.env.NOVA_DOMAIN_CONTROL_ROUTE_TOKEN;
+  if (token) headers.authorization = `Bearer ${token}`;
+  return headers;
+}
+
 async function parseDomainControlResponse(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   const payload = contentType.includes("application/json")
@@ -120,6 +128,15 @@ export async function verifyDomainControlDomain(host: string) {
   return parseDomainControlResponse(response);
 }
 
+export async function verifyDomainBindingControl(host: string) {
+  const response = await fetch(domainControlBaseUrl("/admin/domain-bindings/verify"), {
+    method: "POST",
+    headers: domainControlHeaders(),
+    body: JSON.stringify({ host }),
+  });
+  return parseDomainControlResponse(response);
+}
+
 export async function deleteDomainControlDomain(host: string, studioId: string) {
   const response = await fetch(
     domainControlBaseUrl(
@@ -131,6 +148,29 @@ export async function deleteDomainControlDomain(host: string, studioId: string) 
     },
   );
   return parseDomainControlResponse(response);
+}
+
+export async function activateDeploymentRouteControl(input: {
+  userId: string;
+  studioId: string;
+  host: string;
+  deploymentId: string;
+  runtimeInstanceId: string;
+  serviceKey: string;
+  connectorKey: string;
+  horizonNodeId: string;
+}) {
+  const response = await fetch(domainControlBaseUrl("/admin/deployment-routes/activate"), {
+    method: "POST",
+    headers: routeControlHeaders(),
+    body: JSON.stringify(input),
+  });
+  return parseDomainControlResponse(response) as Promise<{
+    ok: true;
+    accepted: true;
+    host: string;
+    serviceKey: string;
+  }>;
 }
 
 export type { DomainControlResolution, DomainControlProxy, DomainControlDomain };

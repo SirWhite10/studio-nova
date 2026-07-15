@@ -11,9 +11,7 @@ export type UserPlanRow = {
 };
 
 async function ensurePlanTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS user_plan SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 export async function getUserPlan(userId: string): Promise<UserPlanRow | null> {

@@ -1,5 +1,6 @@
 import { StringRecordId, Table } from "surrealdb";
 import { getIntegrationCapability } from "$lib/integrations/catalog";
+import { isSecretReference, type SecretReference } from "@studio-nova/data-contracts";
 import { createStudioEvent } from "./surreal-studio-events";
 import { decryptIntegrationValue, encryptIntegrationValue } from "./integration-secrets";
 import { getSurreal } from "./surreal";
@@ -10,6 +11,7 @@ import {
   queryRows,
   recordIdToString,
 } from "./surreal-records";
+import { putIntegrationSecretMaterial } from "./surreal-secret-material";
 
 type IntegrationConfigRow = {
   id: unknown;
@@ -23,9 +25,7 @@ type IntegrationConfigRow = {
 };
 
 async function ensureIntegrationConfigTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS integration_config SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 async function getIntegrationConfigRow(userId: string, studioId: string, integrationKey: string) {
@@ -88,7 +88,11 @@ export async function getIntegrationConfigSummary(
       value: field.secret ? "" : (decodedValues[field.key] ?? ""),
       hasValue: !!decodedValues[field.key],
       maskedValue:
-        field.secret && decodedValues[field.key] ? maskSecret(decodedValues[field.key]) : null,
+        field.secret && decodedValues[field.key]
+          ? isSecretReference(decodedValues[field.key])
+            ? "Configured"
+            : maskSecret(decodedValues[field.key])
+          : null,
     };
   });
 
@@ -116,21 +120,34 @@ export async function saveIntegrationConfig(
   const existing = await getIntegrationConfigRow(userId, studioId, integrationKey);
   const existingDecoded = decodeValues(existing?.values);
 
-  const nextDecoded: Record<string, string> = {};
+  const nextEncoded: Record<string, string> = {};
   for (const field of capability.configFields) {
     const raw = typeof values[field.key] === "string" ? values[field.key].trim() : "";
-    if (field.secret && raw === "" && existingDecoded[field.key]) {
-      nextDecoded[field.key] = existingDecoded[field.key];
+    if (field.secret) {
+      const previous = existingDecoded[field.key];
+      if (raw) {
+        nextEncoded[field.key] = await putIntegrationSecretMaterial({
+          userId,
+          studioId,
+          integrationKey,
+          fieldKey: field.key,
+          value: raw,
+        });
+      } else if (isSecretReference(previous)) {
+        nextEncoded[field.key] = previous;
+      } else if (previous) {
+        nextEncoded[field.key] = await putIntegrationSecretMaterial({
+          userId,
+          studioId,
+          integrationKey,
+          fieldKey: field.key,
+          value: previous,
+        });
+      }
       continue;
     }
-    nextDecoded[field.key] = raw;
+    if (raw) nextEncoded[field.key] = encryptIntegrationValue(raw);
   }
-
-  const nextEncoded = Object.fromEntries(
-    Object.entries(nextDecoded)
-      .filter(([, value]) => value !== "")
-      .map(([key, value]) => [key, encryptIntegrationValue(value)]),
-  );
 
   const now = Date.now();
   if (existing) {
@@ -182,4 +199,42 @@ export async function saveIntegrationConfig(
     },
   });
   return row;
+}
+
+export async function getIntegrationSecretReferences(
+  userId: string,
+  studioId: string,
+  integrationKey: string,
+): Promise<Record<string, SecretReference>> {
+  const capability = getIntegrationCapability(integrationKey);
+  if (!capability) throw new Error(`Unknown integration capability: ${integrationKey}`);
+  const row = await getIntegrationConfigRow(userId, studioId, integrationKey);
+  if (!row) return {};
+  const decoded = decodeValues(row.values);
+  const references: Record<string, SecretReference> = {};
+  let migrated = false;
+  for (const field of capability.configFields.filter((candidate) => candidate.secret)) {
+    const value = decoded[field.key];
+    if (!value) continue;
+    if (isSecretReference(value)) {
+      references[field.key] = value;
+      continue;
+    }
+    references[field.key] = await putIntegrationSecretMaterial({
+      userId,
+      studioId,
+      integrationKey,
+      fieldKey: field.key,
+      value,
+    });
+    row.values[field.key] = references[field.key];
+    migrated = true;
+  }
+  if (migrated) {
+    const db = await getSurreal();
+    await db
+      .update(new StringRecordId(recordIdToString(row.id)))
+      .merge({ values: row.values, updatedAt: Date.now() });
+  }
+  return references;
 }

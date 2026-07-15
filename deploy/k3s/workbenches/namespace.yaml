@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nova-workbenches
+  labels:
+    app.kubernetes.io/part-of: nova-constellation
+    nova.dlxstudios.com/purpose: workbench-template
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: workbench-default-quota
+  namespace: nova-workbenches
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 3Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    persistentvolumeclaims: "1"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: workbench-default-limits
+  namespace: nova-workbenches
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 192Mi
+      default:
+        cpu: "2"
+        memory: 2Gi

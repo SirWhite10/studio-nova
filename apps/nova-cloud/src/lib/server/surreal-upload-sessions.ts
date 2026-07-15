@@ -45,9 +45,7 @@ export type UploadSessionRow = {
 };
 
 async function ensureUploadSessionTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS upload_session SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 export async function getUploadSessionForUser(userId: string, studioId: string, uploadId: string) {

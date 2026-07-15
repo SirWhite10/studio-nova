@@ -48,7 +48,6 @@ const PURPOSE_COLOR: Record<string, string> = {
 
 export async function listStudiosForUser(userId: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS");
   const rows = await queryRows<StudioRow>(
     db,
     "SELECT * FROM studio WHERE userId = $userId ORDER BY lastOpenedAt DESC, createdAt DESC",
@@ -77,7 +76,6 @@ export async function createStudioForUser(input: {
   themeHue?: number;
 }) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio SCHEMALESS");
 
   const existing = await listStudiosForUser(input.userId);
   const now = Date.now();

@@ -134,6 +134,35 @@ pub struct DomainResolution {
     pub domain: ProxyDomain,
 }
 
+/// New-schema ownership data used by Horizon for DNS verification.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DomainBindingVerification {
+    pub host: String,
+    pub user_id: String,
+    pub studio_id: String,
+    pub ownership_status: String,
+    pub certificate_status: String,
+    pub verification_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EdgeRouteResolution {
+    pub host: String,
+    pub user_id: String,
+    pub studio_id: String,
+    pub proxy_name: String,
+    #[serde(rename = "localIP")]
+    pub local_ip: String,
+    pub local_port: u16,
+    pub deployment_id: Option<String>,
+    pub runtime_instance_id: Option<String>,
+    pub connector_key: Option<String>,
+    pub horizon_node_id: Option<String>,
+    pub legacy: bool,
+}
+
 /// Lightweight resolution used by the proxy layer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -214,14 +243,38 @@ mod tests {
         let json = serde_json::to_string(&proxy).unwrap();
         // Must be camelCase to match SurrealDB
         assert!(json.contains("\"userId\""), "userId not camelCase: {json}");
-        assert!(json.contains("\"studioId\""), "studioId not camelCase: {json}");
-        assert!(json.contains("\"proxyName\""), "proxyName not camelCase: {json}");
-        assert!(json.contains("\"proxyType\""), "proxyType not camelCase: {json}");
-        assert!(json.contains("\"localIP\""), "localIP not camelCase: {json}");
-        assert!(json.contains("\"localPort\""), "localPort not camelCase: {json}");
-        assert!(json.contains("\"frpcClientId\""), "frpcClientId not camelCase: {json}");
-        assert!(json.contains("\"createdAt\""), "createdAt not camelCase: {json}");
-        assert!(json.contains("\"proxyType\":\"http\""), "proxyType not lowercase: {json}");
+        assert!(
+            json.contains("\"studioId\""),
+            "studioId not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"proxyName\""),
+            "proxyName not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"proxyType\""),
+            "proxyType not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"localIP\""),
+            "localIP not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"localPort\""),
+            "localPort not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"frpcClientId\""),
+            "frpcClientId not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"createdAt\""),
+            "createdAt not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"proxyType\":\"http\""),
+            "proxyType not lowercase: {json}"
+        );
 
         let back: WorkspaceProxy = serde_json::from_str(&json).unwrap();
         assert_eq!(proxy, back);
@@ -270,11 +323,26 @@ mod tests {
         };
 
         let json = serde_json::to_string(&domain).unwrap();
-        assert!(json.contains("\"proxyId\""), "proxyId not camelCase: {json}");
-        assert!(json.contains("\"verificationToken\""), "verificationToken not camelCase: {json}");
-        assert!(json.contains("\"createdAt\""), "createdAt not camelCase: {json}");
-        assert!(json.contains("\"kind\":\"custom\""), "kind not lowercase: {json}");
-        assert!(json.contains("\"status\":\"active\""), "status not lowercase: {json}");
+        assert!(
+            json.contains("\"proxyId\""),
+            "proxyId not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"verificationToken\""),
+            "verificationToken not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"createdAt\""),
+            "createdAt not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"kind\":\"custom\""),
+            "kind not lowercase: {json}"
+        );
+        assert!(
+            json.contains("\"status\":\"active\""),
+            "status not lowercase: {json}"
+        );
 
         let back: ProxyDomain = serde_json::from_str(&json).unwrap();
         assert_eq!(domain, back);
@@ -289,7 +357,10 @@ mod tests {
         assert_eq!(DomainStatus::Active.to_string(), "active");
         assert_eq!(DomainStatus::Blocked.to_string(), "blocked");
 
-        assert_eq!("active".parse::<DomainStatus>().unwrap(), DomainStatus::Active);
+        assert_eq!(
+            "active".parse::<DomainStatus>().unwrap(),
+            DomainStatus::Active
+        );
         assert!("unknown".parse::<DomainStatus>().is_err());
     }
 
@@ -332,9 +403,18 @@ mod tests {
         };
 
         let json = serde_json::to_string(&details).unwrap();
-        assert!(json.contains("\"recordName\""), "recordName not camelCase: {json}");
-        assert!(json.contains("\"expectedValue\""), "expectedValue not camelCase: {json}");
-        assert!(json.contains("\"foundValues\""), "foundValues not camelCase: {json}");
+        assert!(
+            json.contains("\"recordName\""),
+            "recordName not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"expectedValue\""),
+            "expectedValue not camelCase: {json}"
+        );
+        assert!(
+            json.contains("\"foundValues\""),
+            "foundValues not camelCase: {json}"
+        );
 
         let back: VerificationDetails = serde_json::from_str(&json).unwrap();
         assert_eq!(details, back);
@@ -357,7 +437,10 @@ mod tests {
             message: None,
         };
         let json2 = serde_json::to_string(&h2).unwrap();
-        assert!(!json2.contains("message"), "message should be skipped when None");
+        assert!(
+            !json2.contains("message"),
+            "message should be skipped when None"
+        );
     }
 
     // ── ProxyResolution roundtrip ──────────────────────────────────

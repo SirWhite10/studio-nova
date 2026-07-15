@@ -1,0 +1,34 @@
+DEFINE TABLE schema_release TYPE NORMAL SCHEMAFULL PERMISSIONS NONE;
+DEFINE FIELD key ON schema_release TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD version ON schema_release TYPE int ASSERT $value > 0;
+DEFINE FIELD phase ON schema_release TYPE string ASSERT $value IN ['baseline', 'expand', 'cutover', 'contract'];
+DEFINE FIELD compatibleServices ON schema_release TYPE array<string> DEFAULT [];
+DEFINE FIELD notes ON schema_release TYPE none | string;
+DEFINE FIELD appliedAt ON schema_release TYPE datetime DEFAULT time::now();
+DEFINE INDEX schema_release_key_idx ON schema_release FIELDS key UNIQUE;
+
+DEFINE TABLE constellation TYPE NORMAL SCHEMAFULL PERMISSIONS NONE;
+DEFINE FIELD key ON constellation TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD name ON constellation TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD status ON constellation TYPE string ASSERT $value IN ['provisioning', 'active', 'degraded', 'offline', 'retired'];
+DEFINE FIELD metadata ON constellation TYPE none | object FLEXIBLE;
+DEFINE FIELD createdAt ON constellation TYPE datetime DEFAULT time::now();
+DEFINE FIELD updatedAt ON constellation TYPE datetime DEFAULT time::now();
+DEFINE INDEX constellation_key_idx ON constellation FIELDS key UNIQUE;
+
+DEFINE TABLE infrastructure_node TYPE NORMAL SCHEMAFULL PERMISSIONS NONE;
+DEFINE FIELD constellationId ON infrastructure_node TYPE record<constellation>;
+DEFINE FIELD nodeKey ON infrastructure_node TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD role ON infrastructure_node TYPE string ASSERT $value IN ['forge', 'horizon', 'habitat'];
+DEFINE FIELD displayName ON infrastructure_node TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD hostname ON infrastructure_node TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD region ON infrastructure_node TYPE none | string;
+DEFINE FIELD status ON infrastructure_node TYPE string ASSERT $value IN ['registering', 'online', 'degraded', 'offline', 'draining', 'retired'];
+DEFINE FIELD capabilities ON infrastructure_node TYPE object FLEXIBLE;
+DEFINE FIELD lastHeartbeatAt ON infrastructure_node TYPE none | datetime;
+DEFINE FIELD metadata ON infrastructure_node TYPE none | object FLEXIBLE;
+DEFINE FIELD createdAt ON infrastructure_node TYPE datetime DEFAULT time::now();
+DEFINE FIELD updatedAt ON infrastructure_node TYPE datetime DEFAULT time::now();
+DEFINE INDEX infrastructure_node_key_idx ON infrastructure_node FIELDS constellationId, nodeKey UNIQUE;
+DEFINE INDEX infrastructure_node_role_status_idx ON infrastructure_node FIELDS role, status;
+DEFINE INDEX infrastructure_node_heartbeat_idx ON infrastructure_node FIELDS lastHeartbeatAt;

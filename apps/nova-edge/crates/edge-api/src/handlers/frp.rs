@@ -43,7 +43,14 @@ fn handle_login(state: &AppState, body: &Value) -> Result<Json<Value>, (StatusCo
         .and_then(|t| t.as_str())
         .unwrap_or("");
 
-    if token == state.admin_token || state.admin_tokens.iter().any(|t| t == token) {
+    if token == state.admin_token
+        || state.admin_tokens.iter().any(|entry| {
+            entry == token
+                || entry
+                    .strip_prefix("frp:")
+                    .is_some_and(|value| value == token)
+        })
+    {
         Ok(Json(json!({ "ok": true, "op": "Login" })))
     } else {
         Err((
@@ -106,6 +113,7 @@ mod tests {
             admin_tokens: vec!["secondary-token".to_string()],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
             live_cache: None,
+            tunnel_registry: None,
         }
     }
 

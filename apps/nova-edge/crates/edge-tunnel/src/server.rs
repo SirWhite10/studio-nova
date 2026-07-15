@@ -8,9 +8,9 @@
 use crate::health::{HealthCheckConfig, HealthChecker};
 use crate::protocol::*;
 use crate::proxy::{ProxyHandler, ProxyRegistrationResult};
-use crate::registry::{TunnelClient, TunnelRegistry};
+use crate::registry::{TunnelClient, TunnelIdentity, TunnelRegistry};
 use crate::transport::{TunnelConnector, YamuxCommand};
-use edge_store::live_cache::LiveCache;
+use edge_store::{DomainStore, live_cache::LiveCache};
 use futures::future::poll_fn;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -26,6 +26,8 @@ pub struct TunnelServer {
     tunnel_token: String,
     registry: Arc<TunnelRegistry>,
     live_cache: Arc<LiveCache>,
+    store: Arc<dyn DomainStore>,
+    horizon_node_id: Option<String>,
     health_checker: HealthChecker,
     bind_addr: String,
     shutdown_rx: watch::Receiver<bool>,
@@ -37,6 +39,8 @@ impl TunnelServer {
         tunnel_token: String,
         registry: Arc<TunnelRegistry>,
         live_cache: Arc<LiveCache>,
+        store: Arc<dyn DomainStore>,
+        horizon_node_id: Option<String>,
         health_config: HealthCheckConfig,
         bind_addr: String,
         shutdown_rx: watch::Receiver<bool>,
@@ -46,6 +50,8 @@ impl TunnelServer {
             tunnel_token,
             registry,
             live_cache,
+            store,
+            horizon_node_id,
             health_checker,
             bind_addr,
             shutdown_rx,
@@ -89,10 +95,12 @@ impl TunnelServer {
                             info!(peer = %addr, "New tunnel connection");
                             let registry = self.registry.clone();
                             let live_cache = self.live_cache.clone();
+                            let store = self.store.clone();
+                            let horizon_node_id = self.horizon_node_id.clone();
                             let token = self.tunnel_token.clone();
                             let timeout = self.request_timeout;
                             tokio::spawn(async move {
-                                if let Err(e) = handle_tunnel_connection(stream, addr, token, registry, live_cache, timeout).await {
+                                if let Err(e) = handle_tunnel_connection(stream, addr, token, registry, live_cache, store, horizon_node_id, timeout).await {
                                     warn!(peer = %addr, error = %e, "Tunnel connection ended");
                                 }
                             });
@@ -121,6 +129,8 @@ async fn handle_tunnel_connection(
     tunnel_token: String,
     registry: Arc<TunnelRegistry>,
     live_cache: Arc<LiveCache>,
+    store: Arc<dyn DomainStore>,
+    horizon_node_id: Option<String>,
     request_timeout: Duration,
 ) -> anyhow::Result<()> {
     let conn = Connection::new(stream.compat(), YamuxConfig::default(), Mode::Server);
@@ -140,12 +150,54 @@ async fn handle_tunnel_connection(
     let login_env = read_envelope_futures(&mut control).await?;
     if login_env.msg_type != "Login" {
         write_message_futures(&mut control, &GeneralResponse::error(1, "expected Login")).await?;
-        anyhow::bail!("first control message was {}, expected Login", login_env.msg_type);
+        anyhow::bail!(
+            "first control message was {}, expected Login",
+            login_env.msg_type
+        );
     }
     let login: Login = login_env.decode()?;
     if login.token != tunnel_token {
         write_message_futures(&mut control, &GeneralResponse::error(1, "invalid token")).await?;
         anyhow::bail!("invalid tunnel token for run_id={}", login.run_id);
+    }
+    let identity = match TunnelIdentity::from_login(&login) {
+        Ok(identity) => identity,
+        Err(reason) => {
+            write_message_futures(&mut control, &GeneralResponse::error(1, reason)).await?;
+            anyhow::bail!(
+                "invalid native tunnel identity for run_id={}: {reason}",
+                login.run_id
+            );
+        }
+    };
+    if let Some(native_identity) = identity.as_ref() {
+        let Some(horizon_node_id) = horizon_node_id.as_deref() else {
+            write_message_futures(
+                &mut control,
+                &GeneralResponse::error(1, "native tunnel identity is disabled on this Horizon"),
+            )
+            .await?;
+            anyhow::bail!("native tunnel identity supplied but NOVA_EDGE_HORIZON_NODE_ID is unset");
+        };
+        let authorized = store
+            .validate_tunnel_connector_identity(
+                &native_identity.constellation_id,
+                &native_identity.habitat_node_id,
+                horizon_node_id,
+                &native_identity.connector_key,
+            )
+            .await?;
+        if !authorized {
+            write_message_futures(
+                &mut control,
+                &GeneralResponse::error(1, "native tunnel connector identity is not authorized"),
+            )
+            .await?;
+            anyhow::bail!(
+                "unauthorized native tunnel connector identity for run_id={}",
+                login.run_id
+            );
+        }
     }
 
     let run_id = login.run_id.clone();
@@ -154,6 +206,7 @@ async fn handle_tunnel_connection(
         run_id: run_id.clone(),
         proxy_names: Vec::new(),
         connector: Some(connector),
+        identity,
         registered_at: Instant::now(),
         last_seen: Instant::now(),
     });
@@ -179,15 +232,24 @@ async fn handle_tunnel_connection(
                     let msg: NewProxy = match env.decode() {
                         Ok(m) => m,
                         Err(e) => {
-                            let _ = write_message_futures(&mut control, &GeneralResponse::error(3, e.to_string())).await;
+                            let _ = write_message_futures(
+                                &mut control,
+                                &GeneralResponse::error(3, e.to_string()),
+                            )
+                            .await;
                             continue;
                         }
                     };
                     let result = proxy_handler.handle_new_proxy(msg.clone(), &run_id_for_control);
                     if matches!(result, ProxyRegistrationResult::Registered { .. }) {
-                        registry_for_control.register_proxy_for_client(&run_id_for_control, &msg.proxy_name);
+                        registry_for_control
+                            .register_proxy_for_client(&run_id_for_control, &msg.proxy_name);
                     }
-                    let _ = write_message_futures(&mut control, &ProxyHandler::registration_response(&result)).await;
+                    let _ = write_message_futures(
+                        &mut control,
+                        &ProxyHandler::registration_response(&result),
+                    )
+                    .await;
                 }
                 "Heartbeat" => {
                     registry_for_control.touch(&run_id_for_control);
@@ -195,12 +257,17 @@ async fn handle_tunnel_connection(
                 }
                 "CloseProxy" => {
                     if let Ok(msg) = env.decode::<CloseProxy>() {
-                        registry_for_control.unregister_proxy_for_client(&run_id_for_control, &msg.proxy_name);
+                        registry_for_control
+                            .unregister_proxy_for_client(&run_id_for_control, &msg.proxy_name);
                     }
                     let _ = write_message_futures(&mut control, &GeneralResponse::ok()).await;
                 }
                 other => {
-                    let _ = write_message_futures(&mut control, &GeneralResponse::error(9, format!("unsupported message: {other}"))).await;
+                    let _ = write_message_futures(
+                        &mut control,
+                        &GeneralResponse::error(9, format!("unsupported message: {other}")),
+                    )
+                    .await;
                 }
             }
         }
@@ -259,6 +326,7 @@ mod tests {
 
     #[test]
     fn server_construction() {
+        use edge_store::{DomainStore, memory_store::MemoryStore};
         let registry = Arc::new(TunnelRegistry::new());
         let live_cache = Arc::new(LiveCache::new());
         let (_tx, rx) = watch::channel(false);
@@ -266,6 +334,8 @@ mod tests {
             "test-token".into(),
             registry.clone(),
             live_cache,
+            Arc::new(MemoryStore::new()) as Arc<dyn DomainStore>,
+            Some("infrastructure_node:horizon-test".into()),
             HealthCheckConfig::default(),
             "127.0.0.1:0".into(),
             rx,

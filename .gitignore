@@ -31,3 +31,8 @@ dist-ssr
 
 # Local deploy secrets
 deploy/.env
+
+# Database administration outputs and local credentials
+database/backups/
+tools/database-admin/.env
+tools/database-admin/.env.local

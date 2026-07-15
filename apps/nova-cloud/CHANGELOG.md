@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-07-13
+
+### Added - Constellation Control Plane
+
+- Added the Constellation topology and lifecycle model for Forge build nodes, Horizon public edge nodes, Habitat runtime nodes, Studios, Workbenches, Build Jobs, immutable Releases, Deployments, Runtime Instances, Tunnel Connectors, Domain Bindings, and Deployment Routes
+- Centralized SurrealDB v3 schema, seeds, lifecycle tests, compatibility markers, additive rollout review, logical backups, catalog comparison, and idempotent legacy backfill tooling under the repository-level `database` and `tools/database-admin` surfaces
+- Added shared lifecycle, identifier, capability, and secret-reference contracts through `@studio-nova/data-contracts`, including deterministic target scheduling for web, PWA, mobile, desktop, server, and worker builds
+- Added authenticated Nova Cloud control endpoints and repositories for Workbench, build, Release, Deployment, route, node registration, heartbeat, reconciliation, append-only audit, and encrypted tenant-scoped integration secret operations
+- Added runtime-control Workbench and Deployment services, health-gated replacement and rollback orchestration, k3s Workbench/Deployment templates, and Nova Edge route/tunnel authorization tied to exact tenant, Deployment, Runtime Instance, connector, and host identities
+- Added a disposable end-to-end smoke runner covering Workbench independence, build/release/deploy flow, atomic route cutover, unhealthy replacement rejection, native tunnel reconnect, Habitat recovery, immutable rollback, and complete lifecycle audit history
+
+### Changed - Production-Safe Rollout Preparation
+
+- Expanded the database catalog parser to compare SurrealDB event definitions and correctly parse block events containing inner semicolons
+- Completed a read-only production preflight with 391 desired definitions, 152 live definitions, 239 additive additions, zero changed definitions, and zero unexpected live definitions
+- Created and checksum-verified a restricted production logical backup, reviewed an 18-statement dry-run compatibility backfill, and generated a SurrealKit dry-run plan containing only 13 additive files and 391 additive entities
+- Left the production rollout and backfill apply step explicitly unstarted pending operator approval
+
 ## [Unreleased] - 2026-05-10
 
 ### Fixed - Auth Flow and Studio Sidebar Polish

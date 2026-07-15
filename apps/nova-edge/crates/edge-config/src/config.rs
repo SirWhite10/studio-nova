@@ -5,6 +5,8 @@ pub struct Config {
     // Bootstrap (required)
     pub hostname: String,
     pub admin_token: String,
+    pub control_token: Option<String>,
+    pub horizon_node_id: Option<String>,
     pub tunnel_token: String,
     pub surreal_url: String,
     pub subdomain_host: String,
@@ -17,6 +19,7 @@ pub struct Config {
 
     // Ports
     pub api_port: u16,
+    pub api_bind: String,
     pub tunnel_port: u16,
     pub tls_port: u16,
     pub http_port: u16,
@@ -57,6 +60,8 @@ impl Config {
         Ok(Self {
             hostname: env_required("NOVA_EDGE_HOSTNAME")?,
             admin_token: env_required("NOVA_EDGE_ADMIN_TOKEN")?,
+            control_token: std::env::var("NOVA_EDGE_CONTROL_TOKEN").ok(),
+            horizon_node_id: std::env::var("NOVA_EDGE_HORIZON_NODE_ID").ok(),
             tunnel_token: env_required("NOVA_EDGE_TUNNEL_TOKEN")?,
             surreal_url: env_required("NOVA_EDGE_SURREAL_URL")?,
             subdomain_host: env_required("NOVA_EDGE_SUBDOMAIN_HOST")?,
@@ -67,6 +72,7 @@ impl Config {
             surreal_password: env_or("NOVA_EDGE_SURREAL_PASSWORD", "root"),
 
             api_port: env_or_parse("NOVA_EDGE_API_PORT", 8790)?,
+            api_bind: env_or("NOVA_EDGE_API_BIND", "127.0.0.1"),
             tunnel_port: env_or_parse("NOVA_EDGE_TUNNEL_PORT", 9443)?,
             tls_port: env_or_parse("NOVA_EDGE_TLS_PORT", 443)?,
             http_port: env_or_parse("NOVA_EDGE_HTTP_PORT", 80)?,

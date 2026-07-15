@@ -7,7 +7,6 @@ import {
   queryRows,
   recordIdToString,
 } from "./surreal-records";
-import { ensureTables } from "./surreal-tables";
 
 export type SandboxRow = {
   _id: string;
@@ -25,7 +24,6 @@ export type SandboxRow = {
 };
 
 async function ensureSandboxTable() {
-  await ensureTables();
   return getSurreal();
 }
 

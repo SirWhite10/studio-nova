@@ -169,6 +169,7 @@ mod tests {
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
             live_cache: None,
+            tunnel_registry: None,
         }
     }
 

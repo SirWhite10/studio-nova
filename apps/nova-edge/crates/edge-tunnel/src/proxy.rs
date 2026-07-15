@@ -13,13 +13,8 @@ use tracing::{debug, info, warn};
 /// Result of proxy registration.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProxyRegistrationResult {
-    Registered {
-        proxy_name: String,
-    },
-    Rejected {
-        proxy_name: String,
-        reason: String,
-    },
+    Registered { proxy_name: String },
+    Rejected { proxy_name: String, reason: String },
 }
 
 /// Handles proxy registration requests from tunnel clients.
@@ -45,12 +40,29 @@ impl ProxyHandler {
     /// 2. The proxy is enabled
     ///
     /// If valid, associates the proxy with the client's run_id in the registry.
-    pub fn handle_new_proxy(
-        &self,
-        msg: NewProxy,
-        run_id: &str,
-    ) -> ProxyRegistrationResult {
+    pub fn handle_new_proxy(&self, msg: NewProxy, run_id: &str) -> ProxyRegistrationResult {
         let proxy_name = msg.proxy_name.clone();
+
+        if self
+            .registry
+            .get_client(run_id)
+            .and_then(|client| client.identity)
+            .is_some()
+        {
+            let valid_service = msg.proxy_type == "http"
+                && proxy_name
+                    .rsplit_once(':')
+                    .is_some_and(|(host, port)| !host.is_empty() && port.parse::<u16>().is_ok());
+            return if valid_service {
+                info!(proxy_name = %proxy_name, run_id = %run_id, "Native deployment service registered");
+                ProxyRegistrationResult::Registered { proxy_name }
+            } else {
+                ProxyRegistrationResult::Rejected {
+                    proxy_name,
+                    reason: "native service must be an HTTP host:port service key".into(),
+                }
+            };
+        }
 
         // Validate proxy exists in the live cache
         let proxy = match self.live_cache.get_proxy(&proxy_name) {
@@ -111,11 +123,7 @@ impl ProxyHandler {
     /// Process a `CloseProxy` message.
     ///
     /// Removes the proxy association from the client in the registry.
-    pub fn handle_close_proxy(
-        &self,
-        msg: CloseProxy,
-        run_id: &str,
-    ) -> GeneralResponse {
+    pub fn handle_close_proxy(&self, msg: CloseProxy, run_id: &str) -> GeneralResponse {
         info!(
             proxy_name = %msg.proxy_name,
             run_id = %run_id,
@@ -145,7 +153,9 @@ impl ProxyHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::registry::{TunnelClient, TunnelIdentity};
     use edge_store::types::*;
+    use std::time::Instant;
 
     fn make_test_proxy(name: &str, enabled: bool) -> WorkspaceProxy {
         WorkspaceProxy {
@@ -193,6 +203,41 @@ mod tests {
         });
         let registry = Arc::new(TunnelRegistry::new());
         ProxyHandler::new(cache, registry)
+    }
+
+    fn setup_native_handler() -> ProxyHandler {
+        let cache = Arc::new(LiveCache::new());
+        let registry = Arc::new(TunnelRegistry::new());
+        registry.register(TunnelClient {
+            run_id: "native-run".into(),
+            proxy_names: vec![],
+            connector: None,
+            identity: Some(TunnelIdentity {
+                constellation_id: "constellation:primary".into(),
+                habitat_node_id: "infrastructure_node:habitat-one".into(),
+                connector_key: "habitat-one".into(),
+            }),
+            registered_at: Instant::now(),
+            last_seen: Instant::now(),
+        });
+        ProxyHandler::new(cache, registry)
+    }
+
+    #[test]
+    fn native_client_registers_service_key_without_legacy_proxy() {
+        let handler = setup_native_handler();
+        let result = handler.handle_new_proxy(
+            NewProxy {
+                proxy_name: "release-service.namespace.svc.cluster.local:4173".into(),
+                proxy_type: "http".into(),
+                use_encryption: false,
+                use_compression: false,
+                custom_domains: vec![],
+                locations: vec![],
+            },
+            "native-run",
+        );
+        assert!(matches!(result, ProxyRegistrationResult::Registered { .. }));
     }
 
     #[test]

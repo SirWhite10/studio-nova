@@ -236,6 +236,9 @@ fn env_or_required(key: &str) -> Result<String, StoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     // ── DatabaseBackend ────────────────────────────────────────────────
 
@@ -246,9 +249,18 @@ mod tests {
 
     #[test]
     fn backend_from_str() {
-        assert_eq!("surrealdb".parse::<DatabaseBackend>().unwrap(), DatabaseBackend::SurrealDB);
-        assert_eq!("SurrealDB".parse::<DatabaseBackend>().unwrap(), DatabaseBackend::SurrealDB);
-        assert_eq!("surreal".parse::<DatabaseBackend>().unwrap(), DatabaseBackend::SurrealDB);
+        assert_eq!(
+            "surrealdb".parse::<DatabaseBackend>().unwrap(),
+            DatabaseBackend::SurrealDB
+        );
+        assert_eq!(
+            "SurrealDB".parse::<DatabaseBackend>().unwrap(),
+            DatabaseBackend::SurrealDB
+        );
+        assert_eq!(
+            "surreal".parse::<DatabaseBackend>().unwrap(),
+            DatabaseBackend::SurrealDB
+        );
         assert!("postgres".parse::<DatabaseBackend>().is_err());
     }
 
@@ -317,6 +329,7 @@ mod tests {
 
     #[test]
     fn from_env_fails_without_url() {
+        let _guard = ENV_LOCK.lock().unwrap();
         unsafe { std::env::remove_var("NOVA_EDGE_SURREAL_URL") };
         let result = StoreConfig::from_env();
         assert!(result.is_err());
@@ -327,6 +340,7 @@ mod tests {
 
     #[test]
     fn from_env_with_url() {
+        let _guard = ENV_LOCK.lock().unwrap();
         unsafe { std::env::set_var("NOVA_EDGE_SURREAL_URL", "http://localhost:9000") };
         unsafe { std::env::remove_var("NOVA_EDGE_DB_BACKEND") };
         let config = StoreConfig::from_env().unwrap();

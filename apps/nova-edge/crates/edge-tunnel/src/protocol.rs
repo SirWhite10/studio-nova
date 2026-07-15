@@ -69,7 +69,9 @@ impl FrpEnvelope {
     }
 
     /// Decode a typed message from this envelope.
-    pub fn decode<T: FrpMessage + for<'de> Deserialize<'de>>(&self) -> Result<T, serde_json::Error> {
+    pub fn decode<T: FrpMessage + for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<T, serde_json::Error> {
         serde_json::from_value(self.payload.clone())
     }
 }
@@ -91,6 +93,12 @@ pub struct Login {
     pub run_id: String,
     pub pool_count: u32,
     pub token: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constellation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub habitat_node_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connector_key: Option<String>,
 }
 
 /// Client requests that the server begin routing traffic for a named proxy.
@@ -208,8 +216,6 @@ pub fn decode_envelope(raw: &str) -> Result<FrpEnvelope, serde_json::Error> {
     serde_json::from_str(raw)
 }
 
-
-
 // ── Async framed I/O ───────────────────────────────────────────────
 
 pub const MAX_CONTROL_FRAME_BYTES: usize = 64 * 1024;
@@ -251,7 +257,9 @@ where
     if bytes.len() > MAX_CONTROL_FRAME_BYTES {
         return Err(ProtocolError::FrameTooLarge(bytes.len() as u32));
     }
-    writer.write_all(&(bytes.len() as u32).to_be_bytes()).await?;
+    writer
+        .write_all(&(bytes.len() as u32).to_be_bytes())
+        .await?;
     writer.write_all(&bytes).await?;
     writer.flush().await?;
     Ok(())
@@ -328,6 +336,9 @@ mod tests {
             run_id: "abc-123".into(),
             pool_count: 2,
             token: "secret-token".into(),
+            constellation_id: None,
+            habitat_node_id: None,
+            connector_key: None,
         };
         let json = serde_json::to_string(&msg).unwrap();
         let back: Login = serde_json::from_str(&json).unwrap();
@@ -342,6 +353,9 @@ mod tests {
             run_id: "run-42".into(),
             pool_count: 1,
             token: "tk".into(),
+            constellation_id: None,
+            habitat_node_id: None,
+            connector_key: None,
         };
         let wire = encode(&msg);
         let env = decode_envelope(&wire).unwrap();
@@ -452,6 +466,9 @@ mod tests {
                 run_id: "r".into(),
                 pool_count: 0,
                 token: "t".into(),
+                constellation_id: None,
+                habitat_node_id: None,
+                connector_key: None,
             }),
             encode(&NewProxy {
                 proxy_name: "p".into(),
@@ -470,7 +487,12 @@ mod tests {
         ];
 
         let expected_types = [
-            "Login", "NewProxy", "NewWorkConn", "CloseProxy", "Heartbeat", "GeneralResponse",
+            "Login",
+            "NewProxy",
+            "NewWorkConn",
+            "CloseProxy",
+            "Heartbeat",
+            "GeneralResponse",
         ];
 
         for (wire, expected) in messages.iter().zip(expected_types.iter()) {

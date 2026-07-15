@@ -33,9 +33,7 @@ export type StudioEventRow = {
 };
 
 async function ensureStudioEventTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS studio_event SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 export async function createStudioEvent(input: {

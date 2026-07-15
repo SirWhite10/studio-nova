@@ -49,7 +49,6 @@ async function ensureDefaultIntegrations(
 
   const run = (async () => {
     const db = await getSurreal();
-    await db.query("DEFINE TABLE IF NOT EXISTS integrations SCHEMALESS");
 
     const fullStudioId = ensureRecordPrefix("studio", normalizeRouteParam(studioId));
 

@@ -32,9 +32,7 @@ export type ArtifactRow = {
 };
 
 async function ensureArtifactTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS artifact SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 async function getArtifactByKey(userId: string, studioId: string, kind: ArtifactKind, key: string) {

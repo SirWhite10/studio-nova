@@ -1,3 +1,4 @@
+pub mod deployment_routes;
 pub mod domains;
 pub mod frp;
 pub mod health;

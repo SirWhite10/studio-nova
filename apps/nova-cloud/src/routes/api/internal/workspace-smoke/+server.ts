@@ -24,7 +24,6 @@ function isAuthorized(event: Parameters<RequestHandler>[0]) {
 
 async function ensureSyntheticUser(userId: string, email: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS user SCHEMALESS");
   const [existing] = await db.query<[any[]]>("SELECT * FROM user WHERE id = $id LIMIT 1", {
     id: `user:${userId}`,
   });

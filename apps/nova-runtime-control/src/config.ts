@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { assertOpaqueSecretReferences } from "@studio-nova/data-contracts";
+
 export type RuntimeControlConfig = {
   host: string;
   port: number;
@@ -9,7 +11,10 @@ export type RuntimeControlConfig = {
   namespacePrefix: string;
   runtimeImage: string;
   runtimeAgentToken: string;
+  secretProvider: "kubernetes";
 };
+
+export class RuntimeBoundaryError extends Error {}
 
 function loadDotEnvFile(path: string) {
   try {
@@ -48,5 +53,29 @@ export function loadConfig(): RuntimeControlConfig {
     namespacePrefix: process.env.NOVA_RUNTIME_NAMESPACE_PREFIX || "nova-runtime",
     runtimeImage: process.env.NOVA_RUNTIME_IMAGE || "node:24-alpine",
     runtimeAgentToken: process.env.NOVA_RUNTIME_AGENT_TOKEN || "dev-runtime-agent-token",
+    secretProvider: "kubernetes",
+  };
+}
+
+export function assertRuntimeSecretBoundary(value: unknown) {
+  try {
+    assertOpaqueSecretReferences(value, "runtimeRequest");
+  } catch (error) {
+    throw new RuntimeBoundaryError(
+      error instanceof Error ? error.message : "Runtime request contains inline secret material",
+    );
+  }
+}
+
+export function runtimeConfigSummary(config: RuntimeControlConfig) {
+  return {
+    host: config.host,
+    port: config.port,
+    kubectl: config.kubectl,
+    namespacePrefix: config.namespacePrefix,
+    runtimeImage: config.runtimeImage,
+    secretProvider: config.secretProvider,
+    controlAuthenticationConfigured: Boolean(config.token),
+    agentAuthenticationConfigured: Boolean(config.runtimeAgentToken),
   };
 }

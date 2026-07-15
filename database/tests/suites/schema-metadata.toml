@@ -1,0 +1,44 @@
+name = "constellation_schema_metadata"
+tags = ["schema", "metadata"]
+
+[[cases]]
+name = "new_lifecycle_tables_are_defined"
+kind = "schema_metadata"
+actor = "root"
+sql = "INFO FOR DB;"
+contains = [
+  "schema_release",
+  "constellation",
+  "infrastructure_node",
+  "workbench",
+  "workbench_instance",
+  "build_target_profile",
+  "build_job",
+  "release",
+  "release_artifact",
+  "deployment",
+  "runtime_instance",
+  "tunnel_connector",
+  "domain_binding",
+  "deployment_route",
+  "audit_event",
+]
+
+[[cases]]
+name = "legacy_tables_remain_defined"
+kind = "schema_metadata"
+actor = "root"
+sql = "INFO FOR DB;"
+contains = [
+  "user",
+  "session",
+  "studio",
+  "chat",
+  "workspace",
+  "sandbox",
+  "workspace_deployment",
+  "runtime_process",
+  "workspace_proxy",
+  "proxy_domain",
+  "frp_client",
+]

@@ -1,7 +1,7 @@
 import { redirect, type Handle } from "@sveltejs/kit";
 import { scanAndSeedSkills } from "$lib/server/skill-seeder";
-import { ensureTables } from "$lib/server/surreal-tables";
 import { surrealGetSession } from "$lib/server/surreal-better-auth";
+import { assertSurrealSchemaCompatible } from "$lib/server/surreal-schema";
 
 let seeded = false;
 
@@ -55,9 +55,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   if (isAppPath || isApiPath) {
     try {
-      await ensureTables();
+      await assertSurrealSchemaCompatible();
     } catch (err) {
-      console.error("Failed to initialize Surreal tables:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("SurrealDB schema compatibility check failed:", message);
+      return new Response(
+        JSON.stringify({ error: "Database schema is unavailable", detail: message }),
+        {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        },
+      );
     }
   }
 

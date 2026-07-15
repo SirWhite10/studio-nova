@@ -1,9 +1,10 @@
 import { StringRecordId, Table } from "surrealdb";
-import { ensureTables } from "./surreal-tables";
 import { getSurreal } from "./surreal";
 import { createStudioEvent } from "./surreal-studio-events";
 import { getStudioForUser } from "./surreal-studios";
 import { getSandboxForStudio } from "./surreal-sandbox";
+import { getSurrealSchemaReport } from "./surreal-schema";
+import { ensureWorkbenchForLegacyWorkspace } from "./surreal-workbenches";
 import {
   ensureRecordPrefix,
   normalizeRouteParam,
@@ -122,7 +123,6 @@ const WORKSPACE_ROOT_DOMAIN = "dlx.studio";
 const DEFAULT_OUTPUT_DIR = "dist";
 
 async function ensureWorkspaceTables() {
-  await ensureTables();
   return getSurreal();
 }
 
@@ -415,9 +415,23 @@ export async function createWorkspaceForStudio(input: {
     },
   });
 
+  const schema = await getSurrealSchemaReport();
+  const workbench =
+    schema.mode === "versioned"
+      ? await ensureWorkbenchForLegacyWorkspace({
+          userId: input.userId,
+          studioId: input.studioId,
+          workspaceId: finalWorkspace._id,
+          name: finalWorkspace.name,
+          slug: finalWorkspace.slug,
+          statePath: finalWorkspace.statePath,
+        })
+      : null;
+
   return {
     workspace: finalWorkspace,
     deployment: deploymentRow,
+    workbench,
     runtimeContract: buildWorkspaceRuntimeContract(finalWorkspace, deploymentRow),
   };
 }

@@ -9,7 +9,6 @@ import {
   queryRows,
   tableRecordId,
 } from "./surreal-records";
-import { ensureTables } from "./surreal-tables";
 
 export type RuntimeProcessRow = {
   _id: string;
@@ -38,7 +37,6 @@ export type RuntimeProcessRow = {
 };
 
 async function ensureRuntimeProcessTable() {
-  await ensureTables();
   return getSurreal();
 }
 

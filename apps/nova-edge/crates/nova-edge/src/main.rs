@@ -84,7 +84,7 @@ async fn main() -> Result<()> {
     // ── 5. Admin API router ───────────────────────────────────────
     let dns_resolver =
         Arc::new(HickoryDnsResolver::new().context("failed to create DNS resolver")?);
-    let admin_tokens = parse_admin_tokens(&config.tunnel_token);
+    let admin_tokens = parse_admin_tokens(&config.tunnel_token, config.control_token.as_deref());
     let tunnel_registry = Arc::new(TunnelRegistry::new());
 
     let admin_router = server::create_router_with_tunnel_registry(
@@ -151,7 +151,7 @@ async fn main() -> Result<()> {
     let http_addr: SocketAddr = format!("0.0.0.0:{}", config.http_port)
         .parse()
         .context("invalid HTTP port")?;
-    let api_addr: SocketAddr = format!("0.0.0.0:{}", config.api_port)
+    let api_addr: SocketAddr = format!("{}:{}", config.api_bind, config.api_port)
         .parse()
         .context("invalid API port")?;
     let tunnel_addr: SocketAddr = format!("0.0.0.0:{}", config.tunnel_port)
@@ -194,6 +194,8 @@ async fn main() -> Result<()> {
         config.tunnel_token.clone(),
         tunnel_registry.clone(),
         live_cache.clone(),
+        store.clone(),
+        config.horizon_node_id.clone(),
         HealthCheckConfig::default(),
         tunnel_addr.to_string(),
         tunnel_shutdown_rx,
@@ -270,18 +272,22 @@ async fn connect_and_init_store(
     .await
     .context("failed to connect to SurrealDB")?;
 
-    let schema = StoreSchemaConfig::studio();
-    let store = SurrealStore::new(client.db.clone(), schema);
-
-    // Ensure schema is applied
-    store
-        .ensure_schema()
+    let schema = client
+        .verify_schema()
         .await
-        .context("failed to ensure SurrealDB schema")?;
+        .context("SurrealDB schema is incompatible; apply the repository database rollout")?;
+    tracing::info!(mode = ?schema.mode, version = ?schema.version, "SurrealDB schema verified");
+
+    let versioned_schema = matches!(schema.mode, edge_store::schema::SchemaMode::Versioned);
+    let store = SurrealStore::with_schema_mode(
+        client.db.clone(),
+        StoreSchemaConfig::studio(),
+        versioned_schema,
+    );
 
     // Start live cache
     let live_cache = Arc::new(
-        LiveCache::start(&client.db)
+        LiveCache::start(&client.db, versioned_schema)
             .await
             .context("failed to start live cache")?,
     );
@@ -291,12 +297,15 @@ async fn connect_and_init_store(
 
 /// Parse additional admin tokens from the tunnel token field.
 /// The tunnel_token is accepted as a secondary auth token for FRP compatibility.
-fn parse_admin_tokens(tunnel_token: &str) -> Vec<String> {
-    if tunnel_token.is_empty() {
-        Vec::new()
-    } else {
-        vec![tunnel_token.to_string()]
+fn parse_admin_tokens(tunnel_token: &str, control_token: Option<&str>) -> Vec<String> {
+    let mut tokens = Vec::new();
+    if !tunnel_token.is_empty() {
+        tokens.push(format!("frp:{tunnel_token}"));
     }
+    if let Some(token) = control_token.filter(|token| !token.is_empty()) {
+        tokens.push(format!("control:{token}"));
+    }
+    tokens
 }
 
 // ── Integration tests (T41) ──────────────────────────────────────────
@@ -392,14 +401,20 @@ mod tests {
     /// Test: parse_admin_tokens handles empty string.
     #[test]
     fn test_parse_admin_tokens_empty() {
-        assert!(parse_admin_tokens("").is_empty());
+        assert!(parse_admin_tokens("", None).is_empty());
     }
 
     /// Test: parse_admin_tokens returns the tunnel token.
     #[test]
     fn test_parse_admin_tokens_present() {
-        let tokens = parse_admin_tokens("my-tunnel-token");
-        assert_eq!(tokens, vec!["my-tunnel-token".to_string()]);
+        let tokens = parse_admin_tokens("my-tunnel-token", Some("control-token"));
+        assert_eq!(
+            tokens,
+            vec![
+                "frp:my-tunnel-token".to_string(),
+                "control:control-token".to_string(),
+            ]
+        );
     }
 
     /// Test: LiveCache::new() creates empty cache.

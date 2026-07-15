@@ -57,9 +57,7 @@ export type ScheduledJobInput = {
 };
 
 async function ensureScheduledJobTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS scheduled_job SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 function scheduledJobChatTitle(title: string) {

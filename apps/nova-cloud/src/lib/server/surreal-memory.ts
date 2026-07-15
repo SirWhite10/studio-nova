@@ -31,7 +31,6 @@ export async function addMemoryForUser(
   metadata?: Record<string, unknown>,
 ) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS");
 
   const [created] = await db.create(new Table("memory")).content({
     userId,
@@ -44,7 +43,6 @@ export async function addMemoryForUser(
 
 export async function getMemoriesByUser(userId: string, chatId?: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS memory SCHEMALESS");
 
   const rows = await queryRows<MemoryRow>(
     db,

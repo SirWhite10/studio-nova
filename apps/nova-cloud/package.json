@@ -29,6 +29,7 @@
     "@openrouter/ai-sdk-provider": "^2.2.3",
     "@shikijs/langs": "^3.22.0",
     "@shikijs/themes": "^3.22.0",
+    "@studio-nova/data-contracts": "workspace:*",
     "@tabler/icons-svelte": "^3.44.0",
     "@xenova/transformers": "^2.17.2",
     "@zvec/zvec": "^0.2.0",

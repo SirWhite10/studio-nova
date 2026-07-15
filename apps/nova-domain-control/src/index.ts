@@ -6,7 +6,7 @@ const config = loadConfig();
 const store =
   config.storeMode === "memory" ? new MemoryDomainStore() : new SurrealDomainStore(config.surreal);
 
-await store.ensureSchema();
+await store.verifySchema();
 
 const server = createDomainControlServer(config, store);
 

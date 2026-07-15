@@ -31,6 +31,7 @@ export const surrealConfig = {
   RESEND_API_KEY: getPrivateEnv("RESEND_API_KEY"),
   RESEND_FROM_EMAIL: getPrivateEnv("RESEND_FROM_EMAIL"),
   NOVA_CRON_SECRET: getPrivateEnv("NOVA_CRON_SECRET"),
+  NOVA_CONSTELLATION_CONTROL_TOKEN: getPrivateEnv("NOVA_CONSTELLATION_CONTROL_TOKEN"),
 };
 
 export const config = {

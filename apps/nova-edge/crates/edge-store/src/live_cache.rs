@@ -7,8 +7,8 @@
 
 use anyhow::Result;
 use dashmap::DashMap;
-use surrealdb::Surreal;
 use surrealdb::Connection;
+use surrealdb::Surreal;
 
 use crate::helpers::*;
 use crate::surreal_ext::SurrealExt;
@@ -22,6 +22,7 @@ use crate::types::*;
 pub struct LiveCache {
     hosts: DashMap<String, DomainResolution>,
     proxies: DashMap<String, WorkspaceProxy>,
+    route_hosts: DashMap<String, ()>,
     /// Live query IDs (as strings), used to kill subscriptions on shutdown.
     live_uuids: DashMap<String, String>,
 }
@@ -38,20 +39,22 @@ impl LiveCache {
         Self {
             hosts: DashMap::new(),
             proxies: DashMap::new(),
+            route_hosts: DashMap::new(),
             live_uuids: DashMap::new(),
         }
     }
 
     /// Bootstrap the cache by loading all existing data, then subscribe to
     /// live queries for ongoing mutations.
-    pub async fn start<C: Connection + Send + Sync>(db: &Surreal<C>) -> Result<Self> {
+    pub async fn start<C: Connection + Send + Sync>(
+        db: &Surreal<C>,
+        versioned_schema: bool,
+    ) -> Result<Self> {
         let cache = Self::new();
 
         // Load existing proxy_domain records
-        let raw_domains: Vec<serde_json::Value> = db
-            .query("SELECT * FROM proxy_domain")
-            .await?
-            .take(0)?;
+        let raw_domains: Vec<serde_json::Value> =
+            db.query("SELECT * FROM proxy_domain").await?.take(0)?;
         for v in raw_domains {
             if let Ok(domain) = serde_json::from_value::<ProxyDomain>(v) {
                 let host = normalize_host(&domain.host);
@@ -68,18 +71,28 @@ impl LiveCache {
                             domain,
                         },
                     );
-                    cache
-                        .proxies
-                        .insert(proxy.proxy_name.clone(), proxy);
+                    cache.proxies.insert(proxy.proxy_name.clone(), proxy);
+                }
+            }
+        }
+
+        if versioned_schema {
+            let route_hosts: Vec<serde_json::Value> = db
+                .query(
+                    "SELECT host FROM domain_binding WHERE ownershipStatus = 'verified' AND certificateStatus = 'active'",
+                )
+                .await?
+                .take(0)?;
+            for value in route_hosts {
+                if let Some(host) = value.get("host").and_then(|host| host.as_str()) {
+                    cache.route_hosts.insert(normalize_host(host), ());
                 }
             }
         }
 
         // Subscribe to proxy_domain live updates
-        let domain_uuid: Option<serde_json::Value> = db
-            .query("LIVE SELECT * FROM proxy_domain")
-            .await?
-            .take(0)?;
+        let domain_uuid: Option<serde_json::Value> =
+            db.query("LIVE SELECT * FROM proxy_domain").await?.take(0)?;
         if let Some(v) = domain_uuid {
             let id_str = v.to_string().trim_matches('"').to_string();
             cache.live_uuids.insert("proxy_domain".into(), id_str);
@@ -128,7 +141,20 @@ impl LiveCache {
 
     /// Check if a host has an active resolution (enabled proxy, active domain).
     pub fn is_host_active(&self, host: &str) -> bool {
-        self.resolve(host).is_some()
+        self.resolve(host).is_some() || self.route_hosts.contains_key(&normalize_host(host))
+    }
+
+    /// Authorize a verified new-schema Domain Binding for on-demand TLS.
+    pub fn allow_route_host(&self, host: &str) {
+        self.route_hosts.insert(normalize_host(host), ());
+    }
+
+    pub fn remove_route_host(&self, host: &str) -> bool {
+        self.route_hosts.remove(&normalize_host(host)).is_some()
+    }
+
+    pub fn route_host_count(&self) -> usize {
+        self.route_hosts.len()
     }
 
     /// Get a proxy by name from the cache.
@@ -156,8 +182,10 @@ impl LiveCache {
     /// Insert or update a domain resolution in the cache.
     pub fn upsert(&self, resolution: DomainResolution) {
         let host = normalize_host(&resolution.domain.host);
-        self.proxies
-            .insert(resolution.proxy.proxy_name.clone(), resolution.proxy.clone());
+        self.proxies.insert(
+            resolution.proxy.proxy_name.clone(),
+            resolution.proxy.clone(),
+        );
         self.hosts.insert(host, resolution);
     }
 
@@ -268,6 +296,16 @@ mod tests {
     }
 
     #[test]
+    fn route_host_authorization_is_independent_of_legacy_proxy_cache() {
+        let cache = LiveCache::new();
+        cache.allow_route_host("App.Example.COM.");
+        assert!(cache.is_host_active("app.example.com"));
+        assert_eq!(cache.route_host_count(), 1);
+        assert!(cache.remove_route_host("APP.EXAMPLE.COM"));
+        assert!(!cache.is_host_active("app.example.com"));
+    }
+
+    #[test]
     fn test_upsert_and_resolve() {
         let cache = LiveCache::new();
         let res = make_resolution("myapp.dlx.studio", "my-proxy", DomainStatus::Active, true);
@@ -341,9 +379,24 @@ mod tests {
     #[test]
     fn test_remove_proxy_cascades_domains() {
         let cache = LiveCache::new();
-        cache.upsert(make_resolution("a.dlx.studio", "multi", DomainStatus::Active, true));
-        cache.upsert(make_resolution("b.dlx.studio", "multi", DomainStatus::Active, true));
-        cache.upsert(make_resolution("c.other", "other-proxy", DomainStatus::Active, true));
+        cache.upsert(make_resolution(
+            "a.dlx.studio",
+            "multi",
+            DomainStatus::Active,
+            true,
+        ));
+        cache.upsert(make_resolution(
+            "b.dlx.studio",
+            "multi",
+            DomainStatus::Active,
+            true,
+        ));
+        cache.upsert(make_resolution(
+            "c.other",
+            "other-proxy",
+            DomainStatus::Active,
+            true,
+        ));
 
         assert_eq!(cache.host_count(), 3);
         assert_eq!(cache.proxy_count(), 2);
@@ -399,11 +452,21 @@ mod tests {
         let cache = LiveCache::new();
 
         // Insert v1
-        cache.upsert(make_resolution("update.me", "p1", DomainStatus::Pending, true));
+        cache.upsert(make_resolution(
+            "update.me",
+            "p1",
+            DomainStatus::Pending,
+            true,
+        ));
         assert!(cache.resolve("update.me").is_none());
 
         // Update to active
-        cache.upsert(make_resolution("update.me", "p1", DomainStatus::Active, true));
+        cache.upsert(make_resolution(
+            "update.me",
+            "p1",
+            DomainStatus::Active,
+            true,
+        ));
         assert!(cache.resolve("update.me").is_some());
         assert_eq!(cache.host_count(), 1); // still 1, not 2
     }
@@ -411,7 +474,12 @@ mod tests {
     #[test]
     fn test_get_proxy() {
         let cache = LiveCache::new();
-        cache.upsert(make_resolution("x.dlx.studio", "my-proxy", DomainStatus::Active, true));
+        cache.upsert(make_resolution(
+            "x.dlx.studio",
+            "my-proxy",
+            DomainStatus::Active,
+            true,
+        ));
 
         let proxy = cache.get_proxy("my-proxy").unwrap();
         assert_eq!(proxy.local_port, 3000);
@@ -422,8 +490,18 @@ mod tests {
     #[test]
     fn test_all_hosts() {
         let cache = LiveCache::new();
-        cache.upsert(make_resolution("a.dlx.studio", "p1", DomainStatus::Active, true));
-        cache.upsert(make_resolution("b.dlx.studio", "p2", DomainStatus::Active, true));
+        cache.upsert(make_resolution(
+            "a.dlx.studio",
+            "p1",
+            DomainStatus::Active,
+            true,
+        ));
+        cache.upsert(make_resolution(
+            "b.dlx.studio",
+            "p2",
+            DomainStatus::Active,
+            true,
+        ));
 
         let mut hosts = cache.all_hosts();
         hosts.sort();

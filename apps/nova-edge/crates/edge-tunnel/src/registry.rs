@@ -4,12 +4,45 @@
 //! Multiple clients can serve the same proxy; selection is round-robin.
 
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
 use crate::transport::TunnelConnector;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TunnelIdentity {
+    pub constellation_id: String,
+    pub habitat_node_id: String,
+    pub connector_key: String,
+}
+
+impl TunnelIdentity {
+    pub fn from_login(login: &crate::protocol::Login) -> Result<Option<Self>, &'static str> {
+        match (
+            login.constellation_id.as_deref(),
+            login.habitat_node_id.as_deref(),
+            login.connector_key.as_deref(),
+        ) {
+            (None, None, None) => Ok(None),
+            (Some(constellation_id), Some(habitat_node_id), Some(connector_key))
+                if !constellation_id.trim().is_empty()
+                    && !habitat_node_id.trim().is_empty()
+                    && !connector_key.trim().is_empty() =>
+            {
+                Ok(Some(Self {
+                    constellation_id: constellation_id.to_string(),
+                    habitat_node_id: habitat_node_id.to_string(),
+                    connector_key: connector_key.to_string(),
+                }))
+            }
+            _ => Err(
+                "native tunnel identity requires constellation_id, habitat_node_id, and connector_key",
+            ),
+        }
+    }
+}
 
 /// Represents a connected tunnel client.
 #[derive(Debug, Clone)]
@@ -18,6 +51,7 @@ pub struct TunnelClient {
     pub proxy_names: Vec<String>,
     /// Data-plane connector for opening yamux request streams.
     pub connector: Option<TunnelConnector>,
+    pub identity: Option<TunnelIdentity>,
     /// When this client was registered.
     pub registered_at: Instant,
     /// Last heartbeat or activity timestamp.
@@ -116,9 +150,11 @@ impl TunnelRegistry {
         let removed = self.clients.remove(run_id);
         if let Some((_, client)) = &removed {
             for proxy_name in &client.proxy_names {
-                self.proxy_slots.entry(proxy_name.clone()).and_modify(|slot| {
-                    slot.client_ids.retain(|id| id != run_id);
-                });
+                self.proxy_slots
+                    .entry(proxy_name.clone())
+                    .and_modify(|slot| {
+                        slot.client_ids.retain(|id| id != run_id);
+                    });
                 // Clean up empty slots
                 if let Some(slot) = self.proxy_slots.get(proxy_name) {
                     if slot.client_ids.is_empty() {
@@ -177,6 +213,36 @@ impl TunnelRegistry {
     /// Select a connected client with a data-plane connector for a proxy.
     pub fn select_connector(&self, proxy_name: &str) -> Option<TunnelConnector> {
         self.get_connection(proxy_name).and_then(|c| c.connector)
+    }
+
+    /// Select only the native connector authorized by the active Deployment Route.
+    pub fn select_connector_for_key(
+        &self,
+        proxy_name: &str,
+        connector_key: &str,
+    ) -> Option<TunnelConnector> {
+        self.get_connection_for_key(proxy_name, connector_key)
+            .and_then(|client| client.connector)
+    }
+
+    pub fn get_connection_for_key(
+        &self,
+        proxy_name: &str,
+        connector_key: &str,
+    ) -> Option<TunnelClient> {
+        let slot = self.proxy_slots.get(proxy_name)?;
+        for run_id in &slot.client_ids {
+            if let Some(client) = self.clients.get(run_id) {
+                if client
+                    .identity
+                    .as_ref()
+                    .is_some_and(|identity| identity.connector_key == connector_key)
+                {
+                    return Some(client.value().clone());
+                }
+            }
+        }
+        None
     }
 
     /// Get a connection for the given proxy name using round-robin selection.
@@ -248,6 +314,7 @@ mod tests {
             run_id: run_id.to_string(),
             proxy_names: proxy_names.iter().map(|s| s.to_string()).collect(),
             connector: None,
+            identity: None,
             registered_at: Instant::now(),
             last_seen: Instant::now(),
         }
@@ -394,5 +461,37 @@ mod tests {
         let mut ids = registry.client_ids();
         ids.sort();
         assert_eq!(ids, vec!["run-1", "run-2"]);
+    }
+
+    #[test]
+    fn native_service_selection_requires_route_connector_key() {
+        let registry = TunnelRegistry::new();
+        let mut client = make_client(
+            "native-run",
+            &["release-service.namespace.svc.cluster.local:4173"],
+        );
+        client.identity = Some(TunnelIdentity {
+            constellation_id: "constellation:primary".into(),
+            habitat_node_id: "infrastructure_node:habitat-one".into(),
+            connector_key: "habitat-one".into(),
+        });
+        registry.register(client);
+
+        assert!(
+            registry
+                .get_connection_for_key(
+                    "release-service.namespace.svc.cluster.local:4173",
+                    "habitat-one",
+                )
+                .is_some()
+        );
+        assert!(
+            registry
+                .get_connection_for_key(
+                    "release-service.namespace.svc.cluster.local:4173",
+                    "other-habitat",
+                )
+                .is_none()
+        );
     }
 }

@@ -1,0 +1,34 @@
+name = "constellation_tenant_model"
+tags = ["schema", "tenant"]
+
+[[cases]]
+name = "tenant_scoped_workbench_query_does_not_cross_users"
+kind = "schema_behavior"
+actor = "root"
+setup_sql = [
+  "CREATE studio:owner_a CONTENT { userId: 'user-a' };",
+  "CREATE studio:owner_b CONTENT { userId: 'user-b' };",
+  "CREATE workbench:a CONTENT { userId: 'user-a', studioId: studio:owner_a, name: 'A', slug: 'a', status: 'ready', sourceVolumeKey: 'volume-a', createdAt: time::now(), updatedAt: time::now() };",
+  "CREATE workbench:b CONTENT { userId: 'user-b', studioId: studio:owner_b, name: 'B', slug: 'b', status: 'ready', sourceVolumeKey: 'volume-b', createdAt: time::now(), updatedAt: time::now() };",
+]
+action_sql = "RETURN array::len(SELECT id FROM workbench WHERE userId = 'user-a' AND studioId = studio:owner_a);"
+verify_sql = "RETURN array::len(SELECT id FROM workbench WHERE userId = 'user-a' AND studioId = studio:owner_a);"
+expect_success = true
+
+[[cases.assertions]]
+path = ""
+equals = 1
+
+[[cases]]
+name = "domain_host_is_globally_unique"
+kind = "schema_behavior"
+actor = "root"
+setup_sql = [
+  "CREATE studio:domains_a CONTENT { userId: 'user-a' };",
+  "CREATE studio:domains_b CONTENT { userId: 'user-b' };",
+  "CREATE domain_binding:a CONTENT { userId: 'user-a', studioId: studio:domains_a, host: 'example.test', kind: 'custom', ownershipStatus: 'verified', certificateStatus: 'active', createdAt: time::now(), updatedAt: time::now() };",
+]
+action_sql = "CREATE domain_binding:b CONTENT { userId: 'user-b', studioId: studio:domains_b, host: 'example.test', kind: 'custom', ownershipStatus: 'verified', certificateStatus: 'active', createdAt: time::now(), updatedAt: time::now() };"
+verify_sql = "RETURN true;"
+expect_success = false
+expect_error_contains = "domain_binding_host_idx"

@@ -6,16 +6,27 @@ export function recordIdToString(id: unknown): string {
   if (typeof id === "string") return id;
   if (typeof id === "number" || typeof id === "bigint") return `${id}`;
   if (typeof id === "object") {
-    const record = id as { tb?: unknown; id?: unknown };
-    if (typeof record.tb === "string" && record.id !== undefined) {
+    const record = id as {
+      tb?: unknown;
+      table?: unknown;
+      id?: unknown;
+      toString?: () => string;
+    };
+    if (typeof record.toString === "function") {
+      const rendered = record.toString();
+      if (rendered && rendered !== "[object Object]") return rendered;
+    }
+    const tableValue = record.tb ?? record.table;
+    const table = typeof tableValue === "string" ? tableValue : null;
+    if (table && record.id !== undefined) {
       if (
         typeof record.id === "string" ||
         typeof record.id === "number" ||
         typeof record.id === "bigint"
       ) {
-        return `${record.tb}:${record.id}`;
+        return `${table}:${record.id}`;
       }
-      return `${record.tb}:${JSON.stringify(record.id)}`;
+      return `${table}:${JSON.stringify(record.id)}`;
     }
     return JSON.stringify(id);
   }
@@ -53,8 +64,8 @@ function normalizeStringValue(value: unknown): unknown {
     return stripRecordPrefix(stripWrappingQuotes(value));
   }
   if (value && typeof value === "object") {
-    const record = value as { tb?: unknown; id?: unknown };
-    if (typeof record.tb === "string" && record.id !== undefined) {
+    const record = value as { tb?: unknown; table?: unknown; id?: unknown };
+    if ((record.tb !== undefined || record.table !== undefined) && record.id !== undefined) {
       return stripRecordPrefix(recordIdToString(value));
     }
   }
@@ -92,8 +103,9 @@ export function normalizeSurrealRows<T extends { id?: unknown }>(
   return rows.map((row) => normalizeSurrealRow<T>(row));
 }
 
-export function normalizeRouteParam(raw: string): string {
-  return stripRecordPrefix(decodeURIComponent(stripWrappingQuotes(raw.trim())));
+export function normalizeRouteParam(raw: unknown): string {
+  const value = typeof raw === "string" ? raw : recordIdToString(raw);
+  return stripRecordPrefix(decodeURIComponent(stripWrappingQuotes(value.trim())));
 }
 
 export async function queryRows<T>(

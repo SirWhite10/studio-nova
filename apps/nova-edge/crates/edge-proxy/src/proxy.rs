@@ -11,6 +11,27 @@ use http_body_util::BodyExt;
 use std::sync::Arc;
 use thiserror::Error;
 
+pub fn route_resolution_authorized(
+    resolution: &edge_store::EdgeRouteResolution,
+    request_host: &str,
+) -> bool {
+    if resolution.host.trim_end_matches('.').to_ascii_lowercase()
+        != request_host.trim_end_matches('.').to_ascii_lowercase()
+        || resolution.user_id.is_empty()
+        || resolution.studio_id.is_empty()
+        || resolution.proxy_name.is_empty()
+        || resolution.local_ip.is_empty()
+        || resolution.local_port == 0
+    {
+        return false;
+    }
+    resolution.legacy
+        || (resolution.deployment_id.is_some()
+            && resolution.runtime_instance_id.is_some()
+            && resolution.connector_key.is_some()
+            && resolution.horizon_node_id.is_some())
+}
+
 #[derive(Debug, Error)]
 pub enum ProxyError {
     #[error("backend unavailable")]
@@ -108,6 +129,39 @@ mod tests {
     use super::*;
     use axum::http::{Request as HttpRequest, StatusCode};
 
+    fn deployment_resolution() -> edge_store::EdgeRouteResolution {
+        edge_store::EdgeRouteResolution {
+            host: "app.example.com".into(),
+            user_id: "user-one".into(),
+            studio_id: "studio:one".into(),
+            proxy_name: "release-service.namespace.svc.cluster.local:4173".into(),
+            local_ip: "release-service.namespace.svc.cluster.local".into(),
+            local_port: 4173,
+            deployment_id: Some("deployment:one".into()),
+            runtime_instance_id: Some("runtime_instance:one".into()),
+            connector_key: Some("habitat-one".into()),
+            horizon_node_id: Some("infrastructure_node:horizon-one".into()),
+            legacy: false,
+        }
+    }
+
+    #[test]
+    fn deployment_route_requires_complete_authorized_identity() {
+        let resolution = deployment_resolution();
+        assert!(route_resolution_authorized(&resolution, "APP.EXAMPLE.COM"));
+        assert!(!route_resolution_authorized(
+            &resolution,
+            "other.example.com"
+        ));
+
+        let mut missing_connector = resolution;
+        missing_connector.connector_key = None;
+        assert!(!route_resolution_authorized(
+            &missing_connector,
+            "app.example.com"
+        ));
+    }
+
     #[tokio::test]
     async fn test_mock_backend_returns_response() {
         let backend = Arc::new(MockBackend::ok(b"hello from backend"));
@@ -121,9 +175,7 @@ mod tests {
         let resp = handler.handle(req).await;
         assert_eq!(resp.status(), StatusCode::OK);
 
-        let body = axum::body::to_bytes(resp.into_body(), 1024)
-            .await
-            .unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 1024).await.unwrap();
         assert_eq!(&body[..], b"hello from backend");
     }
 

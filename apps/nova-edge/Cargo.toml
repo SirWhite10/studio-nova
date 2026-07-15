@@ -42,7 +42,7 @@ rcgen = "0.13"
 hyper-util = { version = "0.1", features = ["tokio", "service"] }
 
 # Database
-surrealdb = { version = "3", features = ["protocol-ws", "protocol-http"] }
+surrealdb = { version = "=3.1.2", features = ["protocol-ws", "protocol-http"] }
 clickhouse = "0.15"
 
 # Tunnel transport

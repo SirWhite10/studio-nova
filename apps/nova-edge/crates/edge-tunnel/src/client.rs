@@ -4,7 +4,11 @@
 //! services, and serves server-opened yamux data streams by proxying them to
 //! local TCP backends.
 
-use crate::protocol::{GeneralResponse, Login, NewProxy, read_envelope_futures, write_message_futures};
+use crate::protocol::{
+    GeneralResponse, Login, NewProxy, read_envelope_futures, write_message_futures,
+};
+use crate::registry::TunnelIdentity;
+use crate::transport::YamuxCommand;
 use crate::transport::read_data_stream_start;
 use futures::future::poll_fn;
 use futures::io::{AsyncReadExt as FuturesAsyncReadExt, AsyncWriteExt as FuturesAsyncWriteExt};
@@ -16,7 +20,6 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::compat::{FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
 use tracing::{info, warn};
 use yamux::{Config as YamuxConfig, Connection, Mode, Stream};
-use crate::transport::YamuxCommand;
 
 #[derive(Debug, Clone)]
 pub struct ClientProxyConfig {
@@ -31,6 +34,7 @@ pub struct TunnelClientConfig {
     pub token: String,
     pub run_id: String,
     pub hostname: String,
+    pub identity: Option<TunnelIdentity>,
     pub proxies: Vec<ClientProxyConfig>,
     pub heartbeat_interval: Duration,
     pub reconnect_interval: Duration,
@@ -45,7 +49,10 @@ impl TunnelClientRunner {
         Self { config }
     }
 
-    pub async fn run_until_shutdown(self, mut shutdown_rx: watch::Receiver<bool>) -> anyhow::Result<()> {
+    pub async fn run_until_shutdown(
+        self,
+        mut shutdown_rx: watch::Receiver<bool>,
+    ) -> anyhow::Result<()> {
         loop {
             tokio::select! {
                 result = run_once(self.config.clone()) => {
@@ -79,6 +86,18 @@ async fn run_once(config: TunnelClientConfig) -> anyhow::Result<()> {
         run_id: config.run_id.clone(),
         pool_count: 1,
         token: config.token.clone(),
+        constellation_id: config
+            .identity
+            .as_ref()
+            .map(|value| value.constellation_id.clone()),
+        habitat_node_id: config
+            .identity
+            .as_ref()
+            .map(|value| value.habitat_node_id.clone()),
+        connector_key: config
+            .identity
+            .as_ref()
+            .map(|value| value.connector_key.clone()),
     };
     write_message_futures(&mut control, &login).await?;
     expect_ok(&mut control).await?;
@@ -103,7 +122,9 @@ async fn run_once(config: TunnelClientConfig) -> anyhow::Result<()> {
         let mut interval = tokio::time::interval(heartbeat_interval);
         loop {
             interval.tick().await;
-            let hb = crate::protocol::Heartbeat { timestamp: chrono::Utc::now().timestamp_millis() };
+            let hb = crate::protocol::Heartbeat {
+                timestamp: chrono::Utc::now().timestamp_millis(),
+            };
             if write_message_futures(&mut control, &hb).await.is_err() {
                 break;
             }
@@ -134,7 +155,9 @@ async fn open_outbound(cmd_tx: &mpsc::Sender<YamuxCommand>) -> anyhow::Result<St
         .send(YamuxCommand::OpenOutbound { reply })
         .await
         .map_err(|_| anyhow::anyhow!("yamux driver stopped"))?;
-    recv.await.map_err(|_| anyhow::anyhow!("yamux driver dropped open reply"))?.map_err(Into::into)
+    recv.await
+        .map_err(|_| anyhow::anyhow!("yamux driver dropped open reply"))?
+        .map_err(Into::into)
 }
 
 async fn run_yamux_driver(
@@ -183,7 +206,10 @@ async fn expect_ok(stream: &mut yamux::Stream) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn handle_data_stream(stream: &mut yamux::Stream, proxies: &[ClientProxyConfig]) -> anyhow::Result<()> {
+async fn handle_data_stream(
+    stream: &mut yamux::Stream,
+    proxies: &[ClientProxyConfig],
+) -> anyhow::Result<()> {
     let start = read_data_stream_start(stream).await?;
     let proxy = proxies
         .iter()

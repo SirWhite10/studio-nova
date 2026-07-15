@@ -35,8 +35,6 @@ export async function createChat(
   title = "New chat",
 ) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS chat SCHEMALESS");
-  await db.query("DEFINE TABLE IF NOT EXISTS chat_message SCHEMALESS");
 
   const fullStudioId = studioId ? ensureRecordPrefix("studio", studioId) : null;
 

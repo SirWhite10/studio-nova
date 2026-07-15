@@ -13,18 +13,18 @@
     "dev": "vp run website#dev",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@blackbelt-technology/pi-agent-dashboard": "^0.5.3"
+  },
   "devDependencies": {
-    "vite-plus": "latest"
+    "vite-plus": "0.2.4"
   },
   "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.4",
+    "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@11.1.2",
-  "dependencies": {
-    "@blackbelt-technology/pi-agent-dashboard": "^0.5.3"
-  }
+  "packageManager": "pnpm@11.1.2"
 }

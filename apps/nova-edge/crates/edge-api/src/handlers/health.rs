@@ -26,13 +26,38 @@ pub async fn health(
             ));
         }
     };
+    let readiness = state.store.readiness().await.map_err(|error| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "ok": false, "error": error.to_string() })),
+        )
+    })?;
+    let connected_tunnels = state
+        .tunnel_registry
+        .as_ref()
+        .map_or(0, |registry| registry.client_count());
+    let route_hosts = state
+        .live_cache
+        .as_ref()
+        .map_or(0, |cache| cache.route_host_count());
+    let ready = store_health.ok && readiness["ok"].as_bool().unwrap_or(false);
 
-    Ok(Json(json!({
-        "ok": true,
+    let payload = Json(json!({
+        "ok": ready,
         "service": "nova-edge",
         "version": env!("CARGO_PKG_VERSION"),
         "store": store_health,
-    })))
+        "checks": readiness,
+        "tunnel": {
+            "connectedClients": connected_tunnels,
+            "authorizedRouteHosts": route_hosts,
+        }
+    }));
+    if ready {
+        Ok(payload)
+    } else {
+        Err((StatusCode::SERVICE_UNAVAILABLE, payload))
+    }
 }
 
 /// GET /resolve?host=...
@@ -97,6 +122,7 @@ mod tests {
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
             live_cache: None,
+            tunnel_registry: None,
         }
     }
 

@@ -184,3 +184,106 @@ export async function stopRuntimeControlPreview(controlStudioId: string, input: 
     result: { success: boolean; result?: { port: number; stopped: boolean } };
   }>(controlStudioId, "/preview/stop", input);
 }
+
+export type WorkbenchControlInput = {
+  studioId: string;
+  sourceVolumeKey: string;
+  systemPackages?: string[];
+};
+
+async function callWorkbenchControl(
+  workbenchId: string,
+  action: "allocate" | "resume" | "stop",
+  input: WorkbenchControlInput,
+) {
+  const response = await fetch(
+    runtimeControlUrl(
+      `/workbenches/${encodeURIComponent(workbenchId)}/${encodeURIComponent(action)}`,
+    ),
+    {
+      method: "POST",
+      headers: runtimeControlHeaders(),
+      body: JSON.stringify(input),
+    },
+  );
+  return (await parseRuntimeControlResponse(response)) as {
+    ok: true;
+    result: {
+      namespace: string;
+      providerInstanceId?: string;
+      sourceVolumeKey: string;
+      sourcePreserved?: boolean;
+      previewEndpoint?: string;
+    };
+  };
+}
+
+export function allocateWorkbenchRuntime(workbenchId: string, input: WorkbenchControlInput) {
+  return callWorkbenchControl(workbenchId, "allocate", input);
+}
+
+export function resumeWorkbenchRuntime(workbenchId: string, input: WorkbenchControlInput) {
+  return callWorkbenchControl(workbenchId, "resume", input);
+}
+
+export function stopWorkbenchRuntime(workbenchId: string, input: WorkbenchControlInput) {
+  return callWorkbenchControl(workbenchId, "stop", input);
+}
+
+export type DeploymentControlInput = {
+  studioId: string;
+  releaseId: string;
+  artifact: {
+    kind: string;
+    uri: string;
+    sha256: string;
+    sizeBytes: number;
+  };
+  runtimeImage?: string;
+  port?: number;
+  healthPath?: string;
+};
+
+async function callDeploymentControl<T>(
+  deploymentId: string,
+  action: "provision" | "verify" | "drain" | "stop" | "rollback",
+  input: DeploymentControlInput,
+) {
+  const response = await fetch(
+    runtimeControlUrl(
+      `/deployments/${encodeURIComponent(deploymentId)}/${encodeURIComponent(action)}`,
+    ),
+    {
+      method: "POST",
+      headers: runtimeControlHeaders(),
+      body: JSON.stringify(input),
+    },
+  );
+  return (await parseRuntimeControlResponse(response)) as { ok: true; result: T };
+}
+
+export function provisionDeploymentRuntime(deploymentId: string, input: DeploymentControlInput) {
+  return callDeploymentControl<{
+    namespace: string;
+    providerInstanceId: string;
+    serviceKey: string;
+    healthPath: string;
+  }>(deploymentId, "provision", input);
+}
+
+export function verifyDeploymentRuntime(deploymentId: string, input: DeploymentControlInput) {
+  return callDeploymentControl<{
+    namespace: string;
+    healthy: boolean;
+    availableReplicas: number;
+    serviceKey: string;
+  }>(deploymentId, "verify", input);
+}
+
+export function drainDeploymentRuntime(deploymentId: string, input: DeploymentControlInput) {
+  return callDeploymentControl(deploymentId, "drain", input);
+}
+
+export function stopDeploymentRuntime(deploymentId: string, input: DeploymentControlInput) {
+  return callDeploymentControl(deploymentId, "stop", input);
+}

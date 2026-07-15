@@ -7,11 +7,10 @@
 //! 4. Enter main loop processing control messages
 
 use crate::protocol::*;
-use crate::registry::TunnelRegistry;
-use crate::registry::TunnelClient;
+use crate::registry::{TunnelClient, TunnelIdentity, TunnelRegistry};
 use std::sync::Arc;
-use tracing::{debug, info, warn, error};
 use thiserror::Error;
+use tracing::{debug, error, info, warn};
 
 /// Errors that can occur during tunnel session handling.
 #[derive(Debug, Error)]
@@ -68,6 +67,11 @@ impl TunnelSession {
                 reason: "invalid token".into(),
             };
         }
+        if let Err(reason) = TunnelIdentity::from_login(&login) {
+            return LoginResult::Rejected {
+                reason: reason.into(),
+            };
+        }
 
         info!(
             run_id = %login.run_id,
@@ -100,6 +104,8 @@ impl TunnelSession {
         proxy_names: Vec<String>,
     ) -> Result<String, TunnelError> {
         let result = self.process_login(login.clone());
+        let identity = TunnelIdentity::from_login(&login)
+            .map_err(|reason| TunnelError::Protocol(reason.into()))?;
 
         match result {
             LoginResult::Accepted { ref run_id, .. } => {
@@ -107,15 +113,14 @@ impl TunnelSession {
                     run_id: run_id.clone(),
                     proxy_names,
                     connector: None,
+                    identity,
                     registered_at: std::time::Instant::now(),
                     last_seen: std::time::Instant::now(),
                 };
                 self.registry.register(client);
                 Ok(run_id.clone())
             }
-            LoginResult::Rejected { ref reason } => {
-                Err(TunnelError::AuthFailed(reason.clone()))
-            }
+            LoginResult::Rejected { ref reason } => Err(TunnelError::AuthFailed(reason.clone())),
         }
     }
 
@@ -159,6 +164,9 @@ mod tests {
             run_id: "run-abc".into(),
             pool_count: 1,
             token: token.into(),
+            constellation_id: None,
+            habitat_node_id: None,
+            connector_key: None,
         }
     }
 
@@ -192,6 +200,15 @@ mod tests {
             }
             LoginResult::Accepted { .. } => panic!("Expected rejection"),
         }
+    }
+
+    #[test]
+    fn partial_native_identity_rejected() {
+        let session = make_session("correct-token");
+        let mut login = make_login("correct-token");
+        login.constellation_id = Some("constellation:primary".into());
+        let result = session.process_login(login);
+        assert!(matches!(result, LoginResult::Rejected { .. }));
     }
 
     // ── login_response ────────────────────────────────────────────

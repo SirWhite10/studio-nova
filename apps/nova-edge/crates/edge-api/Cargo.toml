@@ -9,6 +9,7 @@ edge-store = { path = "../edge-store" }
 edge-tunnel = { path = "../edge-tunnel" }
 edge-config = { path = "../edge-config" }
 edge-analytics = { path = "../edge-analytics" }
+edge-proxy = { path = "../edge-proxy" }
 
 axum = { workspace = true }
 tower = { workspace = true }

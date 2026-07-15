@@ -56,7 +56,6 @@ function skillScore(
 
 export async function listSkillsByUser(userId: string, enabledOnly = false) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS");
 
   const rows = await queryRows<SurrealSkill>(
     db,
@@ -68,7 +67,6 @@ export async function listSkillsByUser(userId: string, enabledOnly = false) {
 
 export async function getSkillByIdForUser(userId: string, skillId: string) {
   const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS skills SCHEMALESS");
 
   const fullId = ensureRecordPrefix("skills", normalizeRouteParam(skillId));
   const row = await db.select<SurrealSkill>(new StringRecordId(fullId));

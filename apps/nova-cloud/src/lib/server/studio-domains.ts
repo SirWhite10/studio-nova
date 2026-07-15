@@ -6,15 +6,29 @@ import {
   type WorkspaceDomainStatus,
 } from "$lib/domains/workspace-domains";
 import {
+  activateDeploymentRouteControl,
   deleteDomainControlDomain,
   listStudioDomainControlDomains,
   syncDomainControlProxy,
   upsertDomainControlProxy,
+  verifyDomainBindingControl,
   verifyDomainControlDomain,
   type DomainControlResolution,
 } from "./nova-domain-control";
 import { getPrimaryForStudio } from "./surreal-runtime-processes";
 import { normalizeRouteParam } from "./surreal-records";
+import {
+  activatePlannedDeploymentRoute,
+  createDomainBinding,
+  getDomainBindingForStudio,
+  listDomainBindingsForStudio,
+  markDomainBindingVerified,
+  markDomainCertificateActive,
+  planDeploymentRoute,
+  revokeDomainBinding,
+  type DomainBindingRow,
+} from "./surreal-edge-routing";
+import { getSurrealSchemaReport } from "./surreal-schema";
 
 function mapDomainStatus(
   status: DomainControlResolution["domain"]["status"],
@@ -29,6 +43,21 @@ function mapDomainRow(studioId: string, row: DomainControlResolution): Workspace
   return createConfiguredCustomDomain(studioId, row.domain.host, {
     status: mapDomainStatus(row.domain.status),
     verificationToken: row.domain.verificationToken,
+  });
+}
+
+function mapBindingStatus(binding: DomainBindingRow): WorkspaceDomainStatus {
+  if (binding.ownershipStatus === "revoked" || binding.ownershipStatus === "failed") {
+    return "not-configured";
+  }
+  if (binding.ownershipStatus !== "verified") return "pending";
+  return binding.certificateStatus === "active" ? "active" : "verified";
+}
+
+function mapDomainBinding(studioId: string, binding: DomainBindingRow): WorkspaceDomain {
+  return createConfiguredCustomDomain(studioId, binding.host, {
+    status: mapBindingStatus(binding),
+    verificationToken: binding.verificationToken ?? undefined,
   });
 }
 
@@ -65,18 +94,28 @@ async function resolveStudioPreviewTarget(userId: string, studioId: string) {
   };
 }
 
-export async function loadStudioDomainSettings(studioId: string) {
+export async function loadStudioDomainSettings(userId: string, studioId: string) {
   const settings = createWorkspaceDomainSettings(studioId);
-  const rows = await listStudioDomainControlDomains(studioId).catch(() => []);
+  const legacyRows = await listStudioDomainControlDomains(studioId).catch(() => []);
+  const report = await getSurrealSchemaReport();
+  const bindings =
+    report.mode === "versioned"
+      ? await listDomainBindingsForStudio(userId, studioId).catch(() => [])
+      : [];
+  const byHost = new Map<string, WorkspaceDomain>();
+  for (const row of legacyRows.filter((row) => row.domain.kind === "custom")) {
+    byHost.set(row.domain.host, mapDomainRow(studioId, row));
+  }
+  for (const binding of bindings.filter((binding) => binding.kind === "custom")) {
+    byHost.set(binding.host, mapDomainBinding(studioId, binding));
+  }
   return {
     ...settings,
-    customDomains: rows
-      .filter((row) => row.domain.kind === "custom")
-      .map((row) => mapDomainRow(studioId, row)),
+    customDomains: [...byHost.values()],
   } satisfies WorkspaceDomainSettings;
 }
 
-export async function addStudioCustomDomain(input: {
+async function addLegacyStudioCustomDomain(input: {
   userId: string;
   studioId: string;
   host: string;
@@ -105,8 +144,29 @@ export async function addStudioCustomDomain(input: {
   return mapDomainRow(cleanStudioId, resolution);
 }
 
-export async function verifyStudioCustomDomain(studioId: string, host: string) {
-  const result = (await verifyDomainControlDomain(host)) as {
+export async function addStudioCustomDomain(input: {
+  userId: string;
+  studioId: string;
+  host: string;
+}) {
+  const report = await getSurrealSchemaReport();
+  if (report.mode !== "versioned") return addLegacyStudioCustomDomain(input);
+
+  const result = await createDomainBinding({
+    userId: input.userId,
+    studioId: input.studioId,
+    host: input.host,
+    kind: "custom",
+  });
+  await addLegacyStudioCustomDomain(input).catch(() => null);
+  return mapDomainBinding(normalizeRouteParam(input.studioId), result.binding);
+}
+
+export async function verifyStudioCustomDomain(userId: string, studioId: string, host: string) {
+  const report = await getSurrealSchemaReport();
+  const result = (await (report.mode === "versioned"
+    ? verifyDomainBindingControl(host)
+    : verifyDomainControlDomain(host))) as {
     ok: true;
     host: string;
     activated?: boolean;
@@ -119,6 +179,15 @@ export async function verifyStudioCustomDomain(studioId: string, host: string) {
     };
   };
 
+  if (report.mode === "versioned" && result.verification.verified) {
+    let binding = await markDomainBindingVerified({ userId, studioId, host });
+    binding = await markDomainCertificateActive(binding);
+    return {
+      ...result,
+      domain: mapDomainBinding(studioId, binding),
+    };
+  }
+
   return {
     ...result,
     domain: createConfiguredCustomDomain(studioId, host, {
@@ -128,7 +197,35 @@ export async function verifyStudioCustomDomain(studioId: string, host: string) {
   };
 }
 
-export async function removeStudioCustomDomain(studioId: string, host: string) {
-  await deleteDomainControlDomain(host, studioId);
+export async function removeStudioCustomDomain(userId: string, studioId: string, host: string) {
+  const report = await getSurrealSchemaReport();
+  if (report.mode === "versioned") {
+    const binding = await getDomainBindingForStudio(userId, studioId, host);
+    if (binding) await revokeDomainBinding({ userId, studioId, host });
+  }
+  await deleteDomainControlDomain(host, studioId).catch(() => null);
   return { ok: true, host };
+}
+
+export async function activateStudioDomainRoute(input: {
+  userId: string;
+  studioId: string;
+  host: string;
+  deploymentId: string;
+}) {
+  const plan = await planDeploymentRoute(input);
+  await activateDeploymentRouteControl({
+    userId: input.userId,
+    studioId: normalizeRouteParam(input.studioId),
+    host: plan.domain.host,
+    deploymentId: plan.deployment._id,
+    runtimeInstanceId: plan.runtime._id,
+    serviceKey: plan.runtime.serviceKey,
+    connectorKey: plan.connector.connectorKey,
+    horizonNodeId: plan.horizon._id,
+  });
+  return {
+    ok: true,
+    route: await activatePlannedDeploymentRoute(plan),
+  };
 }

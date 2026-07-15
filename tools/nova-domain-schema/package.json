@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ensure-schema": "node --experimental-strip-types src/ensure-schema.ts"
+    "ensure-schema": "node --experimental-strip-types src/ensure-schema.ts",
+    "verify-schema": "node --experimental-strip-types src/ensure-schema.ts"
   },
   "engines": {
     "node": ">=22.12.0"

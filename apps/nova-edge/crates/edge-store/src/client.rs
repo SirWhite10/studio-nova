@@ -32,6 +32,10 @@ impl SurrealClient {
         db.use_ns(namespace).use_db(database).await?;
         Ok(Self { db })
     }
+
+    pub async fn verify_schema(&self) -> Result<crate::schema::SchemaCompatibility> {
+        crate::schema::verify_schema(&self.db, "nova-edge").await
+    }
 }
 
 fn should_use_secure_ws(url: &str) -> bool {

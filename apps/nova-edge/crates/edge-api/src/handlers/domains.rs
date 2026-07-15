@@ -142,6 +142,80 @@ pub async fn verify(
     })))
 }
 
+/// POST /admin/domain-bindings/verify
+///
+/// Verifies a versioned Domain Binding without requiring a legacy
+/// workspace_proxy/proxy_domain pair. Nova Cloud owns the state transition;
+/// Horizon owns the DNS check and TLS host authorization.
+pub async fn verify_domain_binding(
+    State(state): State<AppState>,
+    Json(body): Json<VerifyDomainRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let host = normalize_host(&body.host);
+    let binding = state
+        .store
+        .get_domain_binding_verification(&host)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "ok": false, "error": error.to_string() })),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "ok": false, "error": "not_found", "host": host })),
+            )
+        })?;
+
+    if binding.ownership_status == "revoked" {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({ "ok": false, "error": "domain binding is revoked" })),
+        ));
+    }
+    let token = binding.verification_token.ok_or_else(|| {
+        (
+            StatusCode::CONFLICT,
+            Json(json!({ "ok": false, "error": "domain binding has no verification token" })),
+        )
+    })?;
+    let expected_token = if token.starts_with("nova-domain=") {
+        token
+    } else {
+        format!("nova-domain={token}")
+    };
+    let verification = crate::verification::verify_with_resolver(
+        state.dns_resolver.as_ref(),
+        &host,
+        &expected_token,
+        "_nova-domain",
+    )
+    .await
+    .unwrap_or_else(|_| crate::verification::VerificationResult {
+        host: host.clone(),
+        record_name: crate::verification::build_txt_record_name(&host, "_nova-domain"),
+        expected_value: expected_token,
+        found_values: vec![],
+        verified: false,
+    });
+
+    if verification.verified {
+        if let Some(cache) = &state.live_cache {
+            cache.allow_route_host(&host);
+        }
+    }
+
+    Ok(Json(json!({
+        "ok": true,
+        "host": host,
+        "activated": verification.verified,
+        "status": if verification.verified { "active" } else { "pending" },
+        "verification": verification,
+    })))
+}
+
 /// DELETE /admin/domains/:host?studioId=...
 pub async fn remove(
     State(state): State<AppState>,
@@ -187,6 +261,7 @@ mod tests {
             admin_tokens: vec![],
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
             live_cache: None,
+            tunnel_registry: None,
         }
     }
 

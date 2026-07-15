@@ -14,7 +14,7 @@ export const POST: RequestHandler = async (event) => {
 
   const host = decodeURIComponent(event.params.host ?? "");
   try {
-    return json(await verifyStudioCustomDomain(studioId, host), { status: 202 });
+    return json(await verifyStudioCustomDomain(userId, studioId, host), { status: 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return json({ error: message }, { status: 400 });

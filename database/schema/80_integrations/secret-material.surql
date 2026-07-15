@@ -1,0 +1,13 @@
+DEFINE TABLE integration_secret_material TYPE NORMAL SCHEMAFULL PERMISSIONS NONE;
+DEFINE FIELD userId ON integration_secret_material TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD studioId ON integration_secret_material TYPE record<studio>;
+DEFINE FIELD reference ON integration_secret_material TYPE string ASSERT string::starts_with($value, 'secret://integration/');
+DEFINE FIELD integrationKey ON integration_secret_material TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD fieldKey ON integration_secret_material TYPE string ASSERT string::len($value) > 0;
+DEFINE FIELD provider ON integration_secret_material TYPE string DEFAULT 'local-encrypted';
+DEFINE FIELD ciphertext ON integration_secret_material TYPE string ASSERT string::starts_with($value, 'enc1:');
+DEFINE FIELD status ON integration_secret_material TYPE string DEFAULT 'active' ASSERT $value IN ['active', 'revoked'];
+DEFINE FIELD createdAt ON integration_secret_material TYPE datetime DEFAULT time::now();
+DEFINE FIELD updatedAt ON integration_secret_material TYPE datetime DEFAULT time::now();
+DEFINE INDEX integration_secret_material_reference_unique ON integration_secret_material FIELDS reference UNIQUE;
+DEFINE INDEX integration_secret_material_studio_idx ON integration_secret_material FIELDS studioId, integrationKey;

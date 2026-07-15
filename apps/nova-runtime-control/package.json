@@ -6,14 +6,18 @@
   "scripts": {
     "dev": "node --experimental-strip-types --watch src/index.ts",
     "start": "node --experimental-strip-types src/index.ts",
-    "check": "tsc --noEmit",
+    "check": "vp check",
+    "test": "vp test",
     "smoke:media": "node --experimental-strip-types src/cli/media-smoke.ts",
     "smoke:render": "node --experimental-strip-types src/cli/render-smoke.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@studio-nova/data-contracts": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^25.4.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=24.15.0"

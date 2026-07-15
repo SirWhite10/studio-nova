@@ -1,0 +1,7 @@
+# SurrealKit defaults to the repository-level ./database project.
+# Connection details always come from CLI flags or SURREALDB_* environment
+# variables; credentials must never be committed here.
+
+[typegen]
+typescript = "packages/data-contracts/src/generated"
+format = "vp fmt"

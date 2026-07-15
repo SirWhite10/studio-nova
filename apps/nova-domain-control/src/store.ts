@@ -10,7 +10,7 @@ import type {
 import { generateVerificationToken } from "./verification.ts";
 
 export interface DomainStore {
-  ensureSchema(): Promise<void>;
+  verifySchema(): Promise<void>;
   health(): Promise<{ ok: boolean; status: string }>;
   resolveHost(host: string): Promise<DomainResolution | null>;
   getDomainByHost(host: string): Promise<DomainResolution | null>;
@@ -23,40 +23,10 @@ export interface DomainStore {
   disableProxy(proxyName: string): Promise<void>;
 }
 
-const TABLE_DEFINITIONS = [
-  "DEFINE TABLE IF NOT EXISTS workspace_proxy SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS userId ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS studioId ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS runtimeId ON workspace_proxy TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS proxyName ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS proxyType ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS localIP ON workspace_proxy TYPE string DEFAULT '127.0.0.1'",
-  "DEFINE FIELD IF NOT EXISTS localPort ON workspace_proxy TYPE number",
-  "DEFINE FIELD IF NOT EXISTS remotePort ON workspace_proxy TYPE option<number>",
-  "DEFINE FIELD IF NOT EXISTS frpcClientId ON workspace_proxy TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS enabled ON workspace_proxy TYPE bool DEFAULT true",
-  "DEFINE FIELD IF NOT EXISTS createdAt ON workspace_proxy TYPE number",
-  "DEFINE FIELD IF NOT EXISTS updatedAt ON workspace_proxy TYPE number",
-  "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_studio ON workspace_proxy FIELDS studioId",
-  "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_name ON workspace_proxy FIELDS proxyName UNIQUE",
-  "DEFINE TABLE IF NOT EXISTS proxy_domain SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS host ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS proxyId ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS kind ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS status ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS verificationToken ON proxy_domain TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS createdAt ON proxy_domain TYPE number",
-  "DEFINE FIELD IF NOT EXISTS updatedAt ON proxy_domain TYPE number",
-  "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_host ON proxy_domain FIELDS host UNIQUE",
-  "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_proxy ON proxy_domain FIELDS proxyId",
-  "DEFINE TABLE IF NOT EXISTS frp_client SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS clientId ON frp_client TYPE string",
-  "DEFINE FIELD IF NOT EXISTS clusterId ON frp_client TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS status ON frp_client TYPE string",
-  "DEFINE FIELD IF NOT EXISTS lastHeartbeatAt ON frp_client TYPE option<number>",
-  "DEFINE FIELD IF NOT EXISTS metadata ON frp_client TYPE option<object>",
-  "DEFINE INDEX IF NOT EXISTS idx_frp_client_client ON frp_client FIELDS clientId UNIQUE",
-];
+const REQUIRED_TABLES = ["workspace_proxy", "proxy_domain", "frp_client"] as const;
+
+type DatabaseInfo = { tables?: Record<string, string> };
+type SchemaRelease = { key?: string; version?: number; compatibleServices?: string[] };
 
 function recordIdToString(id: unknown) {
   if (typeof id === "string") return id;
@@ -150,10 +120,31 @@ export class SurrealDomainStore implements DomainStore {
     }
   }
 
-  async ensureSchema() {
+  async verifySchema() {
     const db = await this.getDb();
-    for (const ddl of TABLE_DEFINITIONS) {
-      await db.query(ddl).collect();
+    const [info] = await db.query<[DatabaseInfo]>("INFO FOR DB").collect();
+    const missing = REQUIRED_TABLES.filter((table) => !info?.tables?.[table]);
+    if (missing.length) {
+      throw new Error(
+        `Missing domain tables: ${missing.join(", ")}. Apply the repository database rollout first.`,
+      );
+    }
+    if (info?.tables?.schema_release) {
+      const [releases] = await db
+        .query<[SchemaRelease[]]>(
+          "SELECT key, version, compatibleServices FROM schema_release ORDER BY version DESC LIMIT 1",
+        )
+        .collect();
+      const release = releases?.[0];
+      if (!release || !Number.isSafeInteger(release.version) || release.version! < 1) {
+        throw new Error("The schema_release marker is missing version 1");
+      }
+      if (
+        release.compatibleServices?.length &&
+        !release.compatibleServices.includes("nova-domain-control")
+      ) {
+        throw new Error(`Schema release ${release.key ?? "unknown"} excludes nova-domain-control`);
+      }
     }
   }
 
@@ -410,7 +401,7 @@ export class MemoryDomainStore implements DomainStore {
   private proxies = new Map<string, WorkspaceProxy & { _id: string }>();
   private domains = new Map<string, ProxyDomain & { _id: string }>();
 
-  async ensureSchema() {}
+  async verifySchema() {}
 
   async health() {
     return { ok: true, status: "memory" };

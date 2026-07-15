@@ -16,7 +16,7 @@ export const load: PageServerLoad = async (event) => {
   const [studioPlan, studio, domains] = await Promise.all([
     getUserPlan(userId),
     getStudioForUser(userId, rawStudioId),
-    loadStudioDomainSettings(rawStudioId),
+    loadStudioDomainSettings(userId, rawStudioId),
   ]);
 
   return {

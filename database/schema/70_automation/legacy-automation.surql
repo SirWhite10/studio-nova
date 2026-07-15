@@ -1,0 +1,2 @@
+-- Exact 2026-07-13 live baseline.
+DEFINE TABLE scheduled_job TYPE ANY SCHEMALESS PERMISSIONS NONE;

@@ -106,7 +106,11 @@ pub fn record_id_string(id: &Option<serde_json::Value>) -> String {
     match id {
         Some(serde_json::Value::String(s)) => s.clone(),
         Some(serde_json::Value::Object(map)) => {
-            let tb = map.get("tb").and_then(|v| v.as_str()).unwrap_or("");
+            let tb = map
+                .get("tb")
+                .or_else(|| map.get("table"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let id_part = map.get("id");
             let id_str = match id_part {
                 Some(serde_json::Value::String(s)) => s.clone(),
@@ -245,6 +249,15 @@ mod tests {
             "id": "abc123"
         }));
         assert_eq!(record_id_string(&id), "workspace_proxy:abc123");
+    }
+
+    #[test]
+    fn record_id_v3_table_object() {
+        let id = Some(json!({
+            "table": "deployment",
+            "id": "abc123"
+        }));
+        assert_eq!(record_id_string(&id), "deployment:abc123");
     }
 
     #[test]

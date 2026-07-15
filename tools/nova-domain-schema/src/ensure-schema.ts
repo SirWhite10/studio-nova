@@ -1,45 +1,23 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const TABLE_DEFINITIONS = [
-  "DEFINE TABLE IF NOT EXISTS workspace_proxy SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS userId ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS studioId ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS runtimeId ON workspace_proxy TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS proxyName ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS proxyType ON workspace_proxy TYPE string",
-  "DEFINE FIELD IF NOT EXISTS localIP ON workspace_proxy TYPE string DEFAULT '127.0.0.1'",
-  "DEFINE FIELD IF NOT EXISTS localPort ON workspace_proxy TYPE number",
-  "DEFINE FIELD IF NOT EXISTS remotePort ON workspace_proxy TYPE option<number>",
-  "DEFINE FIELD IF NOT EXISTS frpcClientId ON workspace_proxy TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS enabled ON workspace_proxy TYPE bool DEFAULT true",
-  "DEFINE FIELD IF NOT EXISTS createdAt ON workspace_proxy TYPE number",
-  "DEFINE FIELD IF NOT EXISTS updatedAt ON workspace_proxy TYPE number",
-  "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_studio ON workspace_proxy FIELDS studioId",
-  "DEFINE INDEX IF NOT EXISTS idx_workspace_proxy_name ON workspace_proxy FIELDS proxyName UNIQUE",
-  "DEFINE TABLE IF NOT EXISTS proxy_domain SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS host ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS proxyId ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS kind ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS status ON proxy_domain TYPE string",
-  "DEFINE FIELD IF NOT EXISTS verificationToken ON proxy_domain TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS createdAt ON proxy_domain TYPE number",
-  "DEFINE FIELD IF NOT EXISTS updatedAt ON proxy_domain TYPE number",
-  "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_host ON proxy_domain FIELDS host UNIQUE",
-  "DEFINE INDEX IF NOT EXISTS idx_proxy_domain_proxy ON proxy_domain FIELDS proxyId",
-  "DEFINE TABLE IF NOT EXISTS frp_client SCHEMALESS",
-  "DEFINE FIELD IF NOT EXISTS clientId ON frp_client TYPE string",
-  "DEFINE FIELD IF NOT EXISTS clusterId ON frp_client TYPE option<string>",
-  "DEFINE FIELD IF NOT EXISTS status ON frp_client TYPE string",
-  "DEFINE FIELD IF NOT EXISTS lastHeartbeatAt ON frp_client TYPE option<number>",
-  "DEFINE FIELD IF NOT EXISTS metadata ON frp_client TYPE option<object>",
-  "DEFINE INDEX IF NOT EXISTS idx_frp_client_client ON frp_client FIELDS clientId UNIQUE",
-];
-
 type SurrealStatement = {
   status?: string;
   detail?: string;
+  result?: unknown;
 };
+
+type DatabaseInfo = {
+  tables?: Record<string, string>;
+};
+
+type SchemaRelease = {
+  key?: string;
+  version?: number;
+  compatibleServices?: string[];
+};
+
+const REQUIRED_TABLES = ["workspace_proxy", "proxy_domain", "frp_client"];
 
 function loadDotEnvFile(path: string) {
   try {
@@ -66,36 +44,31 @@ for (const path of [
   loadDotEnvFile(path);
 }
 
-function requireEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing env var: ${name}`);
+function requireEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
   }
-  return value;
+  throw new Error(`Missing env var: ${names.join(" or ")}`);
 }
 
 function surrealSQLURL(raw: string) {
   const parsed = new URL(raw.trim());
   if (parsed.protocol === "ws:") parsed.protocol = "http:";
   if (parsed.protocol === "wss:") parsed.protocol = "https:";
-  if (parsed.pathname.endsWith("/rpc")) {
-    parsed.pathname = parsed.pathname.slice(0, -4) + "/sql";
-  } else if (!parsed.pathname.endsWith("/sql")) {
-    parsed.pathname = parsed.pathname.replace(/\/?$/, "/sql");
-  }
+  if (parsed.pathname.endsWith("/rpc")) parsed.pathname = parsed.pathname.slice(0, -4);
+  parsed.pathname = parsed.pathname.replace(/\/?$/, "/sql");
   return parsed.toString();
 }
 
 async function main() {
-  const sqlURL = surrealSQLURL(requireEnv("SURREALDB_URL"));
+  const sqlURL = surrealSQLURL(requireEnv("SURREALDB_URL", "SURREALDB_HOST"));
   const namespace = process.env.SURREALDB_NAMESPACE || "main";
-  const database = process.env.SURREALDB_DATABASE || "main";
-  const username = requireEnv("SURREALDB_USERNAME");
+  const database = process.env.SURREALDB_DATABASE || process.env.SURREALDB_NAME || "main";
+  const username = requireEnv("SURREALDB_USERNAME", "SURREALDB_USER");
   const password = requireEnv("SURREALDB_PASSWORD");
 
-  console.log(`Ensuring Nova FRP schema in ${namespace}/${database} via ${sqlURL}`);
-
-  for (const statement of TABLE_DEFINITIONS) {
+  const query = async <T>(statement: string): Promise<T> => {
     const response = await fetch(sqlURL, {
       method: "POST",
       headers: {
@@ -107,28 +80,43 @@ async function main() {
       },
       body: statement,
     });
-
     const body = await response.text();
-    if (!response.ok) {
-      throw new Error(`Surreal SQL request failed (${response.status}): ${body.trim()}`);
-    }
-
-    let parsed: SurrealStatement[] = [];
-    try {
-      parsed = JSON.parse(body) as SurrealStatement[];
-    } catch {
-      throw new Error(`Invalid Surreal SQL response: ${body.trim()}`);
-    }
-
+    if (!response.ok) throw new Error(`Surreal SQL request failed (${response.status})`);
+    const parsed = JSON.parse(body) as SurrealStatement[];
     const first = parsed[0];
     if (!first || first.status?.toUpperCase() !== "OK") {
-      throw new Error(
-        first?.detail || first?.status || `Unexpected Surreal SQL response: ${body.trim()}`,
-      );
+      throw new Error(first?.detail || first?.status || "Unexpected Surreal SQL response");
     }
+    return first.result as T;
+  };
+
+  const info = await query<DatabaseInfo>("INFO FOR DB;");
+  const missing = REQUIRED_TABLES.filter((table) => !info.tables?.[table]);
+  if (missing.length) {
+    throw new Error(
+      `Missing domain tables: ${missing.join(", ")}. Apply the repository database rollout first.`,
+    );
   }
 
-  console.log("Nova FRP schema ensured successfully");
+  let mode = "legacy";
+  if (info.tables?.schema_release) {
+    const releases = await query<SchemaRelease[]>(
+      "SELECT key, version, compatibleServices FROM schema_release ORDER BY version DESC LIMIT 1;",
+    );
+    const release = releases[0];
+    if (!release || !Number.isSafeInteger(release.version) || release.version! < 1) {
+      throw new Error("The schema_release marker is missing version 1");
+    }
+    if (
+      release.compatibleServices?.length &&
+      !release.compatibleServices.includes("nova-domain-control")
+    ) {
+      throw new Error(`Schema release ${release.key ?? "unknown"} excludes nova-domain-control`);
+    }
+    mode = `versioned:${release.version}`;
+  }
+
+  console.log(`Nova domain schema verified in ${namespace}/${database} (${mode})`);
 }
 
 await main();

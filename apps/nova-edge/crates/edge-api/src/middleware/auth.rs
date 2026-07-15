@@ -8,6 +8,20 @@ use axum::{
 };
 use serde_json::json;
 
+fn token_entry_allows(entry: &str, presented: &str, path: &str) -> bool {
+    if let Some(token) = entry.strip_prefix("control:") {
+        return token == presented
+            && (path.starts_with("/admin/deployment-routes/")
+                || path.starts_with("/deployment-routes/")
+                || path.starts_with("/admin/connectors/")
+                || path.starts_with("/connectors/"));
+    }
+    if entry.starts_with("frp:") {
+        return false;
+    }
+    entry == presented
+}
+
 pub async fn auth_middleware(
     State(state): State<crate::server::AppState>,
     req: Request<Body>,
@@ -18,16 +32,16 @@ pub async fn auth_middleware(
         .get("Authorization")
         .and_then(|v| v.to_str().ok());
 
-    let is_valid = match auth_header {
-        Some(header) => {
-            let expected_primary = format!("Bearer {}", state.admin_token);
-            if header == expected_primary {
+    let path = req.uri().path();
+    let is_valid = match auth_header.and_then(|header| header.strip_prefix("Bearer ")) {
+        Some(presented) => {
+            if presented == state.admin_token {
                 true
             } else {
                 state
                     .admin_tokens
                     .iter()
-                    .any(|t| header == format!("Bearer {}", t))
+                    .any(|entry| token_entry_allows(entry, presented, path))
             }
         }
         None => false,
@@ -68,6 +82,7 @@ mod tests {
             admin_tokens: admin_tokens.iter().map(|s| s.to_string()).collect(),
             dns_resolver: Arc::new(crate::verification::MockDnsResolver::new(vec![])),
             live_cache: None,
+            tunnel_registry: None,
         }
     }
 
@@ -155,5 +170,24 @@ mod tests {
         let (status, body) = send_request(app, Some("Bearer unknown-token")).await;
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert!(body.contains("\"error\":\"unauthorized\""));
+    }
+
+    #[test]
+    fn scoped_control_token_is_limited_to_route_control() {
+        assert!(token_entry_allows(
+            "control:route-token",
+            "route-token",
+            "/admin/deployment-routes/activate",
+        ));
+        assert!(!token_entry_allows(
+            "control:route-token",
+            "route-token",
+            "/admin/proxies",
+        ));
+        assert!(!token_entry_allows(
+            "frp:tunnel-token",
+            "tunnel-token",
+            "/admin/proxies",
+        ));
     }
 }

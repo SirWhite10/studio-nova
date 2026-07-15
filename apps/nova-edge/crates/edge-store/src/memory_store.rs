@@ -3,15 +3,15 @@
 //! Uses `DashMap` for concurrent access. Suitable as a test double and as a
 //! temporary stand-in when SurrealDB is unavailable.
 
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use dashmap::DashMap;
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use crate::store::DomainStore;
-use crate::types::*;
 use crate::helpers::*;
+use crate::store::DomainStore;
 use crate::store_config::StoreSchemaConfig;
+use crate::types::*;
 
 /// In-memory store backed by `DashMap`. Safe to share across tasks.
 pub struct MemoryStore {
@@ -54,10 +54,6 @@ impl MemoryStore {
 
 #[async_trait]
 impl DomainStore for MemoryStore {
-    async fn ensure_schema(&self) -> Result<()> {
-        Ok(())
-    }
-
     async fn health(&self) -> Result<StoreHealth> {
         Ok(StoreHealth {
             ok: true,
@@ -201,9 +197,7 @@ impl DomainStore for MemoryStore {
         status: &str,
     ) -> Result<Option<DomainResolution>> {
         let normalized = normalize_host(host);
-        let status: DomainStatus = status
-            .parse()
-            .map_err(|e: String| anyhow::anyhow!(e))?;
+        let status: DomainStatus = status.parse().map_err(|e: String| anyhow::anyhow!(e))?;
 
         let Some(mut entry) = self.domains.get_mut(&normalized) else {
             return Ok(None);
@@ -277,13 +271,21 @@ mod tests {
     async fn upsert_creates_proxy_and_domains() {
         let store = make_store_with_proxy().await;
 
-        let proxy = store.get_proxy_by_name("test-proxy").await.unwrap().unwrap();
+        let proxy = store
+            .get_proxy_by_name("test-proxy")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(proxy.user_id, "u1");
         assert_eq!(proxy.local_port, 3000);
         assert!(proxy.enabled);
 
         // Subdomain auto-activated
-        let sub = store.resolve_host("myapp.dlx.studio").await.unwrap().unwrap();
+        let sub = store
+            .resolve_host("myapp.dlx.studio")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(sub.domain.kind, DomainKind::Subdomain);
         assert_eq!(sub.domain.status, DomainStatus::Active);
 
@@ -352,7 +354,11 @@ mod tests {
         let store = make_store_with_proxy().await;
         store.disable_proxy("test-proxy").await.unwrap();
 
-        let proxy = store.get_proxy_by_name("test-proxy").await.unwrap().unwrap();
+        let proxy = store
+            .get_proxy_by_name("test-proxy")
+            .await
+            .unwrap()
+            .unwrap();
         assert!(!proxy.enabled);
     }
 

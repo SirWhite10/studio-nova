@@ -1,0 +1,34 @@
+name = "constellation_lifecycle"
+tags = ["schema", "lifecycle"]
+
+[[cases]]
+name = "workbench_accepts_a_valid_state"
+kind = "schema_behavior"
+actor = "root"
+setup_sql = ["CREATE studio:alpha CONTENT { userId: 'user-a' };"]
+action_sql = "CREATE workbench:alpha CONTENT { userId: 'user-a', studioId: studio:alpha, name: 'Alpha', slug: 'alpha', status: 'ready', sourceVolumeKey: 'volume-alpha', createdAt: time::now(), updatedAt: time::now() };"
+verify_sql = "RETURN (SELECT VALUE status FROM ONLY workbench:alpha);"
+expect_success = true
+
+[[cases.assertions]]
+path = ""
+equals = "ready"
+
+[[cases]]
+name = "workbench_rejects_an_unknown_state"
+kind = "schema_behavior"
+actor = "root"
+setup_sql = ["CREATE studio:beta CONTENT { userId: 'user-b' };"]
+action_sql = "CREATE workbench:beta CONTENT { userId: 'user-b', studioId: studio:beta, name: 'Beta', slug: 'beta', status: 'unknown', sourceVolumeKey: 'volume-beta', createdAt: time::now(), updatedAt: time::now() };"
+verify_sql = "RETURN true;"
+expect_success = false
+expect_error_contains = "status"
+
+[[cases]]
+name = "release_artifact_rejects_a_short_checksum"
+kind = "schema_behavior"
+actor = "root"
+action_sql = "CREATE release_artifact:invalid CONTENT { releaseId: release:r1, targetProfileId: build_target_profile:web_pwa, kind: 'bundle', uri: 'file:///bundle', sha256: 'short', sizeBytes: 1, createdAt: time::now() };"
+verify_sql = "RETURN true;"
+expect_success = false
+expect_error_contains = "sha256"

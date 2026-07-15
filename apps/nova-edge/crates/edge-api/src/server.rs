@@ -6,8 +6,12 @@ use axum::{
     middleware,
     routing::{any, delete, get, post},
 };
+use edge_proxy::proxy::route_resolution_authorized;
 use edge_store::{DomainStore, live_cache::LiveCache};
-use edge_tunnel::{registry::TunnelRegistry, transport::{TunnelRequest, forward_request_over_connector}};
+use edge_tunnel::{
+    registry::TunnelRegistry,
+    transport::{TunnelRequest, forward_request_over_connector},
+};
 use http_body_util::BodyExt;
 use std::sync::Arc;
 
@@ -41,7 +45,14 @@ pub fn create_router_with_tunnel_registry(
     live_cache: Option<Arc<LiveCache>>,
     tunnel_registry: Option<Arc<TunnelRegistry>>,
 ) -> Router {
-    create_router_internal(store, admin_token, admin_tokens, dns_resolver, live_cache, tunnel_registry)
+    create_router_internal(
+        store,
+        admin_token,
+        admin_tokens,
+        dns_resolver,
+        live_cache,
+        tunnel_registry,
+    )
 }
 
 pub fn create_router_with_live_cache(
@@ -51,7 +62,14 @@ pub fn create_router_with_live_cache(
     dns_resolver: Arc<dyn crate::verification::DnsResolver>,
     live_cache: Option<Arc<LiveCache>>,
 ) -> Router {
-    create_router_internal(store, admin_token, admin_tokens, dns_resolver, live_cache, None)
+    create_router_internal(
+        store,
+        admin_token,
+        admin_tokens,
+        dns_resolver,
+        live_cache,
+        None,
+    )
 }
 
 fn create_router_internal(
@@ -78,31 +96,22 @@ fn create_router_internal(
         // FRP plugin handler
         .route("/frp/handler", post(handlers::frp::handle))
         // Admin API (authenticated)
-        .nest(
-            "/admin",
-            admin_routes(store, admin_token, admin_tokens, dns_resolver),
-        )
+        .nest("/admin", admin_routes(state.clone()))
         // Public workspace traffic: Host -> LiveCache -> upstream HTTP runtime
         .fallback(any(proxy_workspace_request))
         .with_state(state)
 }
 
-fn admin_routes(
-    store: Arc<dyn DomainStore>,
-    admin_token: String,
-    admin_tokens: Vec<String>,
-    dns_resolver: Arc<dyn crate::verification::DnsResolver>,
-) -> Router<AppState> {
-    let state = AppState {
-        store,
-        admin_token,
-        admin_tokens,
-        dns_resolver,
-        live_cache: None,
-        tunnel_registry: None,
-    };
-
+fn admin_routes(state: AppState) -> Router<AppState> {
     Router::new()
+        .route(
+            "/deployment-routes/activate",
+            post(handlers::deployment_routes::activate),
+        )
+        .route(
+            "/domain-bindings/verify",
+            post(handlers::domains::verify_domain_binding),
+        )
         .route(
             "/domains/verify",
             get(handlers::domains::check_verification),
@@ -139,7 +148,7 @@ async fn proxy_workspace_request(
         .unwrap_or("")
         .to_ascii_lowercase();
 
-    let resolution = match state.store.resolve_host(&host).await {
+    let resolution = match state.store.resolve_route(&host).await {
         Ok(Some(resolution)) => resolution,
         Ok(None) => {
             tracing::warn!(host = %host, "workspace proxy host not found in store");
@@ -157,15 +166,23 @@ async fn proxy_workspace_request(
         }
     };
 
+    if !route_resolution_authorized(&resolution, &host) {
+        tracing::warn!(host = %host, "resolved route failed proxy authorization");
+        return Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body(Body::from("workspace route authorization failed"))
+            .unwrap();
+    }
+
     let path_and_query = req
         .uri()
         .path_and_query()
         .map(|p| p.as_str().to_string())
         .unwrap_or_else(|| "/".to_string());
-    tracing::info!(host = %host, proxy = %resolution.proxy.proxy_name, upstream_ip = %resolution.proxy.local_ip, upstream_port = resolution.proxy.local_port, path = %path_and_query, "proxying workspace request");
+    tracing::info!(host = %host, proxy = %resolution.proxy_name, upstream_ip = %resolution.local_ip, upstream_port = resolution.local_port, deployment = ?resolution.deployment_id, path = %path_and_query, "proxying workspace request");
     let upstream = format!(
         "http://{}:{}{}",
-        resolution.proxy.local_ip, resolution.proxy.local_port, path_and_query
+        resolution.local_ip, resolution.local_port, path_and_query
     );
 
     let method = req.method().clone();
@@ -182,23 +199,50 @@ async fn proxy_workspace_request(
     };
 
     if let Some(registry) = &state.tunnel_registry {
-        if let Some(connector) = registry.select_connector(&resolution.proxy.proxy_name) {
+        let connector = resolution
+            .connector_key
+            .as_deref()
+            .and_then(|key| registry.select_connector_for_key(&resolution.proxy_name, key))
+            .or_else(|| {
+                resolution
+                    .legacy
+                    .then(|| registry.select_connector(&resolution.proxy_name))
+                    .flatten()
+            });
+        if let Some(connector) = connector {
             let tunnel_req = TunnelRequest {
                 method: method.to_string(),
                 host: host.clone(),
                 path: path_and_query.to_string(),
                 headers: headers
                     .iter()
-                    .filter_map(|(name, value)| value.to_str().ok().map(|v| (name.to_string(), v.to_string())))
+                    .filter_map(|(name, value)| {
+                        value
+                            .to_str()
+                            .ok()
+                            .map(|v| (name.to_string(), v.to_string()))
+                    })
                     .collect(),
                 body: body.clone(),
             };
-            match forward_request_over_connector(connector, &resolution.proxy.proxy_name, &tunnel_req).await {
+            match forward_request_over_connector(connector, &resolution.proxy_name, &tunnel_req)
+                .await
+            {
                 Ok(resp) => {
                     let mut out = Response::builder().status(resp.status);
                     for (name, value) in resp.headers {
                         let header = name.to_ascii_lowercase();
-                        if matches!(header.as_str(), "connection" | "keep-alive" | "proxy-authenticate" | "proxy-authorization" | "te" | "trailer" | "transfer-encoding" | "upgrade") {
+                        if matches!(
+                            header.as_str(),
+                            "connection"
+                                | "keep-alive"
+                                | "proxy-authenticate"
+                                | "proxy-authorization"
+                                | "te"
+                                | "trailer"
+                                | "transfer-encoding"
+                                | "upgrade"
+                        ) {
                             continue;
                         }
                         out = out.header(name, value);
@@ -206,7 +250,7 @@ async fn proxy_workspace_request(
                     return out.body(Body::from(resp.body)).unwrap();
                 }
                 Err(e) => {
-                    tracing::warn!(host = %host, proxy = %resolution.proxy.proxy_name, error = %e, "tunnel workspace upstream unavailable");
+                    tracing::warn!(host = %host, proxy = %resolution.proxy_name, error = %e, "tunnel workspace upstream unavailable");
                     return Response::builder()
                         .status(StatusCode::BAD_GATEWAY)
                         .body(Body::from("tunnel workspace upstream unavailable"))

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@voidzero-dev/vite-plus-test";
+import { describe, expect, it } from "vite-plus/test";
 import { get } from "svelte/store";
 import type { CanvasNode } from "$lib/base/canvas/types.js";
 import { createEditorStore } from "./store.js";

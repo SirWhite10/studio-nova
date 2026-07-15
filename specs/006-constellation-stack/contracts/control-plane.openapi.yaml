@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: Constellation Control Plane
+  version: 0.1.0
+  description: Internal authenticated contract between Nova Cloud, Habitat runtime control, and Horizon.
+servers:
+  - url: https://control.internal
+security:
+  - bearerAuth: []
+paths:
+  /v1/constellations/{constellationKey}/nodes/register:
+    post:
+      operationId: registerNode
+      parameters:
+        - $ref: "#/components/parameters/ConstellationKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeRegistration"
+      responses:
+        "200":
+          description: Idempotent registration result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "401": { description: Unauthorized }
+        "409": { description: Identity or role conflict }
+  /v1/nodes/{nodeId}/heartbeat:
+    post:
+      operationId: heartbeatNode
+      parameters:
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, capabilities]
+              properties:
+                status: { type: string }
+                capabilities: { type: object, additionalProperties: true }
+      responses:
+        "204": { description: Heartbeat accepted }
+        "401": { description: Unauthorized }
+  /v1/studios/{studioId}/workbenches:
+    post:
+      operationId: createWorkbench
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                targetProfileKey: { type: string }
+      responses:
+        "201":
+          description: Workbench created or existing idempotent result returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workbench" }
+    get:
+      operationId: listWorkbenches
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+      responses:
+        "200":
+          description: Workbenches owned by the Studio
+  /v1/studios/{studioId}/workbenches/{workbenchId}/resume:
+    post:
+      operationId: resumeWorkbench
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+        - $ref: "#/components/parameters/WorkbenchId"
+      responses:
+        "202": { description: Allocation or resume accepted }
+        "409": { description: Invalid lifecycle transition }
+  /v1/studios/{studioId}/workbenches/{workbenchId}/builds:
+    post:
+      operationId: createBuildJob
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+        - $ref: "#/components/parameters/WorkbenchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetProfileKey, sourceRevision]
+              properties:
+                targetProfileKey: { type: string }
+                sourceRevision: { type: string }
+      responses:
+        "202":
+          description: Build queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuildJob" }
+        "409": { description: No compatible builder or invalid state }
+  /v1/builds/{buildJobId}:
+    get:
+      operationId: getBuildJob
+      parameters:
+        - name: buildJobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Current build state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuildJob" }
+  /v1/studios/{studioId}/deployments:
+    post:
+      operationId: createDeployment
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [releaseId, environment]
+              properties:
+                releaseId: { type: string }
+                environment: { type: string, enum: [preview, staging, production] }
+      responses:
+        "202": { description: Deployment provisioning accepted }
+        "409": { description: Release is not deployable }
+  /v1/deployments/{deploymentId}/activate:
+    post:
+      operationId: activateDeployment
+      parameters:
+        - $ref: "#/components/parameters/DeploymentId"
+      responses:
+        "200": { description: Healthy Deployment activated atomically }
+        "409": { description: Runtime, route, domain, or tunnel is not healthy }
+  /v1/deployments/{deploymentId}/rollback:
+    post:
+      operationId: rollbackDeployment
+      parameters:
+        - $ref: "#/components/parameters/DeploymentId"
+      responses:
+        "200": { description: Previous healthy Release activated }
+        "409": { description: No healthy rollback target }
+  /v1/studios/{studioId}/domains:
+    post:
+      operationId: bindDomain
+      parameters:
+        - $ref: "#/components/parameters/StudioId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [host, kind, deploymentId]
+              properties:
+                host: { type: string, format: hostname }
+                kind: { type: string, enum: [platform, custom] }
+                deploymentId: { type: string }
+      responses:
+        "201": { description: Domain binding created }
+        "409": { description: Host is owned by another tenant }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    ConstellationKey:
+      name: constellationKey
+      in: path
+      required: true
+      schema: { type: string }
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema: { type: string }
+    StudioId:
+      name: studioId
+      in: path
+      required: true
+      schema: { type: string }
+    WorkbenchId:
+      name: workbenchId
+      in: path
+      required: true
+      schema: { type: string }
+    DeploymentId:
+      name: deploymentId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    NodeRegistration:
+      type: object
+      required: [nodeKey, role, displayName, hostname, capabilities]
+      properties:
+        nodeKey: { type: string }
+        role: { type: string, enum: [forge, horizon, habitat] }
+        displayName: { type: string }
+        hostname: { type: string }
+        region: { type: string }
+        capabilities: { type: object, additionalProperties: true }
+    Node:
+      allOf:
+        - $ref: "#/components/schemas/NodeRegistration"
+        - type: object
+          required: [id, status]
+          properties:
+            id: { type: string }
+            status: { type: string }
+            lastHeartbeatAt: { type: string, format: date-time }
+    Workbench:
+      type: object
+      required: [id, studioId, name, status, sourceVolumeKey]
+      properties:
+        id: { type: string }
+        studioId: { type: string }
+        name: { type: string }
+        status: { type: string }
+        sourceVolumeKey: { type: string }
+        activeInstanceId: { type: [string, "null"] }
+    BuildJob:
+      type: object
+      required: [id, studioId, workbenchId, targetProfileId, status, sourceRevision]
+      properties:
+        id: { type: string }
+        studioId: { type: string }
+        workbenchId: { type: string }
+        targetProfileId: { type: string }
+        nodeId: { type: [string, "null"] }
+        status: { type: string }
+        sourceRevision: { type: string }
+        releaseId: { type: [string, "null"] }

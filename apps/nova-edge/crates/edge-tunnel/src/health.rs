@@ -13,9 +13,7 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Clone, PartialEq)]
 pub enum HealthStatus {
     Healthy,
-    Stale {
-        last_seen_ago_secs: f64,
-    },
+    Stale { last_seen_ago_secs: f64 },
     Unknown,
 }
 
@@ -164,6 +162,7 @@ mod tests {
             run_id: run_id.to_string(),
             proxy_names: proxy_names.iter().map(|s| s.to_string()).collect(),
             connector: None,
+            identity: None,
             registered_at: Instant::now(),
             last_seen: Instant::now(),
         }

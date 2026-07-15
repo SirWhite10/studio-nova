@@ -32,3 +32,33 @@ export function requireBearerToken(
   const authorization = request.headers.authorization ?? "";
   return authorization === `Bearer ${configuredToken}`;
 }
+
+export type WorkbenchRoute = {
+  workbenchId: string;
+  action: "status" | "allocate" | "resume" | "stop";
+};
+
+export function parseWorkbenchRoute(pathname: string): WorkbenchRoute | null {
+  const match = pathname.match(/^\/workbenches\/([^/]+)(?:\/(status|allocate|resume|stop))?$/);
+  if (!match?.[1]) return null;
+  return {
+    workbenchId: decodeURIComponent(match[1]),
+    action: (match[2] as WorkbenchRoute["action"] | undefined) ?? "status",
+  };
+}
+
+export type DeploymentRoute = {
+  deploymentId: string;
+  action: "status" | "provision" | "verify" | "drain" | "stop" | "rollback";
+};
+
+export function parseDeploymentRoute(pathname: string): DeploymentRoute | null {
+  const match = pathname.match(
+    /^\/deployments\/([^/]+)(?:\/(status|provision|verify|drain|stop|rollback))?$/,
+  );
+  if (!match?.[1]) return null;
+  return {
+    deploymentId: decodeURIComponent(match[1]),
+    action: (match[2] as DeploymentRoute["action"] | undefined) ?? "status",
+  };
+}

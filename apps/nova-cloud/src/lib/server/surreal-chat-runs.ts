@@ -29,9 +29,7 @@ export type ChatRunRow = {
 };
 
 async function ensureChatRunTable() {
-  const db = await getSurreal();
-  await db.query("DEFINE TABLE IF NOT EXISTS chat_run SCHEMALESS");
-  return db;
+  return getSurreal();
 }
 
 export async function createChatRun(input: {

@@ -14,7 +14,7 @@ export const DELETE: RequestHandler = async (event) => {
 
   const host = decodeURIComponent(event.params.host ?? "");
   try {
-    return json(await removeStudioCustomDomain(studioId, host));
+    return json(await removeStudioCustomDomain(userId, studioId, host));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return json({ error: message }, { status: 400 });
